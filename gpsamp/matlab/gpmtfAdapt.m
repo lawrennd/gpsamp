@@ -1,5 +1,5 @@
-function [model PropDist samples accRateF accRateKin accRateW accRateLengSc] = gpTFAdapt(model, Genes, TimesG, TimesF, AdaptOps)
-%[model PropDist samples accRateF accRateKin accRateW accRateLengSc] = gpTFAdapt(model, Genes, TimesG, TimesF, AdaptOps)
+function [model PropDist samples accRates] = gpmtfAdapt(model, AdaptOps)
+%[model PropDist samples accRates] = gpmtfAdapt(model, AdaptOps)
 %
 % Description: Sample the parameters of the Bayesian differential equation 
 %              model so that to tune/adapt the proposal distribution (number 
@@ -77,73 +77,59 @@ function [model PropDist samples accRateF accRateKin accRateW accRateLengSc] = g
 BurnInIters = AdaptOps.Burnin; 
 Iters = AdaptOps.T; 
 
-%%% SIZES stuff
-[NumOfGenes SizG NumReplicas] = size(Genes);
+%%% SIZES 
+[NumOfGenes SizG NumReplicas] = size(model.Likelihood.Genes);
 % number of genes 
-NumOfGenes = model.Likelihood.NumOfGenes;
+NumOfGenes = model.Likelihood.numGenes;
 % number of times the gene expression is evaluated
-SizG = model.Likelihood.NumOfTimes;
+SizG = model.Likelihood.numTimes;
 % number of replicas per gene 
-NumReplicas = model.Likelihood.NumOfReplicas;
+NumReplicas = model.Likelihood.numReplicas;
 % number of transcription factors
-NumOfTFs = model.Likelihood.NumOfTFs;
-SizKin = model.Likelihood.NumOfKins_perGene;
-SizF = size(TimesF,2);
+NumOfTFs = model.Likelihood.numTFs;
+SizKin = size(model.Likelihood.kinetics,2);
+SizF = size(model.Likelihood.TimesF,2);
 
-%initial number of control variables 
-M = AdaptOps.InitialNOfControlPnts;
+% initial number of control variables 
+M = AdaptOps.initialNumContrPnts;
 
 % initialize the transcription factors
 F = zeros(NumOfTFs, SizF, NumReplicas);
 % initialize the control variables 
 Fu = zeros(NumOfTFs, M, NumReplicas);
 for r=1:NumReplicas
-ook = mean(Genes(:,:,r),1);       
-F(:,:,r) = mean(ook(:))*ones(NumOfTFs,SizF);
-Fu(:,:,r) = repmat(mean(Genes(:,1:M,r)),[NumOfTFs 1]); 
+inG = mean(model.Likelihood.Genes(:,:,r),1);       
+F(:,:,r) = mean(inG(:))*ones(NumOfTFs,SizF);
+Fu(:,:,r) = repmat(mean(model.Likelihood.Genes(:,1:M,r)),[NumOfTFs 1]); 
 end
-
-
 
 % if the initial values of the TFs is kept fixed, then set the first 
 % control point to be zero (-5 even GP function is the log of the TF)
 for j=1:NumOfTFs
-if model.Constraints.Ft0(j)==0  
-   if model.Constraints.Ft0_value == 0
-       if strcmp(model.Likelihood.TFsingleAct,'lin') & strcmp(model.Likelihood.TFjointAct,'sigmoid') == 0
-           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);
-       elseif strcmp(model.Likelihood.TFsingleAct,'exp')
+if model.constraints.Ft0(j)==0  
+   if model.constraints.Ft0_value == 0
+       if strcmp(model.Likelihood.singleAct,'lin') & strcmp(model.Likelihood.jointAct,'sigmoid') == 0
+           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);    
+       else
            Fu(:,1,:) = -5*ones(NumOfTFs,NumReplicas);     
        end
    end        
 end
 end
 
-%% if the initial values of the TFs is kept fixed,  then set the first 
-%% control point to be equal to this value  
-%if strcmp(model.InitConds_Constraints.Ft0,'fixed')==1  % 'free' or 'fixed' 
-%   if model.InitConds_Constraints.Ft0_value == 0
-%       Fu(:,1,:) = -5*ones(NumOfTFs,NumReplicas);       
-%   elseif model.InitConds_Constraints.Ft0_value > 0
-%       Fu(:,1,:) = log(model.InitConds_Constraints.Ft0_value)*ones(NumOfTFs,NumReplicas);
-%   else
-%       disp('Negative values for the TFs are not allowed');
-%   end        
-%end
-%Fu(:,1,:) = model.FF(:,1);
-
 % if the initial condition of the differential equations is zero, then set accordingly the 
 % corresponding kinetic parameter (initial condition)
 for j=1:NumOfGenes
-if model.Constraints.InitialConds(j) == 0
+if model.constraints.InitialConds(j) == 0
    %if model.Constraints.A_value == 0
-       model.Likelihood.A = model.Likelihood.B./model.Likelihood.D;
+       model.Likelihood.kinetics(:,4) = model.Likelihood.kinetics(:,1)./model.Likelihood.kinetics(:,2);
    %end        
 end
 end
 
 % Initial input locations of the control points
 % (placed in a regular grid)
+TimesF = model.Likelihood.TimesF;
 step = (max(TimesF) - min(TimesF))/(M-1);
 Xu = TimesF(1):step:TimesF(end);
 Xu = Xu(1:M);
@@ -153,7 +139,7 @@ n = SizF;
 U = n+1:n+M; 
 for j=1:NumOfTFs 
    PropDist.qF{j}.m = zeros(n+M,1);
-   PropDist.qF{j}.K = covfuncCompute(model.GP.logtheta(j,:), [TimesF(:); Xu(:)], [TimesF(:); Xu(:)]); 
+   PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]); 
    %PropDist.qF{1}.K = PropDist.qF{1}.K + 0.1*eye(size(PropDist.qF{1}.K)); 
    L=jitterChol(PropDist.qF{j}.K)';
    PropDist.qF{j}.invL = L\eye(n+M); 
@@ -187,19 +173,26 @@ end % end NumOfTFs loop
 
 % precompution
 X = [TimesF(:); Xu(:)];
-model.GP.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
+model.GP{1}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
 
-% Initial proposal distribution for the kinetic parameters,
-% interection weights and the lengthscale of the GPs 
-PropDist.qKinVars = ones(NumOfGenes,SizKin);
-PropDist.qWeigVars = 0.5*ones(NumOfGenes,NumOfTFs+1);
-PropDist.qLengScVars = 0.1*(1/model.prior.GPkernel.lenghtScale.b)*ones(1,NumOfTFs);
+% Initial proposal Gaussian distribution (with diagonal covariance matrices) 
+% for the kinetic parameters interection weights and the lengthscale of the GPs 
+PropDist.kin = 0.5*ones(NumOfGenes,SizKin);
+% interaction weigths and bias 
+PropDist.W = 0.5*ones(NumOfGenes,NumOfTFs+1);
+PropDist.LengSc = 0.1*(1/model.prior.GPkernel.lenghtScale.b)*ones(1,NumOfTFs);
+
+% additional proposal distribution for the TF kinetic parameters
+if isfield(model.Likelihood,'GenesTF')
+  PropDist.TFkin = 0.5*ones(NumOfTFs,2);
+end
+
 % useful ranges needed in the adaption of the 
 % variances of theese proposal distribution 
-qKinBelow = 0.0001; qKinAbove = 2;
-qWbelow = 0.0001;   qWabove = 2;
-qLengScBelow = 0.001*PropDist.qLengScVars(1); 
-qLengScAbove = 2*PropDist.qLengScVars(1);
+qKinBelow = 0.000001; qKinAbove = 2;
+qWbelow = 0.000001;   qWabove = 2;
+qLengScBelow = 0.001*PropDist.LengSc(1); 
+qLengScAbove = 2*PropDist.LengSc(1);
 epsilon = 0.1;
 
 model.F = F;
@@ -212,10 +205,19 @@ while 1
 %
 %  
    model.Xu = Xu;
-   [model PropDist samples accRateF accRateKin accRateW accRateLengSc] = gpTFSample(model, PropDist, Genes, TimesG, TimesF, AdaptOps);
-   
+   [model PropDist samples accRates] = gpmtfSample(model, PropDist, AdaptOps);
+ 
+   accRateF = accRates.F;
+   accRateKin = accRates.Kin;
+   accRateW = accRates.W;
+   accRateLengSc = accRates.LengSc;
+   %
+   if isfield(model.Likelihood,'GenesTF')
+       accRateTFKin = accRates.TFKin;
+   end
+
+   fprintf(1,'------ ADAPTION STEP #%2d, Number of Control Points %2d ------ \n',cnt+1,M); 
    if AdaptOps.disp == 1
-   fprintf(1,'------ ADAPTION STEP #%2d, Number of Control Points %2d ------ \n',cnt+1,M);    
    fprintf(1,'Acceptance Rates for GP functions\n');
    for rr=1:NumReplicas
    fprintf(1,' * Replica #%2d (rows diffrent TFs, columns control points) \n',rr);       
@@ -223,11 +225,22 @@ while 1
    end    
    fprintf(1,'Acceptance Rates for kinetic parameters (per gene))\n');
    disp(accRateKin);
+   
+   if isfield(model.Likelihood,'GenesTF')
+      fprintf(1,'Acceptance Rates for kinetic parameters (per TF-gene))\n');
+      disp(accRateTFKin);
+   end
+
    fprintf(1,'Acceptance Rates for Interaction weights (per gene)\n');
    disp(accRateW);
    fprintf(1,'Acceptance Rates for lengthscales (per GP function)\n');
    disp(accRateLengSc);
-   fprintf(1,'Average likelihood value %15.8f\n',mean(samples.LogL));
+   fprintf(1,'Average likelihood value %15.8f',mean(samples.LogL));
+   if isfield(model.Likelihood,'GenesTF')
+       fprintf(1,' TFGenes LogL %15.8f\n',mean(samples.LogLTF));
+   else
+       fprintf(1,'\n');
+   end
    end
    fprintf(1,'------------------------------- \n',cnt+1);
    
@@ -238,10 +251,10 @@ while 1
         break;
    end
    
-   
+    
    cnt = cnt + 1;
-   % do not allow more than 50 iterations when you adapt the proposal distribution
-   if cnt == 50
+   % do not allow more than 80 iterations when you adapt the proposal distribution
+   if cnt == 100
        warning('END OF ADAPTION: acceptance rates were not all OK');
        break;
    end
@@ -260,7 +273,7 @@ while 1
    U = n+1:n+M;
    for j=1:NumOfTFs
       PropDist.qF{j}.m = zeros(n+M,1);
-      PropDist.qF{j}.K = covfuncCompute(model.GP.logtheta(j,:), [TimesF(:); Xu(:)], [TimesF(:); Xu(:)]);     
+      PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]);     
       L=jitterChol(PropDist.qF{j}.K)';
       PropDist.qF{j}.invL = L\eye(n+M); 
       PropDist.qF{j}.LogDetK = 2*sum(log(diag(L)));
@@ -292,7 +305,7 @@ while 1
       PropDist.qF{j}.ku = ku;
       PropDist.qF{j}.KInvK = KInvK; 
       X = [TimesF(:); Xu(:)];
-      model.GP.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
+      model.GP{1}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
    end
    %pause
    end
@@ -303,16 +316,16 @@ while 1
    for j=1:NumOfGenes
       if accRateKin(j) > 35
          % incease the covariance to reduce the acceptance rate
-         PropDist.qKinVars(j,:) = PropDist.qKinVars(j,:) + epsilon*PropDist.qKinVars(j,:);
-         if PropDist.qKinVars(j,1) > qKinAbove 
-             PropDist.qKinVars(j,:) = qKinAbove*ones(1,SizKin);
+         PropDist.kin(j,:) = PropDist.kin(j,:) + epsilon*PropDist.kin(j,:);
+         if PropDist.kin(j,1) > qKinAbove 
+             PropDist.kin(j,:) = qKinAbove*ones(1,SizKin);
          end
       end
       if accRateKin(j) < 15
          % decrease the covariance to incease the acceptance rate
-         PropDist.qKinVars(j,:) = PropDist.qKinVars(j,:) - epsilon*PropDist.qKinVars(j,:);    
-         if PropDist.qKinVars(j,1) < qKinBelow 
-             PropDist.qKinVars(j,:) = qKinBelow*ones(1,SizKin);
+         PropDist.kin(j,:) = PropDist.kin(j,:) - epsilon*PropDist.kin(j,:);    
+         if PropDist.kin(j,1) < qKinBelow 
+             PropDist.kin(j,:) = qKinBelow*ones(1,SizKin);
          end
          %
       end
@@ -320,21 +333,48 @@ while 1
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT KINETICS PROPOSAL %%%%%%%%%%%%%%%%
    
+   
+   %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT TF-GENES KINETICS PROPOSAL %%%%%%%%%%%%%%%%
+   % adapt the proposal over the kinetic parameters (desired acceptance rate: 15-35%) 
+   if isfield(model.Likelihood,'GenesTF')
+      for j=1:NumOfTFs
+      if accRateTFKin(j) > 35
+         % incease the covariance to reduce the acceptance rate
+         PropDist.TFkin(j,:) = PropDist.TFkin(j,:) + epsilon*PropDist.TFkin(j,:);
+         if PropDist.TFkin(j,1) > qKinAbove 
+             PropDist.TFkin(j,:) = qKinAbove*ones(1,SizKin);
+         end
+      end
+      if accRateTFKin(j) < 15
+         % decrease the covariance to incease the acceptance rate
+         PropDist.TFkin(j,:) = PropDist.TFkin(j,:) - epsilon*PropDist.TFkin(j,:);    
+         if PropDist.TFkin(j,1) < qKinBelow 
+             PropDist.TFkin(j,:) = qKinBelow*ones(1,SizKin);
+         end
+         %
+      end
+       %
+      end 
+      % 
+   end
+   %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT TF-GENES KINETICS PROPOSAL %%%%%%%%%%%%%%%%%%
+   
+   
    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT WEIGHTS PROPOSAL %%%%%%%%%%%%%%%%
    % adapt the proposal over the interaction weights (desired acceptance rate: 15-35%)
    for j=1:NumOfGenes
       if accRateW(j) > 35
          % incease the covariance to reduce the acceptance rate
-         PropDist.qWeigVars(j,:) = PropDist.qWeigVars(j,:) + epsilon*PropDist.qWeigVars(j,:);
-         if PropDist.qWeigVars(j,1) > qWabove 
-             PropDist.qWeigVars(j,:) = qWabove*ones(1,NumOfTFs+1);
+         PropDist.W(j,:) = PropDist.W(j,:) + epsilon*PropDist.W(j,:);
+         if PropDist.W(j,1) > qWabove 
+             PropDist.W(j,:) = qWabove*ones(1,NumOfTFs+1);
          end
       end
       if accRateW(j) < 15
          % decrease the covariance to incease the acceptance rate
-         PropDist.qWeigVars(j,:) = PropDist.qWeigVars(j,:) - epsilon*PropDist.qWeigVars(j,:);    
-         if PropDist.qWeigVars(j,1) < qWbelow 
-             PropDist.qWeigVars(j,:) = qWbelow*ones(1,NumOfTFs+1);
+         PropDist.W(j,:) = PropDist.W(j,:) - epsilon*PropDist.W(j,:);    
+         if PropDist.W(j,1) < qWbelow 
+             PropDist.W(j,:) = qWbelow*ones(1,NumOfTFs+1);
          end
          %
       end
@@ -348,16 +388,16 @@ while 1
    for j=1:NumOfTFs
       if accRateLengSc(j) > 35
          % incease the covariance to reduce the acceptance rate
-         PropDist.qLengScVars(j) = PropDist.qLengScVars(j) + epsilon*PropDist.qLengScVars(j);
-         if PropDist.qLengScVars(j) > qLengScAbove
-             PropDist.qLengScVars(j) = qLengScAbove;
+         PropDist.LengSc(j) = PropDist.LengSc(j) + epsilon*PropDist.LengSc(j);
+         if PropDist.LengSc(j) > qLengScAbove
+             PropDist.LengSc(j) = qLengScAbove;
          end
       end
       if accRateLengSc(j) < 15
          % decrease the covariance to incease the acceptance rate
-         PropDist.qLengScVars(j) = PropDist.qLengScVars(j) - epsilon*PropDist.qLengScVars(j);    
-         if PropDist.qLengScVars(j) < qLengScBelow 
-             PropDist.qLengScVars(j) = qLengScBelow;
+         PropDist.LengSc(j) = PropDist.LengSc(j) - epsilon*PropDist.LengSc(j);    
+         if PropDist.LengSc(j) < qLengScBelow 
+             PropDist.LengSc(j) = qLengScBelow;
          end
          %
       end
@@ -367,4 +407,3 @@ while 1
 %
 %
 end
-

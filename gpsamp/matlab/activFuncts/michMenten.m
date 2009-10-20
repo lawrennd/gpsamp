@@ -1,4 +1,4 @@
-function fx = michMenten(ff, W, netX)
+function fx = michMenten(ff, W, NetX)
 % function fx = michMenten(x, W, netX)
 % 
 % Description: Impements the Michaelis-Menten multiple TF activation 
@@ -43,5 +43,8 @@ R = (netX==-1);
 A = (netX==1);
 xp = (W.*A)*ff;
 xpR = W.*R;
+
 % combine the TFs
 fx = (xp + repmat(sum(xpR,2),[1 SizF]))./(1 + xp + xpR*ff);
+
+

@@ -38,11 +38,14 @@ if strcmp(modelOp.TFjointAct,'michMenten') == 1
     modelOp.Net_X = ones(NumOfGenes,1); % 1 for activation, -1 for repression 
     modelOp.Net_Learn = 'no'; 
 end
-                                 
+
+% maximum value for the gene delays
+modelOp.tau_max = 0;
+
 % CONSTRAINTS of the initial value of the TF at time t=0. 
 % if 0, then the TF has concentration 0 at time t=0
 % if 1, then the TF is free to take any value at time t=0
-Constraints.Ft0 = [0 0];  % it must have NumOfTFs elements
+Constraints.Ft0 = 1;  % it must have NumOfTFs elements
 % CONSTRAINTS of the initial conditions of each differential equation 
 % for each gene  
 % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
@@ -103,7 +106,13 @@ for j=1:size(TimesG(:),1)-1
         TimesF = [TimesF, TimesG(j+1)];
     end
 end  
-
+% - Now discretize in [-tau_max,0) (the "delay" part of the TF) 
+modelOp.sizTime = size(TimesF,2);
+if abs(modelOp.tau_max) > 0
+DelayP = -step:-step:-modelOp.tau_max; 
+modelOp.tau_max = DelayP(end); 
+TimesF = [DelayP(end:-1:1) TimesF];    
+end
 
 % CREATE the model
 if strcmp(Gvariances,'yes')

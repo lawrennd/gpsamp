@@ -1,5 +1,5 @@
-function plotCreate(model, samples, Genes, TimesG, TimesF, demdata, printResults, GeneVars)
-%function plotCreate(model, samples, Genes, TimesG, TimesF, demdata, printResults, GeneVars)
+function gpmtfPlot(model, samples, demdata, printResults)
+%function gpmtfPlot(model, samples, demdata, printResults)
 %
 % Description: Creates plots to display the outcome of MCMC 
 %
@@ -33,19 +33,35 @@ function plotCreate(model, samples, Genes, TimesG, TimesF, demdata, printResults
                          % computed by some package e.g. PUMA
 %%%%%%  End of user defined parameters
 
-if strcmp(model.Likelihood.TFjointAct,'sigmoid') 
-   model.Likelihood.TFsingleAct = 'exp';
+%if strcmp(model.Likelihood.TFjointAct,'sigmoid') 
+%   model.Likelihood.TFsingleAct = 'exp';
+%end
+
+Genes = model.Likelihood.Genes;
+
+if strcmp(model.constraints.sigmas,'fixed')
+    GeneVars = model.Likelihood.sigmas;
+end
+ 
+TimesG = model.Likelihood.TimesG; 
+TimesF = model.Likelihood.TimesF;
+if isfield(model.Likelihood,'GenesTF')
+    GenesTF = model.Likelihood.GenesTF;
+    if strcmp(model.constraints.sigmasTF,'fixed')
+        GeneTFVars = model.Likelihood.sigmasTF;
+    end
 end
 
+TimesFF = TimesF(model.Likelihood.startTime:end);
 ok = date;
-fileName = [demdata 'MCMC' ok model.Likelihood.TFsingleAct model.Likelihood.TFjointAct]; 
+fileName = [demdata 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointAct]; 
 
-NumOfTFs = model.Likelihood.NumOfTFs;
+NumOfTFs = model.Likelihood.numTFs;
 
-if strcmp(model.Constraints.sigma2,'free') 
+if strcmp(model.constraints.sigmas,'free') 
   % plots sigma2s and the lengghscales
-  for j=1:model.Likelihood.NumOfGenes
-  sigma2j = squeeze(samples.sigma2(j,1,:));
+  for j=1:model.Likelihood.numGenes
+  sigma2j = squeeze(samples.sigmas(j,1,:));
   figure;
   hist(sigma2j,100);   
   if printResults
@@ -57,6 +73,24 @@ if strcmp(model.Constraints.sigma2,'free')
   title(titlestring,'fontsize', 20);
   end
 end    
+
+if isfield(model.Likelihood,'sigmasTF')
+if strcmp(model.constraints.sigmasTF,'free') 
+  % plots sigma2s and the lengghscales
+  for j=1:model.Likelihood.numTFs
+  sigma2j = squeeze(samples.sigmasTF(j,1,:));
+  figure;
+  hist(sigma2j,100);   
+  if printResults
+       print('-depsc', ['./results/' fileName 'SigmasTF']);
+  end
+  titlestring = 'Observation variance-TF Genes: ';
+  titlestring = [titlestring, num2str(j)]; 
+  titlestring = [titlestring, ' TF'];
+  title(titlestring,'fontsize', 20);
+  end
+end  
+end
 
 % plot the lengthscales
 for j=1:NumOfTFs
@@ -72,9 +106,9 @@ for j=1:NumOfTFs
     title(titlestring,'fontsize', 20);
 end
 
-NumOfGenes = model.Likelihood.NumOfGenes;
+NumOfGenes = model.Likelihood.numGenes;
 order = 1:NumOfGenes;
-NumOfReplicas = model.Likelihood.NumOfReplicas;
+NumOfReplicas = model.Likelihood.numReplicas;
 NumOfSamples = size(samples.F,2);
 SizF = size(samples.F{1},2);
 TimesF = TimesF(:); 
@@ -82,20 +116,27 @@ for r=1:NumOfReplicas
   % 
   for j=1:NumOfTFs
      % 
-     FF = zeros(NumOfSamples,SizF);    
+     PredTF = zeros(NumOfSamples,SizF);    
      for t=1:NumOfSamples
-         FF(t,:) = samples.F{t}(j,:,r);
+         %FF(t,:) = samples.F{t}(j,:,r);
+         lik = model.Likelihood;
+         lik.kinetics = samples.kinetics(:,:,t); 
+         if isfield(model.Likelihood,'GenesTF')         
+            lik.kineticsTF = samples.kineticsTF(:,:,t);
+         end
+         PredTF(t,:) = gpmtfComputeTF(lik, samples.F{t}(j,:,r), j);
      end
     
-     FF = feval(model.Likelihood.TFsingleAct,FF);
-     mu = mean(FF)';
-     stds1 = sqrt(var(FF))';
-     stds2 = sqrt(var(FF))';
-     if strcmp(model.Likelihood.TFsingleAct,'exp')==1
-       mu = median(FF)';
-       stds1 = (prctile(FF,95,1)'-mu)/2;
-       stds2 = (mu-prctile(FF,5,1)')/2;
-     end
+     %mu = mean(PredTF)';
+     %stds1 = sqrt(var(PredTF))';
+     %stds2 = sqrt(var(PredTF))';
+     %if strcmp(model.Likelihood.jointAct,'sigmoid')==1
+     %FF = exp(FF);  
+     mu = median(PredTF)';
+     stds1 = (prctile(PredTF,95,1)'-mu)/2;
+     stds2 = (mu-prctile(PredTF,5,1)')/2;
+     %end
+     
      figure
      plot(TimesF,mu,'b','lineWidth',3);
      hold on;
@@ -105,18 +146,19 @@ for r=1:NumOfReplicas
             + 2*[stds1; -stds2(end:-1:1)], fillColor,'EdgeColor',fillColor);
      plot(TimesF,mu,'b','lineWidth',3);
      
-     axis([TimesG(1) TimesG(end)+0.1 0 max(mu+2*stds1)+0.1]);
+     axis([TimesF(1) TimesF(end)+0.1 0 max(mu+2*stds1)+0.1]);
      
-     
-     
+
+    
      % plot the ground truth if exist
-     if strcmp(model.GroundTr,'yes')==1
-     FFgt = feval(model.Likelihood.TFsingleAct,model.FF(j,:,r));
+     if isfield(model,'groundtr') == 1
+     FFgt = model.groundtr.TF(j,:,r);
+     %FFgt = feval(model.Likelihood.TFsingleAct,model.GroundTruth.F(j,:,r));
      plot(TimesF,FFgt,'r','lineWidth',3);
      end
      
      if printResults
-      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'TFprof' num2str(j)]);
+      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'TF' num2str(j)]);
      end 
      titlestring = 'Profile: ';
      titlestring = [titlestring, num2str(r)]; 
@@ -130,72 +172,24 @@ for r=1:NumOfReplicas
 end
 
 
-if 0
-
-% plot statistics of the joint activation 
-for r=1:NumOfReplicas
-  % 
-  for j=1:NumOfGenes
-     % 
-     FF = zeros(NumOfSamples,SizF);    
-     for t=1:NumOfSamples
-         FF(t,:) = samples.F{t}(1,:,r);
-         LikParams.NumOfGenes = 1;
-         %% Gene - TFs interaction weights 
-         LikParams.W = samples.Weights(j,1,t);
-         %% gene bias term in the regulatory part
-         LikParams.W0 = samples.Weights0(j,t);
-         LikParams.TFjointAct = model.Likelihood.TFjointAct;
-         LikParams.TFsingleAct = model.Likelihood.TFsingleAct;
-         LikParams.TFjointActBin = model.Likelihood.TFjointActBin;
-         FF(t,:) = TFactivFun(LikParams,FF(t,:));
-     end
-     mu = mean(FF)';
-     mu
-     stds1 = sqrt(var(FF))';
-     stds2 = sqrt(var(FF))';
-     figure
-     plot(TimesF,mu,'b','lineWidth',3);
-     hold on;
-     fillColor = [0.7 0.7 0.7];
-     %fillColor = [0.8 0.8 0.8];  % for the paper
-     fill([TimesF; TimesF(end:-1:1)], [mu; mu(end:-1:1)]...
-            + 2*[stds1; -stds2(end:-1:1)], fillColor,'EdgeColor',fillColor);
-     plot(TimesF,mu,'b','lineWidth',3);
-     
-     % plot the ground truth if exist
-     if strcmp(model.GroundTr,'yes')==1
-     FFgt = feval(model.Likelihood.TFsingleAct,model.FF(j,:,r));
-     plot(TimesF,FFgt,'r','lineWidth',3);
-     end
-     
-     %
-  end
-  %
-end
-
-end
-
-%TimesF = TimesF(21:end);
-
 % plot predicted gene expressions 
 for r=1:NumOfReplicas
   %  
   for j=1:NumOfGenes
      % 
-     GG = zeros(NumOfSamples,SizF);    
+     GG = zeros(NumOfSamples,model.Likelihood.sizTime);    
      for t=1:NumOfSamples
          GG(t,:) = samples.predGenes{t}(j,:,r);
      end
      
      mu = mean(GG)';
      %mu = mu(21:end);
-     mu = mu(1:2:end);
+     %mu = mu(1:2:end);
      stds = sqrt(var(GG))';
      %stds = stds(21:end);
-     stds = stds(1:2:end);
+     %stds = stds(1:2:end);
     
-     TF = TimesF(1:2:end);
+     TF = TimesFF'; % TimesFF(1:2:end)';
      %stds(stds>5)=5;
      %stds
      %mu(mu>9)=9;
@@ -211,7 +205,7 @@ for r=1:NumOfReplicas
      plot(TF,mu,'b','lineWidth',3);
    
      plot(TimesG,Genes(j,:,r),'rx','markersize', 14','lineWidth', 2);
-     if nargin == 8
+     if strcmp(model.constraints.sigmas,'fixed')
      errorbar(TimesG,  Genes(j,:,r), 2*sqrt(GeneVars(j,:,r)), 'rx','lineWidth', 1.5);
      end
      axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 0.95*min(min(Genes(j,:,r))) 1.05*max(max(Genes(j,:,r)))]);
@@ -230,6 +224,52 @@ for r=1:NumOfReplicas
   %
 end
 
+% predicted TF-Gene expressions 
+if isfield(model.Likelihood,'GenesTF')
+for r=1:NumOfReplicas
+  %  
+  for j=1:NumOfTFs
+     % 
+     GG = zeros(NumOfSamples,size(model.F,2));    
+     for t=1:NumOfSamples
+         GG(t,:) = samples.predGenesTF{t}(j,:,r);
+     end
+     
+     mu = mean(GG)';
+     %mu = mu(1:2:end);
+     stds = sqrt(var(GG))';
+     %stds = stds(1:2:end);
+    
+     TF = TimesF; % TimesFF(1:2:end)';
+     figure
+     plot(TF,mu,'b','lineWidth',r);
+     hold on;
+     fillColor = [0.7 0.7 0.7];
+     %fillColor = [0.8 0.8 0.8];  % for the paper
+     fill([TF; TF(end:-1:1)], [mu; mu(end:-1:1)]...
+            + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
+     plot(TF,mu,'b','lineWidth',3);
+   
+     plot(TimesG,GenesTF(j,:,r),'rx','markersize', 14','lineWidth', 2);
+     if strcmp(model.constraints.sigmasTF,'fixed')
+     errorbar(TimesG,  GenesTF(j,:,r), 2*sqrt(GeneTFVars(j,:,r)), 'rx','lineWidth', 1.5);
+     end
+     axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 0.95*min(min(GenesTF(j,:,r))) 1.05*max(max(GenesTF(j,:,r)))]);
+     
+     if printResults
+      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'GeneTFExp' num2str(j)]);
+     end
+     titlestring = 'Expressions: ';
+     titlestring = [titlestring, num2str(r)]; 
+     titlestring = [titlestring, ' replica, '];
+     titlestring = [titlestring, num2str(j)];
+     titlestring = [titlestring, ' TF-gene'];
+     title(titlestring,'fontsize', 20);
+     %
+  end
+  %
+end    
+end
 
 ok = mean(samples.kinetics,3);  
 BB = squeeze(samples.kinetics(:,1,:))';
@@ -254,8 +294,8 @@ stdAA2 = prctile(AA,95);
 
 % Plot first basal transcription rates.
 figure;
-if strcmp(model.GroundTr,'yes')==1
-bar([modelB(order); model.GtrKinetics(:,1)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelB(order); model.groundtr.kinetics(:,1)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else
 bar(modelB(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -271,8 +311,8 @@ end
 
 % Plot the sensitivities.
 figure;
-if strcmp(model.GroundTr,'yes')==1
-bar([modelS(order); model.GtrKinetics(:,3)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelS(order); model.groundtr.kinetics(:,3)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else
 bar(modelS(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -287,8 +327,8 @@ end
 
 figure;
 % plot degradation rates
-if strcmp(model.GroundTr,'yes')==1
-bar([modelD(order); model.GtrKinetics(:,2)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelD(order); model.groundtr.kinetics(:,2)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else
 bar(modelD(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -303,8 +343,8 @@ end
 
 figure;
 % plot initial conditions 
-if strcmp(model.GroundTr,'yes')==1
-bar([modelA(order); model.GtrKinetics(:,4)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelA(order); model.groundtr.kinetics(:,4)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else
 bar(modelA(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -317,6 +357,57 @@ if printResults
       print('-depsc', ['./results/' fileName 'InitCond']);
 end
 
+
+if isfield(model.Likelihood,'GenesTF')
+%
+orderTF = 1:NumOfTFs;
+ok = mean(samples.kineticsTF,3);  
+DD = squeeze(samples.kineticsTF(:,1,:))';
+SS = squeeze(samples.kineticsTF(:,2,:))';
+modelS = median(SS,1);
+modelD = median(DD,1);
+
+stdDD1 = prctile(DD,5);
+stdSS1 = prctile(SS,5);
+stdDD2 = prctile(DD,95);
+stdSS2 = prctile(SS,95);
+
+figure;
+% plot degradation rates
+if isfield(model,'groundtr') == 1
+bar([modelD(orderTF); model.groundtr.kineticsTF(:,1)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+else
+bar(modelD(orderTF)', 0.7); colormap([0.9 0.9 0.9]);
+end
+hold on;
+errorbar([1:NumOfTFs]-0.14, modelD(orderTF), modelD(orderTF)-stdDD1(orderTF), stdDD2(orderTF)-modelD(orderTF),'.');
+%errorbar([1:NumOfGenes], modelD(order), modelD(order)-stdDD1(order), stdDD2(order)-modelD(order),'.');
+title('TF-Genes Decays','fontsize', 20);
+
+if printResults
+      print('-depsc', ['./results/' fileName 'TFGeneDecay']);
+end
+
+% Plot the sensitivities.
+figure;
+if isfield(model,'groundtr') == 1
+bar([modelS(orderTF); model.groundtr.kineticsTF(:,2)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+else
+bar(modelS(orderTF)', 0.7); colormap([0.9 0.9 0.9]);
+end
+hold on;
+errorbar([1:NumOfTFs]-0.14, modelS(orderTF), modelS(orderTF)-stdSS1(orderTF), stdSS2(orderTF)-modelS(orderTF),'.');
+%errorbar([1:NumOfGenes], modelS(order), modelS(order)-stdSS1(order), stdSS2(order)-modelS(order),'.');
+title('TF-Genes Sensitivities','fontsize', 20);
+
+if printResults
+      print('-depsc', ['./results/' fileName 'TFGeneSensitivity']);
+end
+%
+end
+
+
+
 for j=1:NumOfTFs
 W1 = squeeze(samples.Weights(:,j,:))';
 modelW1 = mean(W1,1);
@@ -324,8 +415,8 @@ stdW1_1 = sqrt(var(W1));
 stdW1_2 = sqrt(var(W1));
 % Plot first basal transcription rates.
 figure;
-if strcmp(model.GroundTr,'yes')==1
-bar([modelW1(order); model.GtrW(:,j)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelW1(order); model.groundtr.W(:,j)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else 
 bar(modelW1(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -348,8 +439,8 @@ stdW0_1 = sqrt(var(W0));
 stdW0_2 = sqrt(var(W0));
 figure;
 % plot initial conditions
-if strcmp(model.GroundTr,'yes')==1
-bar([modelW0(order); model.GtrW0']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+if isfield(model,'groundtr') == 1
+bar([modelW0(order); model.groundtr.W0']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
 else
 bar(modelW0(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
@@ -362,3 +453,26 @@ if printResults
 end
 title('Interaction biases','fontsize', 20);
 
+
+% plot delayes if they were inferred
+if abs(model.Likelihood.tauMax) > 0
+Taus = samples.Taus';
+modelTaus = mean(Taus,1);
+stdTaus_1 = prctile(Taus,5);%sqrt(var(Taus));
+stdTaus_2 = prctile(Taus,95);%sqrt(var(Taus));
+figure;
+% plot initial conditions
+if isfield(model,'groundtr') == 1
+bar([modelTaus(order); model.groundtr.Taus]', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
+else
+bar(modelTaus(order)', 0.7); colormap([0.9 0.9 0.9]);
+end
+hold on;
+errorbar([1:NumOfGenes]-0.14, modelTaus(order), modelTaus(order)-stdTaus_1(order), stdTaus_2(order)-modelTaus(order),'.');
+%errorbar([1:NumOfGenes], modelA(order), modelA(order)-stdAA1(order), stdAA2(order)-modelA(order),'.');
+%title('W0','fontsize', 20);
+if printResults
+      print('-depsc', ['./results/' fileName 'Delays']);
+end
+title('Delays','fontsize', 20);
+end

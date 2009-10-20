@@ -1,34 +1,32 @@
-%%%%%%%%%%%%%%%%%%%%%%%%% LOAD DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% load gene expression data for all replicals as well as the time points 
+
+
+dataName = 'toy3TfsDelays';
+expNo = 1;
+
+% load gene expression data for all replicas as well as the time points 
 % (the expressions of each replica are currently assumed to have been obtained at the same
 %  time points)
-clear;
-load data/dros_multitf_example_data;
-nameFile = 'drosAntti';
-% scale the genes expression to roughly be 
-% in range [0 10]
-sc = 0.1*(max(sampledata.mean(:)) - min(sampledata.mean(:)));
-Genes = sampledata.mean/sc;
-Genes = reshape(Genes,8,12,3);
-GeneVars = sampledata.var/(sc.^2);
-GeneVars = reshape(GeneVars,8,12,3);
-[NumOfGenes NumOfTimes NumOfReplicas] = size(Genes);
-TimesG = 0:(NumOfTimes-1);
-if (size(TimesG,2) ~= NumOfTimes) 
-    disp('Error: the number of time points must be consistent with the Gene expressions.');
-end
-%%%%%%%%%%%%%%%%%%%%%% END LOAD DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+[Genes, TimesG, GeneVars] = loadDataset(dataName);
+
+% Set up model
+options = gpsampOptions('multipleTF'); % multiple TF or single TF 
+options.kern = {'rbfard2', 'bias', 'white'};
+options.numActive = 100;
+options.scale2var1 = 1; % scale data to have variance 1
+%options.tieParam = 'tied';
+
+
 
 %%%%%%%%%%%% START Of USER SPECIFIED OPTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NUMBER OF TFS
-NumOfTFs=2;
+NumOfTFs=3;
 % Next we define the activation function that transforms the GP functions. 
 % For multiple TFs the GP functions are linearly mixed and then are passed 
 % through a sigmoid function
 % for multiple TFs USE ONLY 'lin' and 'sigmoid'. The rest options work only 
 % for the single TF case (e.g. 'exp' plus 'michMenten')
 % - INDIVIDUAL transform of the GP function
-modelOp.TFsingleAct = 'lin';%'exp' or 'lin'
+modelOp.TFsingleAct = 'loglogOnePlusExp'; %'exp' or 'lin' or 'loglogOnePlusExp'
 % - ADDITIONAL/JOINT transform by passing through a sigmoid type of function.
 % - ('michMenten' assume that NumOfTFs=1)
 modelOp.TFjointAct = 'sigmoid';% 'lin' or 'michMenten' or 'sigmoid'
@@ -59,7 +57,7 @@ modelOp.tau_max = 3;
 % CONSTRAINTS of the initial value of the TF at time t=0. 
 % if 0, then the TF has concentration 0 at time t=0
 % if 1, then the TF is free to take any value at time t=0
-Constraints.Ft0 = [1 1];  % it must have NumOfTFs elements
+Constraints.Ft0 = [0 0 0];  % it must have NumOfTFs elements
 % CONSTRAINTS of the initial conditions of each differential equation 
 % for each gene  
 % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
@@ -72,7 +70,7 @@ Constraints.InitialConds = ones(1,NumOfGenes);
 % allowed and the weight w(i,j) is learned
 % if w(i,j)=0, then no interaction is allowed and the weights w(i,j) is 
 % constrained to be zero. 
-Constraints.W = sampledata.X; %ones(NumOfGenes,NumOfTFs);
+Constraints.W = Net_X; %ones(NumOfGenes,NumOfTFs);
 %Constraints.W(:,3) = ones(NumOfGenes,1);
 
 % Nosie Variances if you have Gene Variances from PUMA package
@@ -82,9 +80,9 @@ Gvariances = 'yes';% 'yes' or 'no'. Do you know the gene variance values
                    % that has the same size the variable Genes.   
 
 % MCMC OPTIONS (you can change these options if you like)   
-trainOps.StoreEvery = 200; % store samples after burn in  every StoreEvery iterations
+trainOps.StoreEvery = 100; % store samples after burn in  every StoreEvery iterations
 trainOps.Burnin = 5000;  % burn in time
-trainOps.T = 100000; % sampling time
+trainOps.T = 50000; % sampling time
 trainOps.Store = 0;  % store the results regularly in a file 
 if trainOps.Store == 1
     % file name where to store the resuls
@@ -120,10 +118,13 @@ for j=1:size(TimesG(:),1)-1
    end
 end
 % - Now discretize in [-tau_max,0) (the "delay" part of the TF) 
+modelOp.sizTime = size(TimesF,2);
+if abs(modelOp.tau_max) > 0
 DelayP = -step:-step:-modelOp.tau_max; 
 modelOp.tau_max = DelayP(end); 
-modelOp.sizTime = size(TimesF,2);
-TimesF = [DelayP(end:-1:1) TimesF]; 
+TimesF = [DelayP(end:-1:1) TimesF];    
+end
+
 
 % CREATE the model
 if strcmp(Gvariances,'yes')
@@ -133,14 +134,25 @@ model = modelCreate(modelOp, Constraints, Genes, NumOfTFs, TimesG, TimesF);
 end
 
 %% store ground truth if available
-model.GroundTr = 'no';
-%if strcmp(model.GroundTr,'yes')
-%model.GtrW0 = W0;
-%model.GtrW = W;
-%model.GtrKinetics = Kinetics;
-%model.GtrX = Net_X;
-%model.FF = F;
-%end
+GroundTr = 'yes';
+if strcmp(GroundTr,'yes')
+model.GroundTruth.W0 = W0;
+model.GroundTruth.W = W;
+model.GroundTruth.kinetics = Kinetics;
+model.GroundTruth.X = Net_X;
+%model.GroundTruth.F = F(:,31:end);
+model.GroundTruth.F = F;
+model.GroundTruth.Taus = LikParams.Taus; % delays
+model.GroundTruth.sigmas = LikParams.sigmas; 
+end
+
+if 0
+model.Likelihood.W = W;
+model.Likelihood.W0 = W0;
+end
+if 0
+model.Likelihood.kinetics = Kinetics;
+end
 
 
 % options for the adaptive phase in MCMC (you could change this, although not recommended) 
