@@ -1,4 +1,4 @@
-function [out0, out] = logLProbit(Y,F)
+function [out0, out] = logLProbit(lik, Y, F)
 %
 %Description:  Log likelihood of the probit model (cumulative Gaussian)
 %

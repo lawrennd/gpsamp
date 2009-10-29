@@ -12,8 +12,8 @@ jitter = 1e-8;
 Xu = reshape(Xu,m,D);
 
 sigmaf = exp(2*logtheta(D+1));
-X = X ./ repmat(exp(logtheta(1:D))',n,1);
-Xu = Xu ./ repmat(exp(logtheta(1:D))',m,1);
+X = X ./ repmat(exp(logtheta(1:D)),n,1);
+Xu = Xu ./ repmat(exp(logtheta(1:D)),m,1);
 
 Kmm = Xu*Xu';
 Kmm = repmat(diag(Kmm),1,m) + repmat(diag(Kmm)',m,1) - 2*Kmm;
