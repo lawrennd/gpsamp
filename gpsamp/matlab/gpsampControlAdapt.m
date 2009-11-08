@@ -42,7 +42,8 @@ if strcmp(model.constraints.kernHyper, 'fixed')
 else
 % 
   Xu = X(perm(1:M),:);
-  [Xu f] = minimize(Xu(:), 'trace_CondCov', 200, X, 0.5*model.GP.logtheta);
+  [Xu f] = minimize(Xu(:), 'trace_CondCov', 200, X, 0.5*model.GP.logtheta); 
+  Xu = reshape(Xu,M,D);
 %
 end
 
@@ -127,9 +128,6 @@ while 1
            nextbreak = 1;
         end
     end
-
-    %mean(exp(samples.kernLogtheta))
-    %mean(exp(samples.likLogtheta))
     
     cnt = cnt + 1;
     % do not allow more than 80 iterations when you adapt the proposal distribution

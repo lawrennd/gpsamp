@@ -23,6 +23,10 @@ BurnInIters = trainOps.Burnin;
 Iters = trainOps.T; 
 StoreEvery = trainOps.StoreEvery;
 [n D] = size(model.X);
+num_stored = floor(Iters/StoreEvery);
+samples.F = zeros(num_stored, n);
+samples.Fu = zeros(num_stored, n);
+samples.LogL = zeros(1, num_stored);
 X = model.X;
 Y = model.y;
 F = model.F; 
@@ -91,20 +95,27 @@ for it = 1:(BurnInIters + Iters)
        [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
     
        % visualization
-       if trainOps.disp & (mod(it,100) == 0) & strcmp(model.Likelihood.type,'Gaussian') 
+       if trainOps.disp & (mod(it,100) == 0) 
        %[newLogLik oldLogLik]
-          if (D==1)
+          if (D==1) 
+             trform = 'lin';
+             if strcmp(model.Likelihood.type,'Poisson') 
+             trform = 'exp';
+             end
              plot(X, Y, '+k', 'lineWidth', 2);
              hold on;
-             plot(X, F, 'g', 'lineWidth', 4);
+             if strcmp(model.Likelihood.type,'Sigmoid') | strcmp(model.Likelihood.type,'Probit')
+                 plot(X, zeros(size(X,1)), 'k:')
+             end
+             plot(X, feval(trform, F), 'g', 'lineWidth', 4);
              %plot(X, F,'or','MarkerSize', 14,'lineWidth', 3);
              pause(0.2);
-             plot(Xu, Fu,'or','MarkerSize', 14,'lineWidth', 3);
-             plot(Xu(i), Fu(i),'oy','MarkerSize', 14,'lineWidth', 3);
+             plot(Xu, feval(trform, Fu),'or','MarkerSize', 14,'lineWidth', 3);
+             plot(Xu(i), feval(trform, Fu(i)),'oy','MarkerSize', 14,'lineWidth', 3);
              %legend(hh,'Current state','Control points');
              set(gca,'FontSize',16);
-             plot(Xu(i), Funew(i), 'md','MarkerSize', 14, 'lineWidth',3);
-             plot(X, Fnew, '--b', 'lineWidth', 4); 
+             plot(Xu(i), feval(trform, Funew(i)), 'md','MarkerSize', 14, 'lineWidth',3);
+             plot(X, feval(trform, Fnew), '--b', 'lineWidth', 4); 
              pause(0.5)
              %plot(Xu, Funew, 'md','MarkerSize', 14, 'lineWidth', 3);
              %legend(hh,'Current state','Control points','Proposed state');

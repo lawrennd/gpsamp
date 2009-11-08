@@ -9,9 +9,12 @@ switch gplik
     case 'regression'
         % Gaussian likelihood 
         options.Likelihood = 'Gaussian';
-    case 'classifcation' % binary classification 
+    case 'classification' % binary classification 
         % Probit likelihood
-        options.Likelihood = 'Probit';
+        options.Likelihood = 'Sigmoid';
+    case 'poissonRegr' % binary classification 
+        % Probit likelihood
+        options.Likelihood = 'Poisson';
     case 'ODE' 
         % not included 
 end

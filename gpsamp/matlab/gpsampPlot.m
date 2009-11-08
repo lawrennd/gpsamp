@@ -37,8 +37,13 @@ if model.D == 1
    %
    %[sortX inX] = sort(model.X);
   
-   mu = mean(samples.F)';
-   stds = sqrt(var(samples.F))';
+   if strcmp(model.Likelihood.type,'Poisson')
+      mu = mean(exp(samples.F))';
+      stds = sqrt(var(exp(samples.F)))';
+   else
+      mu = mean(samples.F)';
+      stds = sqrt(var(samples.F))';
+   end
    
    %stdsWithnoise = sqrt(var(samples.F))';
     
@@ -50,9 +55,9 @@ if model.D == 1
             + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
    plot(model.X, mu,'b','lineWidth',3);
      
-   if strcmp(model.Likelihood.type,'Gaussian')
-       plot(model.X, model.y, '+k', 'lineWidth', 1);
-   end
+   %if strcmp(model.Likelihood.type,'Gaussian')
+   plot(model.X, model.y, '+k', 'lineWidth', 1);
+   %end
    %
 end
 
