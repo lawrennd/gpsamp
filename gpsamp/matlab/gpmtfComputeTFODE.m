@@ -30,8 +30,15 @@ for m=1:Ntfs
     S = LikParams.kineticsTF(j,2);    
     
     % Trapezoid rule of numerical integration
-    IntVals = exp(D*uu).*fx(m,:);
-    IntVals = Delta*cumtrapz(IntVals);
+    %IntVals = exp(D*uu).*fx(m,:);
+    %IntVals = Delta*cumtrapz(IntVals);
+    %
+    ffx = exp(D*uu).*fx(m,:);
+    IntVals = ffx;
+    IntVals(2:end-1) = 2*IntVals(2:end-1); 
+    IntVals = (0.5*Delta)*cumsum(IntVals);
+    IntVals(1:end-1) = IntVals(1:end-1) - (0.5*Delta)*ffx(1:end-1);
+    
     
     % Simpson rule of integration 
     %ffx = exp(D*uu).*fx(m,:); 

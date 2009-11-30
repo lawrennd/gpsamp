@@ -141,6 +141,10 @@ model.Likelihood.sizTime = options.sizTime;
 model.Likelihood.startTime = (size(TimesF,2) - options.sizTime + 1);
 model.Likelihood.tauMax = options.tauMax;
 
+uu = model.Likelihood.TimesF(model.Likelihood.startTime:end);
+[commonSlots, comInds] = intersect(uu,model.Likelihood.TimesG);
+model.Likelihood.comInds = comInds; 
+
 %model.Likelihood.numKins_perGene = 4;
 
 %  additional kinetic parameters for the TF Genes

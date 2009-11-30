@@ -1,5 +1,5 @@
-function [loglikvalTF, PredGenesTF, totalmse] = gpmtfLogLikelihoodGeneTF(LikParams, F, R, TFindex)
-% function [loglikval, PredictedGenes, totalmse] = logLTFdiffEquation(LikParams, F, R, Gindex, Genes, TimesG, TimesF)
+function [loglikvalTF, PredGenesTF] = gpmtfLogLikelihoodGeneTF(LikParams, F, R, TFindex)
+% function [loglikval, PredictedGenes] = logLTFdiffEquation(LikParams, F, R, Gindex, Genes, TimesG, TimesF)
 %
 % Description: Computes the log likelihood of the linear differential
 %              equation model with possibly multiple TFs 
@@ -25,23 +25,32 @@ function [loglikvalTF, PredGenesTF, totalmse] = gpmtfLogLikelihoodGeneTF(LikPara
 GenesTF = LikParams.GenesTF(:,:,R);
 PredGenesTF = singleactFunc(LikParams.singleAct, F(TFindex,:));
 
-uu = LikParams.TimesF;
-[commonSlots, comInds] = intersect(uu,LikParams.TimesG);
+%uu = LikParams.TimesF;
+%[commonSlots, comInds] = intersect(uu,LikParams.TimesG);
 
-for m=1:size(TFindex,2)
-    %
-    j = TFindex(m);
-    loglikvalTF(m) = - 0.5*sum(log(2*pi*LikParams.sigmasTF(j,:,R)),2)....
-                   - 0.5*sum(((GenesTF(j,:) - PredGenesTF(m,comInds)).^2)./LikParams.sigmasTF(j,:,R),2);
-               
-    totalmse(m) = sum(sum((GenesTF(j,:) -  PredGenesTF(m,comInds)).^2)); 
-    
-    %[GenesTF(j,:);PredGenesTF(m,comInds)]
-    %plot(LikParams.TimesG, LikParams.GenesTF(j,:),'r');
-    %hold on; 
-    %plot(LikParams.TimesF, PredGenesTF(m,:));
-    %disp('in TF')
-    %pause
-    %hold off
-    %
-end
+%for m=1:size(TFindex,2)
+%    %
+%    j = TFindex(m);
+%    loglikvalTF(m) = - 0.5*sum(log(2*pi*LikParams.sigmasTF(j,:,R)),2)....
+%                   - 0.5*sum(((GenesTF(j,:) - PredGenesTF(m,LikParams.comInds)).^2)./LikParams.sigmasTF(j,:,R),2);
+%    
+%                   
+%    %totalmse(m) = sum(sum((GenesTF(j,:) -  PredGenesTF(m,LikParams.comInds)).^2)); 
+%    
+%    %[GenesTF(j,:);PredGenesTF(m,comInds)]
+%    %plot(LikParams.TimesG, LikParams.GenesTF(j,:),'r');
+%    %hold on; 
+%    %plot(LikParams.TimesF, PredGenesTF(m,:));
+%    %disp('in TF')
+%    %pause
+%    %hold off
+%    %
+%end
+
+
+loglikvalTF = - 0.5*sum(log(2*pi*LikParams.sigmasTF(TFindex,:,R)),2)....
+               - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comInds)).^2)./LikParams.sigmasTF(TFindex,:,R),2);
+
+loglikvalTF = loglikvalTF';
+%sum(abs(loglikvalTF - loglikvalTF1))
+%pause

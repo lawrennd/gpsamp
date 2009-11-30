@@ -42,8 +42,16 @@ for m=1:Ngenes
   
     % Trapezoid rule of numerical integration
     %IntVals = exp(D*uu).*fx(m,:);
-    IntVals = exp(D*uu).*fx(m,LikParams.Tausindex(j):LikParams.Tausindex(j)+LikParams.sizTime-1);
-    IntVals = Delta*cumtrapz(IntVals);
+    %IntVals = exp(D*uu).*fx(m,LikParams.Tausindex(j):LikParams.Tausindex(j)+LikParams.sizTime-1);
+    %IntVals = Delta*cumtrapz(IntVals);
+    
+    
+    ffx = exp(D*uu).*fx(m,LikParams.Tausindex(j):LikParams.Tausindex(j)+LikParams.sizTime-1);
+    IntVals = ffx;
+    IntVals(2:end-1) = 2*IntVals(2:end-1); 
+    IntVals = (0.5*Delta)*cumsum(IntVals);
+    IntVals(1:end-1) = IntVals(1:end-1) - (0.5*Delta)*ffx(1:end-1);
+    %sum(abs(IntVals1-IntVals))
     %IntVals = IntVals(comInds);
     
     % Simpson rule of integration 
