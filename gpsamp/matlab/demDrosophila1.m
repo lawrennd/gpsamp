@@ -11,7 +11,11 @@ printPlot = 0;
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
 load datasets/drosophila_data.mat;
 genesAndChip = importdata('datasets/eileen_nature_training_set.txt'); 
- 
+
+if ~isfield(drosexp, 'fbgns'),
+  drosexp.fbgns = drosexp.genes;
+end
+
 fbgns = genesAndChip.textdata(2:end,1);
 Genes = [];
 GenesVar = [];
@@ -37,7 +41,11 @@ for i=1:size(fbgns,1)
 end
 
 % collect the gens for the TFs
-fbgnsTF = drosTF.fbgns; 
+if isstruct(drosTF.fbgns),
+  fbgnsTF = struct2cell(drosTF.fbgns);
+else
+  fbgnsTF = drosTF.fbgns; 
+end
 GenesTF = [];
 GenesTFVar = [];
 for i=1:size(fbgnsTF(:),1) 

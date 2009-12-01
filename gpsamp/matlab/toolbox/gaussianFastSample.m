@@ -13,6 +13,4 @@ function X = gaussianFastSample(N, mu, L)
 d = size(L,1);
 X = randn(N,d); 
 X = real(X*L);
-X = X+repmat(mu,[N,1]);
-
-    
+X = X+mu(ones(N, 1), :); %repmat(mu,[N,1]);

@@ -14,11 +14,11 @@ W0 = LikParams.W0(J);
 switch LikParams.jointAct
     case 'lin'
        % 
-       fx = W*ff + repmat(W0,[1 SizF]); 
+       fx = W*ff + W0(:, ones(1, SizF)); %repmat(W0,[1 SizF]); 
        %
     case 'sigmoid'
        %
-       fx = W*ff + repmat(W0,[1 SizF]);
+       fx = W*ff + W0(:, ones(1, SizF)); %repmat(W0,[1 SizF]);
        % pass it through the sigmoid function 
        fx = sigmoid(fx);
     case 'michMenten'
@@ -28,7 +28,7 @@ switch LikParams.jointAct
     case 'genHill'
        % generalized hill function function 
        ff(ff==0)=eps;
-       fx = W*log(ff) + repmat(W0,[1 SizF]);
+       fx = W*log(ff) + W0(:, ones(1, SizF)); %repmat(W0,[1 SizF]);
        %W0 = sum(W,2).*log(Par.Gammas(J)); 
        %
        fx = sigmoid(fx); 

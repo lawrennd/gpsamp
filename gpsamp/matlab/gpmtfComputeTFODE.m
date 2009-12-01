@@ -22,7 +22,9 @@ fx = singleactFunc(LikParams.singleAct,F);
 %
 uu = LikParams.TimesF;
 Delta = uu(2)-uu(1); 
-    
+
+PredTFs = zeros(size(fx));
+
 for m=1:Ntfs
     j = TFindex(m);
     % 
@@ -30,14 +32,10 @@ for m=1:Ntfs
     S = LikParams.kineticsTF(j,2);    
     
     % Trapezoid rule of numerical integration
-    %IntVals = exp(D*uu).*fx(m,:);
-    %IntVals = Delta*cumtrapz(IntVals);
-    %
     ffx = exp(D*uu).*fx(m,:);
-    IntVals = ffx;
-    IntVals(2:end-1) = 2*IntVals(2:end-1); 
-    IntVals = (0.5*Delta)*cumsum(IntVals);
-    IntVals(1:end-1) = IntVals(1:end-1) - (0.5*Delta)*ffx(1:end-1);
+    IntVals = zeros(size(ffx));
+    IntVals(2:end) = .5 * Delta*cumsum(ffx(1:end-1) + ffx(2:end));
+    %IntVals = Delta*cumtrapz(IntVals);
     
     
     % Simpson rule of integration 
