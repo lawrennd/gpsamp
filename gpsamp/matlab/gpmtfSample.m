@@ -88,9 +88,8 @@ F = model.F;
 % store the control variables
 Fu = model.Fu; % function values  
 Xu = model.Xu; % locations  
-M = size(Fu,2);
+M = model.M;
 n = SizF;
-U = n+1:n+M; 
 
 % compute initial values for the log likelihood 
 oldLogLik = zeros(NumOfReplicas, NumOfGenes);
@@ -139,7 +138,9 @@ oldLogPriorLengSc(j) = feval(lnpriorLengSc, 2*model.GP{j}.logtheta(1), model.pri
 end
 
 cnt = 0;
-acceptF = zeros(NumOfTFs,M,NumOfReplicas);
+for j=1:NumOfTFs
+    acceptF{j} = zeros(M(j),NumOfReplicas);
+end
 acceptKin = zeros(1,NumOfGenes);
 acceptTFKin = zeros(1,NumOfTFs);
 acceptW = zeros(1,NumOfGenes); 
@@ -157,13 +158,13 @@ for it = 1:(BurnInIters + Iters)
        %
        % iterate between control points one-at-a-time 
        Fold = F(j,:,r);
-       Fuold = Fu(j,:,r);
-       for i=istart(j):M
+       Fuold = Fu{j}(:,r);
+       for i=istart(j):M(j)
        %
-       % sample new control point i       
-       Fui = randn.*sqrt(PropDist.qF{j}.ku(i)) + PropDist.qF{j}.KInvK(i,:)*Fu(j,[1:i-1, i+1:end],r)';    
-   
-       Funew = Fu(j,:,r);
+       % sample new control point i    
+       Fui = randn.*sqrt(PropDist.qF{j}.ku(i)) + PropDist.qF{j}.KInvK(i,:)*Fu{j}([1:i-1, i+1:end],r);    
+       
+       Funew = Fu{j}(:,r)';
        Funew(i) = Fui;
     
        % sample the remaining points 
@@ -184,9 +185,6 @@ for it = 1:(BurnInIters + Iters)
           [newLogLik predgen] = gpmtfLogLikelihoodGene(LikParams, FFnew, r, 1:NumOfGenes);        
           [newLogLikTF predgenTF] = gpmtfLogLikelihoodGeneTF(LikParams, FFnew, r, j); 
            
-          %newLogLikTF 
-          %predgenTF
-          %pause
           % Metropolis-Hastings to accept-reject the proposal
           newL = sum(newLogLik(:)) + newLogLikTF;
           oldL = sum(oldLogLik(r,:),2) + oldLogLikTF(r,j);
@@ -195,16 +193,16 @@ for it = 1:(BurnInIters + Iters)
     
        %%%%%%%%%%%%%%%%%%%%%% visualization %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
        if (it<=BurnInIters) & trainOps.disp & (mod(it,50) == 0) 
-       %         
+       %  
+       %
          trform = 'lin'; model.Likelihood.singleAct; % 'exp' or 'linear'
          subplot(1,NumOfReplicas,r);
-         Futmp = feval(model.Likelihood.singleAct,Fu(j,:,r)); 
+         Futmp = feval(model.Likelihood.singleAct,Fu{j}(:,r)'); 
          Ftmp = feval(model.Likelihood.singleAct,F(j,:,r));
          Funewtmp = feval(model.Likelihood.singleAct,Funew); 
          FFnewtmp = feval(model.Likelihood.singleAct,FFnew);
-         
-         
-         plot(Xu, feval(trform,Futmp),'or','MarkerSize', 14,'lineWidth', 3);
+         %
+         plot(Xu{j}, feval(trform,Futmp),'or','MarkerSize', 14,'lineWidth', 3);
          hold on;
          plot(TimesF, feval(trform,Ftmp),'g','lineWidth',4);
          if isfield(model,'groundtr') == 1
@@ -213,22 +211,24 @@ for it = 1:(BurnInIters + Iters)
          end
          title(j);
          pause(0.3);
-         plot(Xu(i), feval(trform,Futmp(i)),'oy','MarkerSize', 14,'lineWidth', 3);
-         plot(Xu(i), feval(trform,Funewtmp(i)), 'md','MarkerSize', 14, 'lineWidth',3);
+         plot(Xu{j}(i), feval(trform,Futmp(i)),'oy','MarkerSize', 14,'lineWidth', 3);
+         plot(Xu{j}(i), feval(trform,Funewtmp(i)), 'md','MarkerSize', 14, 'lineWidth',3);
          plot(TimesF, feval(trform,FFnewtmp(j,:)), '--b', 'lineWidth', 4); 
          pause(0.5);
          hold off;
+       %  
+       %  
        end
        %%%%%%%%%%%%%%%%%%%%%%%%%%% end of visualization %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        %
        if (it > BurnInIters)
-         acceptF(j,i,r) = acceptF(j,i,r) + accept; 
+         acceptF{j}(i,r) = acceptF{j}(i,r) + accept; 
        end
     
        % update protein F
        if accept == 1
          F(j,:,r) = Fnew;
-         Fu(j,:,r) = Funew;
+         Fu{j}(:,r) = Funew';
          PredictedGenes(:,:,r) = predgen;
          oldLogLik(r,:) = newLogLik;
          
@@ -258,8 +258,6 @@ for it = 1:(BurnInIters + Iters)
         if model.constraints.InitialConds(j) == 0
         KineticsNew(4) = KineticsNew(1)/KineticsNew(2); 
         end
-        % this makes the initial condition to be zero
-        %KineticsNew(5) = 1;%kinetics(j,5); % dot not sample the gamma
         
         %-- Barenco data -- %
         %if j == 4
@@ -307,6 +305,9 @@ for it = 1:(BurnInIters + Iters)
         TFKineticsNew(TFKineticsNew>10) = 10;
         TFKineticsNew = exp(TFKineticsNew); 
         %
+        if model.constraints.geneTFsensitivity(j) == 0
+        TFKineticsNew(2) = 1; 
+        end
         
         LikParams1 = LikParams;
         LikParams1.kineticsTF(j,:)=TFKineticsNew; 
@@ -519,31 +520,62 @@ for it = 1:(BurnInIters + Iters)
         newlogEll = randn.*sqrt(PropDist.LengSc(j)) + 2*model.GP{j}.logtheta(1);
         %newlogEll = model.GP{j}.logtheta(1);
         newEll2 = exp(newlogEll);  
-        newK = exp(-(0.5/newEll2)*model.GP{1}.X2) + ...
-               exp(2*model.GP{j}.logtheta(end))*eye(size(model.GP{1}.X2,1)); 
+        newK = exp(-(0.5/newEll2)*model.GP{j}.X2) + ...
+               exp(2*model.GP{j}.logtheta(end))*eye(size(model.GP{j}.X2,1)); 
         % compute the Cholesky decomposition of the new K
         [newL,er]=jitterChol(newK);
         newL = newL';
         % evaluate the new log GP prior value 
-        invnewL = newL\eye(SizF+M);
+        invnewL = newL\eye(SizF+M(j));
         newLogDetK = 2*sum(log(diag(newL)));
         newlogGP = - 0.5*NumOfReplicas*newLogDetK;
         oldlogGP = - 0.5*NumOfReplicas*PropDist.qF{j}.LogDetK;
         for r=1:NumOfReplicas     
-           temp = invnewL*([F(j,:,r), Fu(j,:,r)]'); 
+           temp = invnewL*([F(j,:,r), Fu{j}(:,r)']'); 
            newlogGP = newlogGP - 0.5*temp'*temp;
-           temp = PropDist.qF{j}.invL*([F(j,:,r), Fu(j,:,r)]'); 
+           temp = PropDist.qF{j}.invL*([F(j,:,r), Fu{j}(:,r)']'); 
            oldlogGP = oldlogGP - 0.5*temp'*temp;
         end
         LogPriorLengScnew = feval(lnpriorLengSc, newlogEll, model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b);
         % Metropolis-Hastings to accept-reject the proposal
         oldlogGP = oldlogGP + oldLogPriorLengSc(j);
         newlogGP = newlogGP + LogPriorLengScnew; 
+        
+        
+        %YnewlogEll = 2*model.GP{j}.logtheta(1);
+        %%newlogEll = model.GP{j}.logtheta(1);
+        %YnewEll2 = exp(YnewlogEll);  
+        %YnewK = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]);
+        %%ok     = exp(-(0.5/YnewEll2)*model.GP{1}.X2) + ...
+        %%        exp(2*model.GP{j}.logtheta(end))*eye(size(model.GP{1}.X2,1));
+            
+           
+        %% compute the Cholesky decomposition of the new K
+        %[YnewL,er]=jitterChol(YnewK);
+        %YnewL = YnewL';
+        %% evaluate the new log GP prior value 
+        %YinvnewL = YnewL\eye(SizF+M);
+        %YnewLogDetK = 2*sum(log(diag(YnewL)));
+        %YnewlogGP = - 0.5*NumOfReplicas*YnewLogDetK;
+        %for r=1:NumOfReplicas     
+        %   temp = YinvnewL*([F(j,:,r), Fu(j,:,r)]'); 
+        %   YnewlogGP = YnewlogGP - 0.5*temp'*temp;
+        %end
+        %
+        %YLogPriorLengScnew = feval(lnpriorLengSc, YnewlogEll, model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b); 
+        %YnewlogGP = YnewlogGP + oldLogPriorLengSc(j);
+        
+        %if mod(it,100) == 0
+        %[oldlogGP  newlogGP]
+        %[oldLogPriorLengSc(j) LogPriorLengScnew]
+        %[exp(2*model.GP{j}.logtheta(1)) newEll2]
+        %end
         %
         
         [accept, uprob] = metropolisHastings(newlogGP, oldlogGP, 0, 0);
         %%%%%%%%%%%%%%%%  start accept/update proposal for the lengthscale %%%%%%%%%%%% 
         if accept == 1
+           U = n+1:n+M(j);
            model.GP{j}.logtheta(1) = newlogEll/2;
            oldLogPriorLengSc(j) = LogPriorLengScnew;
            %newEll2
@@ -551,6 +583,7 @@ for it = 1:(BurnInIters + Iters)
            PropDist.qF{j}.K = newK;
            PropDist.qF{j}.invL = invnewL; 
            PropDist.qF{j}.LogDetK = newLogDetK;
+           
            % change the proposal distribution for the TF
            % compute the conditional GP prior given the control variables
            [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', newK, 1:n, U);
@@ -560,15 +593,16 @@ for it = 1:(BurnInIters + Iters)
            PropDist.qF{j}.cSigma = cSigma;
            PropDist.qF{j}.KInvKu = KInvKu;
            PropDist.qF{j}.L = L;
-           for i=1:M
+           for i=1:M(j)
            %  
-              G = [1:i-1, i+1:M];  
+              G = [1:i-1, i+1:M(j)];  
               [alpha(i), ku(i), KInvK(i,:)] = gaussianFastConditional(PropDist.qF{j}.m(U)', PropDist.qF{j}.K(U,U), i, G);
            %
            end
            PropDist.qF{j}.alpha = alpha;
            PropDist.qF{j}.ku = ku;
-           PropDist.qF{j}.KInvK = KInvK;   
+           PropDist.qF{j}.KInvK = KInvK;
+           clear alpha  ku  KInvK;
         end
         % 
         if (it > BurnInIters) 
@@ -636,10 +670,15 @@ model.Likelihood.Net_x = LikParams.Net_X;
 end
 model.F = F;
 model.Fu = Fu;
-accRates.F = (acceptF/Iters)*100; 
-if istart == 2
-accRates.F(:,1,:) = 100*ones(size(accRates.F(:,1,:)));
+%
+for j=1:NumOfTFs
+    accRates.F{j} = (acceptF{j}/Iters)*100; 
+    if istart == 2
+    accRates.F{j}(1,:) = 100*ones(1,NumOfReplicas);
+    end
 end
+%
+
 accRates.Kin = (acceptKin/Iters)*100;
 accRates.W = (acceptW/Iters)*100;
 accRates.LengSc = (acceptLengSc/Iters)*100;

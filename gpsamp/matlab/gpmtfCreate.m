@@ -145,6 +145,10 @@ uu = model.Likelihood.TimesF(model.Likelihood.startTime:end);
 [commonSlots, comInds] = intersect(uu,model.Likelihood.TimesG);
 model.Likelihood.comInds = comInds; 
 
+uu = model.Likelihood.TimesF;
+[commonSlots, comIndsTF] = intersect(uu,model.Likelihood.TimesG);
+model.Likelihood.comIndsTF = comIndsTF;
+
 %model.Likelihood.numKins_perGene = 4;
 
 %  additional kinetic parameters for the TF Genes
@@ -269,6 +273,11 @@ model.constraints.InitialConds = options.constraints.initialConds;
 % initial value of the TF (this feature 
 % this feature is activated only if model.Constraints.InitialConds = 0)
 model.constraints.InitialConds_value = 0; 
+
+%
+model.constraints.geneTFsensitivity = options.constraints.geneTFsensitivity; 
+model.constraints.geneTFsensitivity_value = 1; 
+
 % constraints on the interaction weigths between TF and genes 
 model.constraints.W = options.constraints.X;
 

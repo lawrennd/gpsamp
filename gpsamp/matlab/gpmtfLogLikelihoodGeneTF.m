@@ -49,7 +49,7 @@ PredGenesTF = singleactFunc(LikParams.singleAct, F(TFindex,:));
 
 
 loglikvalTF = - 0.5*sum(log(2*pi*LikParams.sigmasTF(TFindex,:,R)),2)....
-               - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comInds)).^2)./LikParams.sigmasTF(TFindex,:,R),2);
+               - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comIndsTF)).^2)./LikParams.sigmasTF(TFindex,:,R),2);
 
 loglikvalTF = loglikvalTF';
 %sum(abs(loglikvalTF - loglikvalTF1))

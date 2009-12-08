@@ -32,7 +32,7 @@ fx = jointactFunc(LikParams,F,Gindex);
 uu = LikParams.TimesF(LikParams.startTime:end);
 Delta = uu(2)-uu(1); 
 
-PredGenes = zeros(size(fx));
+PredGenes = zeros(Ngenes,size(uu,2));
 
 for m=1:Ngenes
     j = Gindex(m);

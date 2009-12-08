@@ -41,7 +41,8 @@ if numTFs == 1
         % for each gene  
         % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
         % if 1, then the ODE initial cond is free to take any value at time t=0
-        options.constraints.initialConds = ones(1,NumOfGenes);
+        options.constraints.initialConds = ones(1,NumOfGenes); 
+        options.constraints.geneTFsensitivity = 0;
         %
         %
         options.constraints.X = ones(NumOfGenes,1);
@@ -82,7 +83,9 @@ else
         % for each gene  
         % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
         % if 1, then the ODE initial cond is free to take any value at time t=0
-        options.constraints.initialConds = ones(1,NumOfGenes);
+        options.constraints.initialConds = ones(1,NumOfGenes); 
+        %
+        options.constraints.geneTFsensitivity = zeros(1,numTFs);
         %
         % CONSTRAINTS coming from side information about which TFs do not regulate 
         % certain genes. This means that certain values in the interaction 

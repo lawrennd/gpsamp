@@ -88,6 +88,7 @@ NumReplicas = model.Likelihood.numReplicas;
 % number of transcription factors
 NumOfTFs = model.Likelihood.numTFs;
 SizKin = size(model.Likelihood.kinetics,2);
+SizKinTF = 2;
 SizF = size(model.Likelihood.TimesF,2);
 
 % initial number of control variables 
@@ -105,11 +106,13 @@ end
 
 % if the initial values of the TFs is kept fixed, then set the first 
 % control point to be zero (-5 even GP function is the log of the TF)
+FixedFirst = zeros(1,NumOfTFs);
 for j=1:NumOfTFs
 if model.constraints.Ft0(j)==0  
+   FixedFirst(j) = 1;
    if model.constraints.Ft0_value == 0
        if strcmp(model.Likelihood.singleAct,'lin') & strcmp(model.Likelihood.jointAct,'sigmoid') == 0
-           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);    
+           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);  
        else
            Fu(:,1,:) = -5*ones(NumOfTFs,NumReplicas);     
        end
@@ -131,18 +134,28 @@ end
 % (placed in a regular grid)
 TimesF = model.Likelihood.TimesF;
 step = (max(TimesF) - min(TimesF))/(M-1);
-Xu = TimesF(1):step:TimesF(end);
-Xu = Xu(1:M);
+xu = TimesF(1):step:TimesF(end);
+xu = xu(1:M);
 
-% Initial proposal distribution  for the GP latent function
+% optimize these locations 
+%[xu f] = minimize(xu(:), 'trace_CondCov', 50, TimesF(:), model.GP{1}.logtheta, FixedFirst(1)); 
+
+% each TF has its own control inputs locations  
 n = SizF;
-U = n+1:n+M; 
 for j=1:NumOfTFs 
-   PropDist.qF{j}.m = zeros(n+M,1);
-   PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]); 
+    Xu{j} = xu(:)';
+end
+M = M*ones(1,NumOfTFs); 
+
+%
+for j=1:NumOfTFs 
+%    
+   U = n+1:n+M(j);
+   PropDist.qF{j}.m = zeros(n+M(j),1);
+   PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu{j}(:)]); 
    %PropDist.qF{1}.K = PropDist.qF{1}.K + 0.1*eye(size(PropDist.qF{1}.K)); 
    L=jitterChol(PropDist.qF{j}.K)';
-   PropDist.qF{j}.invL = L\eye(n+M); 
+   PropDist.qF{j}.invL = L\eye(n+M(j)); 
    PropDist.qF{j}.LogDetK = 2*sum(log(diag(L)));
       
    % compute the conditional GP prior given the control variables
@@ -158,9 +171,9 @@ for j=1:NumOfTFs
    PropDist.qF{j}.KInvKu = KInvKu;
    PropDist.qF{j}.L = L;
    % compute all the conditional variances for the control Points
-   for i=1:M
+   for i=1:M(j)
    % 
-       G = [1:i-1, i+1:M];  
+       G = [1:i-1, i+1:M(j)];  
        [alpha(i), ku(i), KInvK(i,:)] = gaussianFastConditional(PropDist.qF{j}.m(U)', PropDist.qF{j}.K(U,U), i, G);
    %
    end 
@@ -168,12 +181,21 @@ for j=1:NumOfTFs
    PropDist.qF{j}.alpha = alpha;
    PropDist.qF{j}.ku = ku;
    PropDist.qF{j}.KInvK = KInvK;
+   %
+   % precompution
+   X = [TimesF(:); Xu{j}(:)];
+   model.GP{j}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M(j),1) + repmat(sum(X.*X,2),1,n+M(j));
+   model.Fu{j} = Fu(j,:,:); 
+   model.Fu{j} = zeros(M(j),NumReplicas);
+   for r=1:NumReplicas
+     model.Fu{j}(:,r) = Fu(j,:,r)';
+   end
+   %
 end % end NumOfTFs loop
-
-
-% precompution
-X = [TimesF(:); Xu(:)];
-model.GP{1}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
+%
+model.F = F; 
+model.Xu = Xu;
+model.M = M; 
 
 % Initial proposal Gaussian distribution (with diagonal covariance matrices) 
 % for the kinetic parameters interection weights and the lengthscale of the GPs 
@@ -191,20 +213,16 @@ end
 % variances of theese proposal distribution 
 qKinBelow = 0.000001; qKinAbove = 2;
 qWbelow = 0.000001;   qWabove = 2;
-qLengScBelow = 0.001*PropDist.LengSc(1); 
+qLengScBelow = 0.0001*PropDist.LengSc(1); 
 qLengScAbove = 2*PropDist.LengSc(1);
 epsilon = 0.1;
 
-model.F = F;
-model.Fu = Fu;
 cnt = 0;
-%
 %
 % do the adaption 
 while 1
 %
 %  
-   model.Xu = Xu;
    [model PropDist samples accRates] = gpmtfSample(model, PropDist, AdaptOps);
  
    accRateF = accRates.F;
@@ -216,12 +234,12 @@ while 1
        accRateTFKin = accRates.TFKin;
    end
 
-   fprintf(1,'------ ADAPTION STEP #%2d, Number of Control Points %2d ------ \n',cnt+1,M); 
+   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
    if AdaptOps.disp == 1
    fprintf(1,'Acceptance Rates for GP functions\n');
-   for rr=1:NumReplicas
-   fprintf(1,' * Replica #%2d (rows diffrent TFs, columns control points) \n',rr);       
-   disp(accRateF(:,:,rr));
+   for jj=1:NumOfTFs
+   fprintf(1,'TF function #%2d (rows: #%2d replicas, columns: #%2d control points) \n',jj,NumReplicas,M(jj));       
+   disp(accRateF{jj}');
    end    
    fprintf(1,'Acceptance Rates for kinetic parameters (per gene))\n');
    disp(accRateKin);
@@ -244,11 +262,21 @@ while 1
    end
    fprintf(1,'------------------------------- \n',cnt+1);
    
-   % if you got a good acceptance rate, then stop
-   if ((min(accRateF(:)) > ((0.2/M)*100)) & (min(accRateKin(:))>15) & (min(accRateW(:))>15) & (min(accRateLengSc(:))>15))
-        disp('END OF ADAPTION: acceptance rates OK');
-        %pause
-        break;
+       
+   if (min(accRateKin(:))>15) & (min(accRateW(:))>15) & (min(accRateLengSc(:))>15)
+   %
+       allTFs = 0;
+       for jj=1:NumOfTFs
+           if min(accRateF{jj}(:)) > ((0.2/M(jj))*100)
+               allTFs =  allTFs + 1;
+           end
+       end
+       %
+       if allTFs == NumOfTFs
+          disp('END OF ADAPTION: acceptance rates OK');
+          %pause
+          break;
+       end
    end
    
     
@@ -259,55 +287,64 @@ while 1
        break;
    end
    
-   
    %%%%%%%%%%%%%%%%%%%%%%% START ADAPTING CONTROL VARIABLES %%%%%%%%%%%%%%%%
    % adapt the proposal distribution over control variables
-   % by adding one control variable  
-   if (min(accRateF(:)) < ((0.2/M)*100)) & (mod(cnt,2)==0) 
-   M = M+1;
-   step = (max(TimesF) - min(TimesF))/(M-1);
-   Xu = TimesF(1):step:TimesF(end);
-   Xu = Xu(1:M);
-   % initialize the control variables given the current F
-   model.Fu = zeros(NumOfTFs,M,NumReplicas);
-   U = n+1:n+M;
-   for j=1:NumOfTFs
-      PropDist.qF{j}.m = zeros(n+M,1);
-      PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]);     
-      L=jitterChol(PropDist.qF{j}.K)';
-      PropDist.qF{j}.invL = L\eye(n+M); 
-      PropDist.qF{j}.LogDetK = 2*sum(log(diag(L)));
+   % by adding one control variable 
+   for j=1:NumOfTFs 
+      accRFj = squeeze(accRateF{j}); 
+      if (min(accRFj(:)) < ((0.2/M(j))*100)) & (mod(cnt,2)==0) 
+          M(j) = M(j)+1; 
+          model.M(j) = M(j); 
+          step = (max(TimesF) - min(TimesF))/(M(j)-1);
+          xu = TimesF(1):step:TimesF(end);
+          xu = xu(1:M(j));
+          % optimize control input locations
+          %[xu f] = minimize(xu(:), 'trace_CondCov', 50, TimesF(:), model.GP{j}.logtheta, FixedFirst(j)); 
+          %
+          model.Xu{j} = xu(:)'; 
+          % initialize the control variables given the current F
+          model.Fu{j} = zeros(M(j),NumReplicas);
+          U = n+1:n+M(j);
+          %
+          PropDist.qF{j}.m = zeros(n+M(j),1);
+          PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); model.Xu{j}(:)]);     
+          L=jitterChol(PropDist.qF{j}.K)';
+          PropDist.qF{j}.invL = L\eye(n+M(j)); 
+          PropDist.qF{j}.LogDetK = 2*sum(log(diag(L)));
       
-      [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, U, 1:n);
-      [L,er]=jitterChol(cSigma);
-      if er>0, L = real(sqrtm(cSigma)); end
-      for r=1:NumReplicas
-      cmu = cmuMinus + model.F(j,:,r)*KInvKu;
-      model.Fu(j,:,r) = gaussianFastSample(1, cmu, L);
-      end
-      
-      % compute the conditional GP prior given the control variables
-      [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, 1:n, U);
-      [L,er]=jitterChol(cSigma);
-      if er>0, L = real(sqrtm(cSigma)); end
-      PropDist.qF{j}.cmuMinus = cmuMinus; 
-      PropDist.qF{j}.cSigma = cSigma;
-      PropDist.qF{j}.KInvKu = KInvKu;
-      PropDist.qF{j}.L = L;
-      clear alpha ku KInvK;
-      for i=1:M
-      %  
-         G = [1:i-1, i+1:M];  
-         [alpha(i), ku(i), KInvK(i,:)] = gaussianFastConditional(PropDist.qF{j}.m(U)', PropDist.qF{j}.K(U,U), i, G);
-      %
-      end
-      PropDist.qF{j}.alpha = alpha;
-      PropDist.qF{j}.ku = ku;
-      PropDist.qF{j}.KInvK = KInvK; 
-      X = [TimesF(:); Xu(:)];
-      model.GP{1}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M,1) + repmat(sum(X.*X,2),1,n+M);
-   end
-   %pause
+          [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, U, 1:n);
+          [L,er]=jitterChol(cSigma);
+          if er>0, L = real(sqrtm(cSigma)); end
+          for r=1:NumReplicas
+              cmu = cmuMinus + model.F(j,:,r)*KInvKu;
+              sFu = gaussianFastSample(1, cmu, L);
+              model.Fu{j}(:,r) = sFu';
+          end
+          
+          
+          % compute the conditional GP prior given the control variables
+          [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, 1:n, U);
+          [L,er]=jitterChol(cSigma);
+          if er>0, L = real(sqrtm(cSigma)); end
+          PropDist.qF{j}.cmuMinus = cmuMinus; 
+          PropDist.qF{j}.cSigma = cSigma;
+          PropDist.qF{j}.KInvKu = KInvKu;
+          PropDist.qF{j}.L = L;
+          clear alpha ku KInvK;
+          for i=1:M(j)
+          %  
+             G = [1:i-1, i+1:M(j)];  
+             [alpha(i), ku(i), KInvK(i,:)] = gaussianFastConditional(PropDist.qF{j}.m(U)', PropDist.qF{j}.K(U,U), i, G);
+          %
+          end
+          PropDist.qF{j}.alpha = alpha;
+          PropDist.qF{j}.ku = ku;
+          PropDist.qF{j}.KInvK = KInvK; 
+          X = [TimesF(:); model.Xu{j}(:)];
+          model.GP{j}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M(j),1) + repmat(sum(X.*X,2),1,n+M(j));       
+        %          
+     end
+   %
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT CONTROL VARIABLES %%%%%%%%%%%%%%%%
    
@@ -342,14 +379,14 @@ while 1
          % incease the covariance to reduce the acceptance rate
          PropDist.TFkin(j,:) = PropDist.TFkin(j,:) + epsilon*PropDist.TFkin(j,:);
          if PropDist.TFkin(j,1) > qKinAbove 
-             PropDist.TFkin(j,:) = qKinAbove*ones(1,SizKin);
+             PropDist.TFkin(j,:) = qKinAbove*ones(1,SizKinTF);
          end
       end
       if accRateTFKin(j) < 15
          % decrease the covariance to incease the acceptance rate
          PropDist.TFkin(j,:) = PropDist.TFkin(j,:) - epsilon*PropDist.TFkin(j,:);    
          if PropDist.TFkin(j,1) < qKinBelow 
-             PropDist.TFkin(j,:) = qKinBelow*ones(1,SizKin);
+             PropDist.TFkin(j,:) = qKinBelow*ones(1,SizKinTF);
          end
          %
       end

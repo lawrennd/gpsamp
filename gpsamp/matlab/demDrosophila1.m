@@ -90,7 +90,7 @@ TimesG = 0:11;
 options = gpmtfOptions(Genes,numTFs); 
 genesAndChip.data(genesAndChip.data~=0)=1;
 options.constraints.X = genesAndChip.data; 
-options.constraints.Ft0 = ones(1,numTFs);
+%options.constraints.Ft0 = ones(1,numTFs);
 
 options.tauMax = 0; % no delays
 % define the dense discretized grid in the time axis for the TF latent functions 
@@ -100,6 +100,7 @@ options.tauMax = 0; % no delays
 model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, options);
 
 mcmcoptions = mcmcOptions('controlPnts'); 
+mcmcoptions.adapt.T = 100;
 % adaption phase
 [model PropDist samples accRates] = gpmtfAdapt(model, mcmcoptions.adapt);
 % training/sampling phase
@@ -107,8 +108,8 @@ mcmcoptions = mcmcOptions('controlPnts');
 
 if storeRes == 1
     d = date; 
-    save(['dem' dataName num2str(experimentNo) d '.mat'], 'model','samples','accRates');
+    save(['dem' dataName num2str(expNo) d '.mat'], 'model','samples','accRates');
 end
 
 % Plot/Print the results 
-gpmtfPlot(model, samples, dataName, printPlot);
+%gpmtfPlot(model, samples, dataName, printPlot);
