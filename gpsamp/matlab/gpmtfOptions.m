@@ -46,6 +46,7 @@ if numTFs == 1
         %
         %
         options.constraints.X = ones(NumOfGenes,1);
+        options.constraints.replicas = 'free'; % 'free' or 'coupled'
         %
 else
         %
@@ -95,6 +96,6 @@ else
         % if w(i,j)=0, then no interaction is allowed and the weights w(i,j) is 
         % constrained to be zero. 
         options.constraints.X = ones(NumOfGenes,numTFs);
+        options.constraints.replicas = 'free'; % 'free' or 'coupled'
         %
 end
-

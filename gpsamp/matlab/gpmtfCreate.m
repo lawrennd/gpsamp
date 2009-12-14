@@ -188,6 +188,9 @@ model.Likelihood.Net_X = options.Net_X;
 %model.Likelihood.Net_Learn = options.Net_Learn;
 end
 
+% this may be used to stored precomputed TF profiles 
+% (for saving computations purposes)
+model.Likelihood.TF = [];
 
 % create the GP prior model 
 timescale = 1.5*(max(TimesG(:))-min(TimesG(:)))/(size(TimesG,2)-1);
@@ -281,3 +284,5 @@ model.constraints.geneTFsensitivity_value = 1;
 % constraints on the interaction weigths between TF and genes 
 model.constraints.W = options.constraints.X;
 
+% constraint on TF functions across different replicas  
+model.constraints.replicas = options.constraints.replicas;

@@ -95,14 +95,28 @@ SizF = size(model.Likelihood.TimesF,2);
 M = AdaptOps.initialNumContrPnts;
 
 % initialize the transcription factors
-F = zeros(NumOfTFs, SizF, NumReplicas);
-% initialize the control variables 
-Fu = zeros(NumOfTFs, M, NumReplicas);
-for r=1:NumReplicas
-inG = mean(model.Likelihood.Genes(:,:,r),1);       
-F(:,:,r) = mean(inG(:))*ones(NumOfTFs,SizF);
-Fu(:,:,r) = repmat(mean(model.Likelihood.Genes(:,1:M,r)),[NumOfTFs 1]); 
+if strcmp(model.constraints.replicas,'free')
+    %
+    F = zeros(NumOfTFs, SizF, NumReplicas);
+    % initialize the control variables 
+    Fu = zeros(NumOfTFs, M, NumReplicas);
+    for r=1:NumReplicas
+       inG = mean(model.Likelihood.Genes(:,:,r),1);       
+       F(:,:,r) = mean(inG(:))*ones(NumOfTFs,SizF);
+       Fu(:,:,r) = repmat(mean(model.Likelihood.Genes(:,1:M,r)),[NumOfTFs 1]); 
+    end
+    %
+else
+    %
+    F = zeros(NumOfTFs, SizF);
+    % initialize the control variables 
+    Fu = zeros(NumOfTFs, M);
+    inG = mean(model.Likelihood.Genes(:,:,1),1);       
+    F = mean(inG(:))*ones(NumOfTFs,SizF);
+    Fu = repmat(mean(model.Likelihood.Genes(:,1:M,1)),[NumOfTFs 1]); 
+    %
 end
+
 
 % if the initial values of the TFs is kept fixed, then set the first 
 % control point to be zero (-5 even GP function is the log of the TF)
@@ -112,15 +126,23 @@ if model.constraints.Ft0(j)==0
    FixedFirst(j) = 1;
    if model.constraints.Ft0_value == 0
        if strcmp(model.Likelihood.singleAct,'lin') & strcmp(model.Likelihood.jointAct,'sigmoid') == 0
-           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);  
+           if strcmp(model.constraints.replicas,'free')
+           Fu(:,1,:) = zeros(NumOfTFs,NumReplicas);
+           else
+           Fu(:,1) = zeros(NumOfTFs,1);  
+           end    
        else
-           Fu(:,1,:) = -5*ones(NumOfTFs,NumReplicas);     
+           if strcmp(model.constraints.replicas,'free')
+           Fu(:,1,:) = -5*ones(NumOfTFs,NumReplicas); 
+           else
+           Fu(:,1) = -5*ones(NumOfTFs,1);     
+           end 
        end
    end        
 end
 end
 
-% if the initial condition of the differential equations is zero, then set accordingly the 
+% if the initial condition of the differential equations is zero, then set accordingly the
 % corresponding kinetic parameter (initial condition)
 for j=1:NumOfGenes
 if model.constraints.InitialConds(j) == 0
@@ -162,10 +184,21 @@ for j=1:NumOfTFs
    [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, 1:n, U);
    [L,er]=jitterChol(cSigma);
    if er>0, L = real(sqrtm(cSigma)); end
-   for r=1:NumReplicas
-   cmu = cmuMinus + Fu(j,:,r)*KInvKu;
-   F(j,:,r) = gaussianFastSample(1, cmu, L);
+   %
+   if strcmp(model.constraints.replicas,'free')
+       %
+       for r=1:NumReplicas
+       cmu = cmuMinus + Fu(j,:,r)*KInvKu;
+       F(j,:,r) = gaussianFastSample(1, cmu, L);
+       end
+       %
+   else
+       %
+       cmu = cmuMinus + Fu(j,:)*KInvKu;
+       F(j,:) = gaussianFastSample(1, cmu, L);
+       %
    end
+   %
    PropDist.qF{j}.cmuMinus = cmuMinus;
    PropDist.qF{j}.cSigma = cSigma;
    PropDist.qF{j}.KInvKu = KInvKu;
@@ -185,10 +218,14 @@ for j=1:NumOfTFs
    % precompution
    X = [TimesF(:); Xu{j}(:)];
    model.GP{j}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n+M(j),1) + repmat(sum(X.*X,2),1,n+M(j));
-   model.Fu{j} = Fu(j,:,:); 
-   model.Fu{j} = zeros(M(j),NumReplicas);
-   for r=1:NumReplicas
-     model.Fu{j}(:,r) = Fu(j,:,r)';
+   if strcmp(model.constraints.replicas,'free')
+       model.Fu{j} = zeros(M(j),NumReplicas);
+       for r=1:NumReplicas
+          model.Fu{j}(:,r) = Fu(j,:,r)';
+       end
+   else
+       model.Fu{j} = zeros(M(j),1);
+       model.Fu{j}(:,1) = Fu(j,:)';
    end
    %
 end % end NumOfTFs loop
@@ -223,8 +260,10 @@ cnt = 0;
 while 1
 %
 %  
+   %tic;
    [model PropDist samples accRates] = gpmtfSample(model, PropDist, AdaptOps);
- 
+   %toc;
+   [model.GP{1}.logtheta(1)]
    accRateF = accRates.F;
    accRateKin = accRates.Kin;
    accRateW = accRates.W;
@@ -237,9 +276,14 @@ while 1
    fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
    if AdaptOps.disp == 1
    fprintf(1,'Acceptance Rates for GP functions\n');
-   for jj=1:NumOfTFs
-   fprintf(1,'TF function #%2d (rows: #%2d replicas, columns: #%2d control points) \n',jj,NumReplicas,M(jj));       
-   disp(accRateF{jj}');
+   for jj=1:NumOfTFs 
+       if strcmp(model.constraints.replicas,'free')
+          fprintf(1,'TF function #%2d (rows: #%2d replicas, columns: #%2d control points) \n',jj,NumReplicas,M(jj));       
+          disp(accRateF{jj}');
+       else
+          fprintf(1,'TF function #%2d (coupled replicas) : #%2d control points \n',jj,M(jj));       
+          disp(accRateF{jj}'); 
+       end
    end    
    fprintf(1,'Acceptance Rates for kinetic parameters (per gene))\n');
    disp(accRateKin);
@@ -303,7 +347,12 @@ while 1
           %
           model.Xu{j} = xu(:)'; 
           % initialize the control variables given the current F
-          model.Fu{j} = zeros(M(j),NumReplicas);
+          if strcmp(model.constraints.replicas,'free')
+              model.Fu{j} = zeros(M(j),NumReplicas);
+          else
+              model.Fu{j} = zeros(M(j),1);
+          end
+          %
           U = n+1:n+M(j);
           %
           PropDist.qF{j}.m = zeros(n+M(j),1);
@@ -315,13 +364,19 @@ while 1
           [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, U, 1:n);
           [L,er]=jitterChol(cSigma);
           if er>0, L = real(sqrtm(cSigma)); end
-          for r=1:NumReplicas
-              cmu = cmuMinus + model.F(j,:,r)*KInvKu;
+          %
+          if strcmp(model.constraints.replicas,'free')
+              for r=1:NumReplicas
+                  cmu = cmuMinus + model.F(j,:,r)*KInvKu;
+                  sFu = gaussianFastSample(1, cmu, L);
+                  model.Fu{j}(:,r) = sFu';
+              end
+          else
+              cmu = cmuMinus + model.F(j,:)*KInvKu;
               sFu = gaussianFastSample(1, cmu, L);
-              model.Fu{j}(:,r) = sFu';
+              model.Fu{j}(:,1) = sFu';
           end
-          
-          
+          %
           % compute the conditional GP prior given the control variables
           [cmuMinus, cSigma, KInvKu] = gaussianFastConditional(PropDist.qF{j}.m', PropDist.qF{j}.K, 1:n, U);
           [L,er]=jitterChol(cSigma);
