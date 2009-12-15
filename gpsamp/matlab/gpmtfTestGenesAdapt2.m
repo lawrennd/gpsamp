@@ -97,26 +97,17 @@ if strcmp(model.constraints.replicas,'free')
     % this variable will never used (its jsut to cheat the fucntino compute likelihoods
     % which will use the precomputed TFs from the Fs )
     F = zeros(NumOfTFs, SizF, NumReplicas);
-    for j=1:NumOfTFs
-    for r=1:NumReplicas
-         gPerm = randperm(size(TFs,2));       
-         ch = gPerm(1); 
-         model.Likelihood.TF(:,:,r) = TFs{ch}(:,:,r);
-         TFindex(j,r) = ch;
-    end
-    end
     %
 else
     %
     F = zeros(NumOfTFs, SizF);
-    for j=1:NumOfTFs
-        gPerm = randperm(size(TFs,2));       
-        ch = gPerm(1); 
-        model.Likelihood.TF = TFs{ch};
-         TFindex(j) = ch;
-    end
     %
 end
+
+gPerm = randperm(size(TFs,2));       
+ch = gPerm(1); 
+TFindex = ch; 
+model.Likelihood.TF = TFs{ch};
 
 % fake variable
 model.F = F;
@@ -139,6 +130,7 @@ epsilon = 0.1;
 cnt = 0;
 %
 % do the adaption 
+nextbreak = 0; 
 while 1
 %
 %  
@@ -147,10 +139,8 @@ while 1
    accRateKin = accRates.Kin;
    accRateW = accRates.W;
    accRateF = accRates.F;
-   model.TFindex
-   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
    if AdaptOps.disp == 1
-   
+   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
    fprintf(1,'Acceptance Rates for GP functions\n');
    disp(accRateF);
        
@@ -161,23 +151,26 @@ while 1
    disp(accRateW);
    fprintf(1,'Average likelihood value %15.8f',mean(samples.LogL));
    fprintf(1,'\n');
-   end
    fprintf(1,'------------------------------- \n',cnt+1);
-   
+   end
    
    
    % if you got a good acceptance rate, then stop
-   if  (min(accRateKin(:))>15) & (min(accRateW(:))>15) 
-        disp('END OF ADAPTION: acceptance rates OK');
-        %pause
-        break;
+   if  (min(accRateKin(:))>20) & (min(accRateW(:))>20)  & (max(accRateKin(:))<35) & (max(accRateW(:))<35) 
+      if nextbreak == 1
+          disp('END OF ADAPTION: acceptance rates OK');
+          break;
+      else
+          nextbreak = 1;
+      end
    end
     
    cnt = cnt + 1;
    % do not allow more than 50 iterations when you adapt the proposal distribution
-   if cnt == 50
-       warning('END OF ADAPTION: acceptance rates were not all OK');
+   if cnt == 150   
+       disp('END OF ADAPTION: acceptance rates OK');
        break;
+       %  
    end
    
    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT KINETICS PROPOSAL %%%%%%%%%%%%%%%%
@@ -190,7 +183,7 @@ while 1
              PropDist.kin(j,:) = qKinAbove*ones(1,SizKin);
          end
       end
-      if accRateKin(j) < 15
+      if accRateKin(j) < 20
          % decrease the covariance to incease the acceptance rate
          PropDist.kin(j,:) = PropDist.kin(j,:) - epsilon*PropDist.kin(j,:);    
          if PropDist.kin(j,1) < qKinBelow 
@@ -212,7 +205,7 @@ while 1
              PropDist.W(j,:) = qWabove*ones(1,NumOfTFs+1);
          end
       end
-      if accRateW(j) < 15
+      if accRateW(j) < 20
          % decrease the covariance to incease the acceptance rate
          PropDist.W(j,:) = PropDist.W(j,:) - epsilon*PropDist.W(j,:);    
          if PropDist.W(j,1) < qWbelow 

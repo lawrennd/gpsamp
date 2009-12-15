@@ -1,39 +1,43 @@
 
-
 dataName = 'drosophila_dataTest';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
 
-
-% This should go inside the loadDatasets function later
 %%%%%%%%%%%%%%  Load the test genes data  %%%%%%%%%%%%%%%% 
-%load datasets/drosophila_data.mat;
-% load traning samples 
-load /usr/local/michalis/mlprojects/gpsamp/matlab/drosTrainTotal;
-load /usr/local/michalis/mlprojects/gpsamp/matlab/trainGenes;
+load datasets/drosophila_data;
+load datasets/trainScaleDros;
+load datasets/testset;
+load drosTrainTotal;
 
-TestGenes = Genes;
-TestGenesVar = GenesVar;
+numGenes = 100;
+Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
+GenesVar = drosexp.fitvar(1:numGenes, :);
+
+Genes = Genes/sc;
+Genes = reshape(Genes,numGenes,12,3);
+GenesVar = GenesVar/(sc.^2);
+GenesVar = reshape(GenesVar,numGenes,12,3);
+%
 TimesG = 0:11;
 numTFs = 5;
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
 
-% model options
-options = gpmtfOptions(TestGenes,numTFs); 
+mcmcoptions = mcmcOptions('controlPnts'); 
+mcmcoptions.adapt.T = 40; 
+mcmcoptions.adapt.Burnin = 40;
+mcmcoptions.train.StoreEvery = 10;
+mcmcoptions.train.T = 30000;
+mcmcoptions.train.Burnin = 1000;
+
+% model options 
+options = gpmtfOptions(ones(1,12,3),numTFs); 
 %options.constraints.replicas = 'coupled'; 
 
 options.tauMax = 0; % no delays
 % define the dense discretized grid in the time axis for the TF latent functions 
 [options, TimesF] = gpmtfDiscretize(TimesG, options); 
-
-% CREATE the model
-modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-
-mcmcoptions = mcmcOptions('controlPnts'); 
-mcmcoptions.adapt.T = 50; 
-mcmcoptions.adapt.Burnin = 50;
-mcmcoptions.train.StoreEvery = 20;
+modelTest = gpmtfCreate(ones(1,12,3), ones(1,12,3), [], [], TimesG, TimesF, options);
 
 % precompute the TFs
 if strcmp(modelTest.constraints.replicas,'free')
@@ -52,51 +56,67 @@ else
     %
 end
 
+
+% process the test gens one at a time 
+%simMat = [];
+%
+for n=1:size(Genes,1)
+
+    TestGenes = Genes(n,:,:);
+    TestGenesVar = GenesVar(n,:,:);
+    % CREATE the model
+    modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
    
-% compute all distances between samples (useful for sampling using the
-% geometric distribution)
-if strcmp(modelTest.constraints.replicas,'free')
-    for j=1:modelTest.Likelihood.numTFs
-    for r=1:modelTest.Likelihood.numReplicas     
-        % collect all TFs  of the r replica in matrix 
-        MatTF = zeros(size(samples.F,2), size(modelTest.Likelihood.TimesF,2)); 
-        for cnt=1:size(samples.F,2)
-            MatTF(cnt,:)  = TFs{cnt}(j,:,r); 
-        end
+    % % compute all distances between samples (useful for sampling using the
+    % % geometric distribution)
+    % if strcmp(modelTest.constraints.replicas,'free')
+    %     for j=1:modelTest.Likelihood.numTFs
+    %     for r=1:modelTest.Likelihood.numReplicas
+    %         % collect all TFs  of the r replica in matrix
+    %         MatTF = zeros(size(samples.F,2), size(modelTest.Likelihood.TimesF,2));
+    %         for cnt=1:size(samples.F,2)
+    %             MatTF(cnt,:)  = TFs{cnt}(j,:,r);
+    %         end
+    %
+    %         % compute the similarity matrix
+    %         dd = dist2(MatTF,MatTF);
+    %         for cnt=1:size(samples.F,2)
+    %            [ok Ind] = sort(dd(cnt,:));
+    %            simMat{j,r}(cnt,:) = uint16(Ind(2:end));
+    %         end
+    %     end
+    %     end
+    %     %
+    % else
+    %     %
+    %     for j=1:modelTest.Likelihood.numTFs
+    %     MatTF = zeros(size(samples.F,2), size(modelTest.Likelihood.TimesF,2));
+    %     for cnt=1:size(samples.F,2)
+    %         MatTF(cnt,:)  = TFs{cnt}(j,:);
+    %     end
+    %
+    %     % compute the similarity matrix
+    %     dd = dist2(MatTF,MatTF);
+    %     for cnt=1:size(samples.F,2)
+    %        [ok Ind] = sort(dd(cnt,:));
+    %        simMat{j}(cnt,:) = uint16(Ind(2:end));
+    %     end
+    %     end
+    %     %
+    % end
+    %
+    %% parameter in the geometric distribution
+    %modelTest.geo = 0.1;
 
-        % compute the similarity matrix
-        dd = dist2(MatTF,MatTF);
-        for cnt=1:size(samples.F,2)
-           [ok Ind] = sort(dd(cnt,:));
-           simMat{j,r}(cnt,:) = uint16(Ind(2:end));
-        end
-    end
-    end
+    tic;
+    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, [], mcmcoptions.adapt); 
+    % training/sampling phase
+    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesSample2(modelTest, TFs, [], PropDist, mcmcoptions.train);
+    toc;
     %
-else 
-    %
-    for j=1:modelTest.Likelihood.numTFs
-    MatTF = zeros(size(samples.F,2), size(modelTest.Likelihood.TimesF,2)); 
-    for cnt=1:size(samples.F,2)
-        MatTF(cnt,:)  = TFs{cnt}(j,:); 
-    end
-
-    % compute the similarity matrix
-    dd = dist2(MatTF,MatTF);
-    for cnt=1:size(samples.F,2)
-       [ok Ind] = sort(dd(cnt,:));
-       simMat{j}(cnt,:) = uint16(Ind(2:end));
-    end
-    end
-    %
+    testGene{n} = samplesTest;
+    testaccRates{n} = accRates;
 end
 
-
-% parameter in the geometric distribution
-modelTest.geo = 0.1;
-
-[modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, simMat, mcmcoptions.adapt);
-% training/sampling phase
-[modelTest PropDist samplesTest accRates] = gpmtfTestGenesSample2(modelTest, TFs, simMat, PropDist, mcmcoptions.train);
 
 

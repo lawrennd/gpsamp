@@ -33,6 +33,14 @@ SizF = size(TimesF,2);
 [NumOfGenes SizG NumOfReplicas] = size(Genes);
 NumOfTFs = model.Likelihood.numTFs;
 
+num_stored = floor(Iters/StoreEvery);
+samples.TFindex = zeros(NumOfTFs, NumOfReplicas, num_stored);
+samples.predGenes = zeros(NumOfReplicas, SizF, num_stored);
+samples.kinetics = zeros(4, num_stored);
+samples.Weights = zeros(5, num_stored);
+samples.Weights0 = zeros(1, num_stored);
+samples.LogL = zeros(1, num_stored);
+
 %  check if the initial condition is fixed
 fixInitCond = 0;
 if strcmp(model.constraints.InitialConds_value,'fixed')==1 
@@ -63,13 +71,7 @@ if strcmp(model.constraints.replicas,'free')
    %
    % evaluate the likelihood 
    [oldLogLik(r,:) predgen] = gpmtfLogLikelihoodGene(model.Likelihood, F(:,:,r), r, 1:NumOfGenes);
-   PredictedGenes(:,:,r) = predgen;
-  
-   % additional likelihood when you have observations for the TF genes  
-   if isfield(model.Likelihood,'GenesTF')      
-      [oldLogLikTF(r,:) predgen] = gpmtfLogLikelihoodGeneTF(model.Likelihood, F(:,:,r), r, 1:NumOfTFs);
-      PredictedGenesTF(:,:,r) = predgen;
-   end
+   PredictedGenes(r,:) = predgen;
    %     
    end
 else
@@ -78,24 +80,17 @@ else
    [oldLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(model.Likelihood, F, 1, 1:NumOfGenes);
    PredictedGenes = predgen;
    % compute fast the additional likelihood when you have observations for the TF genes  
-   if isfield(model.Likelihood,'GenesTF')      
-      [oldLogLikTF(1,:) predgen] = gpmtfLogLikelihoodGeneTF(model.Likelihood, F, 1, 1:NumOfTFs);
-      PredictedGenesTF = predgen;
-   end
    %
    % the predicted genes are the same for the remaining coupled replicas
    for r=2:NumOfReplicas
       % compute fast the likelihood terms for the remaining replicas  
       oldLogLik(r,:) = remainRepsLikelihood(LikParams,  PredictedGenes, r, 1:NumOfGenes);
-      % compute fast the additional likelihood when you have observations for the TF genes  
-      if isfield(model.Likelihood,'GenesTF')
-         oldLogLikTF(r,:) = remainRepsLikelihoodTF(LikParams, PredictedGenesTF, r, 1:NumOfTFs);
-      end
+      % compute fast the additional likelihood when you have observations
+      % for the TF genes  
    end
    %              
    %
 end
-
 
 % evaluation of the log prior for the kinetic parameters
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
@@ -110,96 +105,98 @@ oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights.mu, model.prior.weights
 
 cnt = 0;
 
-if strcmp(model.constraints.replicas,'free')
-   acceptF = zeros(NumOfTFs,NumOfReplicas);
-else
-   acceptF = zeros(NumOfTFs,1);   
-end
+%if strcmp(model.constraints.replicas,'free')
+%   acceptF = zeros(NumOfTFs,NumOfReplicas);
+%else
+%   acceptF = zeros(NumOfTFs,1);   
+%end
+acceptF = 0; 
 
 acceptKin = zeros(1,NumOfGenes);
 acceptW = zeros(1,NumOfGenes);
+numSamples = size(TFs,2);
+
 %
 for it = 1:(BurnInIters + Iters) 
     %
     % choose one sample for the TFS from the training set  
-    for j=1:NumOfTFs
+    
+    % choose a training sample 
+    ch = round(rand*numSamples) + 1; 
+    ch(ch>numSamples) = numSamples;
+    
+    LikParams1 = LikParams;
+    % store the TF in the LikeParams to save computations 
+    LikParams1.TF = TFs{ch};
+    
+    
+    newLogProp = 0;  % forward Hastings Q(s_t+1 | s_t)
+    oldLogProp = 0;  % backward Hastings Q(s_t| s_t+1) 
+    
+    newLogLik = zeros(NumOfReplicas, NumOfGenes);
+    predgen = zeros(NumOfReplicas, model.Likelihood.sizTime);   
     if strcmp(model.constraints.replicas,'free') 
-    %    
        for r=1:NumOfReplicas
+       %  
+       
+       %for j=1:NumOfTFs
        %     
            
            %%%%%%%%%%%%%%%%%%  bit of code to be changed 
            % choose randomly among all samples 
-           gPerm = randperm(size(TFs,2));
-           ch = gPerm(1); 
+           %ch = round(rand*numSamples) + 1; 
+           %ch(ch>numSamples) = numSamples;
            
-           newLogProp = 0;  % forward Hastings Q(s_t+1 | s_t)
-           oldLogProp = 0;  % backward Hastings Q(s_t| s_t+1) 
+           %newLogProp = 0;  % forward Hastings Q(s_t+1 | s_t)
+           %oldLogProp = 0;  % backward Hastings Q(s_t| s_t+1) 
            
-           % draw from the geometric distribution
-           kk = geornd(model.geo) + 1;
-           % propose the kkth nearest neighbor of the next TF
-           ch = simMat{j,r}(TFindex(j,r),kk);
-           
-            
-           % forward Hastings Q(s_t+1 | s_t)
-           newLogProp = log(geopdf(kk-1,model.geo));
-           
-           % backward Hastings Q(s_t| s_t+1) 
-           bkk = find(simMat{j,r}(ch,:)==TFindex(j,r));
-           oldLogProp = log(geopdf(bkk-1,model.geo)); 
-           
-           %[kk bkk]
-           %[newLogProp oldLogProp]
-           
+           %% draw from the geometric distribution
+           %kk = geornd(model.geo) + 1;
+           %% propose the kkth nearest neighbor of the next TF
+           %ch = simMat{j,r}(TFindex(j,r),kk);
+           %
+           % 
+           %% forward Hastings Q(s_t+1 | s_t)
+           %newLogProp = log(geopdf(kk-1,model.geo));
+           %
+           %% backward Hastings Q(s_t| s_t+1) 
+           %bkk = find(simMat{j,r}(ch,:)==TFindex(j,r));
+           %oldLogProp = log(geopdf(bkk-1,model.geo)); 
+          
            %%%%%%%%%%%%%%%%%% end of bit of code to be changed 
            
-           LikParams1 = LikParams;
+           %LikParams1 = LikParams;
            % store the TF in the LikeParams to save computations 
-           LikParams1.TF(j,:,r) = TFs{ch}(j,:,r);
+           %LikParams1.TF(j,:,r) = TFs{ch}(j,:,r);
            
-           if ~isfield(model.Likelihood,'GenesTF')
-               % perform an evaluation of the likelihood p(Genes | F) 
-               [newLogLik predgen] = gpmtfLogLikelihoodGene(LikParams1, F(:,:,r), r, 1:NumOfGenes);
-       
-               % Metropolis-Hastings to accept-reject the proposal
-               [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(r,:),2), newLogProp, oldLogProp);
-           else
-               % perform an evaluation of the likelihood p(Genes | F) 
-               [newLogLik predgen] = gpmtfLogLikelihoodGene(LikParams1, F(:,:,r), r, 1:NumOfGenes);        
-               [newLogLikTF predgenTF] = gpmtfLogLikelihoodGeneTF(LikParams1, F(:,:,r), r, j); 
+           % perform an evaluation of the likelihood p(Genes | F) 
+           [newLogLik(r,:) predgen(r,:)] = gpmtfLogLikelihoodGene(LikParams1, F(:,:,r), r, 1:NumOfGenes);
+       %end % num TFs loop
            
-               % Metropolis-Hastings to accept-reject the proposal
-               newL = sum(newLogLik(:)) + newLogLikTF;
-               oldL = sum(oldLogLik(r,:),2) + oldLogLikTF(r,j);
-               [accept, uprob] = metropolisHastings(newL, oldL, newLogProp, oldLogProp);
-           end       
-           %
-           %[j r]
-           %[sum(newLogLik(:))  sum(oldLogLik(r,:),2)]
-           %pause
-           
-           if (it > BurnInIters)
-               acceptF(j,r) = acceptF(j,r) + accept; 
-           end
-    
-           % update protein F
-           if accept == 1
-               LikParams.TF(j,:,r) = TFs{ch}(j,:,r);
-               TFindex(j,r) = ch;  
-               PredictedGenes(:,:,r) = predgen;
-               oldLogLik(r,:) = newLogLik;
-               if isfield(model.Likelihood,'GenesTF')      
-                  oldLogLikTF(r,j) = newLogLikTF;
-                  PredictedGenesTF(j,:,r) = predgenTF;
-               end
-            %   
-           end
        end % num Replicas loop
        %
+       % Metropolis-Hastings to accept-reject the proposal
+       [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), newLogProp, oldLogProp);
+           
+       if (it > BurnInIters)
+           acceptF = acceptF + accept; 
+       end
+    
+       % update protein F
+       if accept == 1
+           %LikParams.TF(j,:,r) = TFs{ch}(j,:,r);
+           LikParams.TF = TFs{ch};
+           %TFindex(1:NumOfTFs,1:NumOfReplicas) = ch;
+           TFindex = ch;
+           PredictedGenes = predgen;
+           oldLogLik = newLogLik;
+        %   
+       end
+    %
     else
          % Replicas are coupled
-           
+         for j=1:NumOfTFs
+             
            %%%%%%%%%%%%%%%%%%  bit of code to be changed 
            % choose randomly among all samples 
            gPerm = randperm(size(TFs,2));
@@ -211,37 +208,19 @@ for it = 1:(BurnInIters + Iters)
            
            LikParams1 = LikParams;
            % store the TF in the LikeParams to save computations 
-           LikParams.TF(j,:) = TFs{ch}(j,:);
+           LikParams1.TF(j,:) = TFs{ch}(j,:);
              
            newLogLik = zeros(NumOfReplicas,NumOfGenes);
-           if ~isfield(model.Likelihood,'GenesTF')
-               % perform an evaluation of the likelihood p(Genes | F)      
-               [newLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(LikParams1, F, 1, 1:NumOfGenes);
+           % perform an evaluation of the likelihood p(Genes | F)      
+           [newLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(LikParams1, F, 1, 1:NumOfGenes);
               
-               % computed faster the remaining likelihood terms  
-               for r=2:NumOfReplicas
-                    newLogLik(r,:) = remainRepsLikelihood(LikParams1,  predgen, r, 1:NumOfGenes);
-               end                 
-               % Metropolis-Hastings to accept-reject the proposal
-               [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), newLogProp, oldLogProp);
-           else
-               % perform an evaluation of the likelihood p(Genes | F)      
-               [newLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(LikParams1, F, 1, 1:NumOfGenes);   
-               [newLogLikTF(1) predgenTF] = gpmtfLogLikelihoodGeneTF(LikParams, F, 1, j); 
-           
-               % computed faster the remaining likelihood terms  
-               for r=2:NumOfReplicas
-                   newLogLik(r,:) = remainRepsLikelihood(LikParams1,  predgen, r, 1:NumOfGenes);
-                   newLogLikTF(r) = remainRepsLikelihoodTF(LikParams1, predgenTF, r, j);
-               end    
-             
-               % Metropolis-Hastings to accept-reject the proposal
-               newL = sum(newLogLik(:)) + sum(newLogLikTF(:));
-               oldL = sum(oldLogLik(:)) + sum(oldLogLikTF(:,j),1);
-               [accept, uprob] = metropolisHastings(newL, oldL, newLogProp, oldLogProp);
-               %
-           end       
-       
+           % computed faster the remaining likelihood terms  
+           for r=2:NumOfReplicas
+               newLogLik(r,:) = remainRepsLikelihood(LikParams1,  predgen, r, 1:NumOfGenes);
+           end                 
+           % Metropolis-Hastings to accept-reject the proposal
+           [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), newLogProp, oldLogProp);
+          
            %
            if (it > BurnInIters)
                acceptF(j) = acceptF(j) + accept; 
@@ -253,16 +232,11 @@ for it = 1:(BurnInIters + Iters)
                TFindex(j) = ch;  
                PredictedGenes = predgen;
                oldLogLik = newLogLik;
-         
-               if isfield(model.Likelihood,'GenesTF')      
-                  oldLogLikTF(:,j) = newLogLikTF(:);
-                  PredictedGenesTF(j,:) = predgenTF;
-               end
             %   
            end
-        end % num Replicas loop
+         end % num TFs loop
         %
-    end % num TFs loop
+    end % if end
     
     
     %
@@ -373,10 +347,10 @@ for it = 1:(BurnInIters + Iters)
     if (it > BurnInIters)  & (mod(it,StoreEvery) == 0)
         %
         cnt = cnt + 1;
-        samples.TFindex = TFindex; 
-        samples.predGenes{cnt} = PredictedGenes;
-        samples.kinetics(:,:,cnt) = LikParams.kinetics;
-        samples.Weights(:,:,cnt) = LikParams.W;
+        samples.TFindex(cnt) = TFindex;
+        samples.predGenes(:,:,cnt) = PredictedGenes;
+        samples.kinetics(:,cnt) = LikParams.kinetics;
+        samples.Weights(:,cnt) = LikParams.W;
         samples.Weights0(:,cnt) = LikParams.W0;
         samples.LogL(cnt) = sum(oldLogLik(:));
         %
