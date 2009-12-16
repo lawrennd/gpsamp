@@ -18,7 +18,7 @@ function [loglikval, PredGenes] = gpmtfLogLikelihoodGene(LikParams, F, R, Gindex
 %           given by TimesF 
 
 
-Genes = LikParams.Genes(:,:,R);
+%Genes = LikParams.Genes(:,:,R);
 PredGenes = gpmtfComputeGeneODE(LikParams, F, Gindex);
 
 %uu = LikParams.TimesF(LikParams.startTime:end);
@@ -44,8 +44,10 @@ PredGenes = gpmtfComputeGeneODE(LikParams, F, Gindex);
 %end
 
 
+%loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,R)),2)....
+%                   - 0.5*sum(((Genes(Gindex,:) - PredGenes(:,LikParams.comInds)).^2)./LikParams.sigmas(Gindex,:,R),2);
 loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,R)),2)....
-                   - 0.5*sum(((Genes(Gindex,:) - PredGenes(:,LikParams.comInds)).^2)./LikParams.sigmas(Gindex,:,R),2);
+                   - 0.5*sum(((LikParams.Genes(Gindex,:,R) - PredGenes(:,LikParams.comInds)).^2)./LikParams.sigmas(Gindex,:,R),2);
              
 loglikval = loglikval';
                  
