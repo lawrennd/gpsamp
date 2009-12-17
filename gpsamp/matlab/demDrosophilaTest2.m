@@ -12,7 +12,7 @@ load /usr/local/michalis/mlprojects/gpsamp/matlab/drosTrainTotal;
 
 numGenes = 100;
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
-GenesVar = drosexp.fitvar(1:numGenes, :);
+GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 
 Genes = Genes/sc;
 Genes = reshape(Genes,numGenes,12,3);
