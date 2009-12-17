@@ -74,6 +74,9 @@ else
         % maximum positve value for the gene DELAYS
         % -- 0 means that no delays are allowed 
         options.tauMax = 0;
+        
+        % use or not the two mixture (one spike and one borad) for the interaction weights 
+        options.spikePriorW = 'no'; 
         %
         % CONSTRAINTS of the initial value of the TF at time t=0. 
         % if 0, then the TF has concentration 0 at time t=0

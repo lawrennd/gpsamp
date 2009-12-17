@@ -221,8 +221,8 @@ model.prior.kinetics.type = 'normal';
 %model.prior.kinetics.readme = 'kinetics are: decays, sensitivities, basals, initial conds'
 model.prior.kinetics.contraint = 'positive';
 model.prior.kinetics.priorSpace = 'log';
-model.prior.kinetics.a = -0.5; % mean 
-model.prior.kinetics.b = 2; % variance
+model.prior.kinetics.mu = -0.5; % mean 
+model.prior.kinetics.sigma2 = 2; % variance
 
 model.prior.delays.type = 'discrete'; 
 a = 1; 
@@ -230,18 +230,49 @@ AllTaus = model.Likelihood.tauMax:model.Likelihood.step:-eps;
 AllTaus = [AllTaus, 0]; 
 model.prior.delays.prob = exp(a*AllTaus)/(sum(exp(a*AllTaus)));
 
-model.prior.weights.type = 'normal'; %'normal' or Laplace
+% prior for the interaction bias
+model.prior.weight0.type = 'normal'; %'normal' or Laplace
 if strcmp(model.Likelihood.jointAct,'michMenten')
-model.prior.weights.constraint = 'positive';
-model.prior.weights.priorSpace = 'log';
-model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
+model.prior.weight0.constraint = 'positive';
+model.prior.weight0.priorSpace = 'log';
 model.Likelihood.W0 = rand(NumOfGenes,1)+0.1;
 else
-model.prior.weights.constraint = 'real';
-model.prior.weights.priorSpace = 'lin'; % it means NoTransform;   
+model.prior.weight0.constraint = 'real';
+model.prior.weight0.priorSpace = 'lin'; % it means NoTransform;   
 end
-model.prior.weights.mu = 0;
-model.prior.weights.sigma2 = 1.5;
+model.prior.weight0.mu = 0;
+model.prior.weight0.sigma2 = 1.5;
+    
+% prior for the interactino weigths (e.g. inside the sigmoid)
+if strcmp(options.spikePriorW,'no')
+    %
+    model.prior.weights.type = 'normal'; %'normal' or Laplace
+    if strcmp(model.Likelihood.jointAct,'michMenten')
+    model.prior.weights.constraint = 'positive';
+    model.prior.weights.priorSpace = 'log';
+    model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
+    else
+    model.prior.weights.constraint = 'real';
+    model.prior.weights.priorSpace = 'lin'; % it means NoTransform;   
+    end
+    model.prior.weights.mu = 0;
+    model.prior.weights.sigma2 = 1.5;
+    %
+else
+    %
+    % use the two mixture model with the spike 
+    model.prior.weights.type = 'twoMixNormal';
+    model.prior.weights.constraint = 'real';
+    model.prior.weights.priorSpace = 'lin';
+    model.prior.weights.mu = 0;
+    model.prior.weights.sigma2 = 1.5;
+    model.prior.weights.spikeMu = 0; 
+    model.prior.weights.spikeSigma2 = 0.0001;
+    model.prior.weights.pis = 0.9*ones(1, options.numTFs); 
+    % binary variables (randomly chosen for each TF and gene)
+    model.prior.weights.S = round(rand(NumOfGenes,options.numTFs));
+    %
+end
 
 % prior for the gene specifc noise variances (the inverce of them) 
 model.prior.invsigma2.type = 'gamma';

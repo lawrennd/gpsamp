@@ -34,7 +34,7 @@ SizF = size(TimesF,2);
 NumOfTFs = model.Likelihood.numTFs;
 
 num_stored = floor(Iters/StoreEvery);
-samples.TFindex = zeros(NumOfTFs, NumOfReplicas, num_stored);
+samples.TFindex = zeros(1, num_stored);
 samples.predGenes = zeros(NumOfReplicas, SizF, num_stored);
 samples.kinetics = zeros(4, num_stored);
 samples.Weights = zeros(5, num_stored);
@@ -96,12 +96,19 @@ end
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
 TrspaceKin = model.prior.kinetics.priorSpace; 
 Likkin = feval(TrspaceKin, LikParams.kinetics+eps);
-oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics.a, model.prior.kinetics.b);
+oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics);
+
+% evaluation of the prior for the interaction bias
+lnpriorW0 = ['ln',model.prior.weight0.type,'pdf'];
+TrspaceW0 = model.prior.weight0.priorSpace; 
+LikW0 = feval(TrspaceW0, LikParams.W0);
+oldLogPriorW0 = feval(lnpriorW0, LikW0, model.prior.weight0);
+
 % evaluation of the prior for the interaction weights
 lnpriorW = ['ln',model.prior.weights.type,'pdf'];
 TrspaceW = model.prior.weights.priorSpace; 
-LikW = feval(TrspaceW, [LikParams.W, LikParams.W0]+eps);
-oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights.mu, model.prior.weights.sigma2);
+LikW = feval(TrspaceW, LikParams.W);
+oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights);
 
 cnt = 0;
 
@@ -274,7 +281,7 @@ for it = 1:(BurnInIters + Iters)
        
         %        
         Likkin = feval(TrspaceKin, KineticsNew);
-        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics.a, model.prior.kinetics.b);
+        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
         % Metropolis-Hastings to accept-reject the proposal
         oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
         newP = sum(newLogLik(:))+ sum(LogPriorKinNew(:)); 
@@ -323,11 +330,17 @@ for it = 1:(BurnInIters + Iters)
            end 
         end
         
-        LikW = feval(TrspaceW, Wnew+eps);
-        LogPriorWnew = feval(lnpriorW, LikW, model.prior.weights.mu, model.prior.weights.sigma2);
+        
+        % evaluation of the prior for the interaction bias 
+        LikW0 = feval(TrspaceW0, LikParams.W0);
+        LogPriorWnew0 = feval(lnpriorW0, Wnew(end), model.prior.weight0);
+        % >>>  interaction weights
+        LikW = feval(TrspaceW, Wnew(1:NumOfTFs));
+        LogPriorWnew = feval(lnpriorW, LikW, model.prior.weights);
+        
         % Metropolis-Hastings to accept-reject the proposal
-        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2);
-        newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)); 
+        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2) + oldLogPriorW0(j);
+        newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)) + LogPriorWnew0; 
         %
         [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
         if accept == 1
@@ -335,6 +348,7 @@ for it = 1:(BurnInIters + Iters)
            LikParams.W0(j) = Wnew(end);
            oldLogLik(:,j) = newLogLik(:); 
            oldLogPriorW(j,:) = LogPriorWnew;
+           oldLogPriorW0(j) = LogPriorWnew0;
         end
         %
         if (it > BurnInIters) 
@@ -342,6 +356,7 @@ for it = 1:(BurnInIters + Iters)
         end
         %
     end
+    
     %
     % keep samples after burn in
     if (it > BurnInIters)  & (mod(it,StoreEvery) == 0)
