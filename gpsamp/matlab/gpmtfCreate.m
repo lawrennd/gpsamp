@@ -268,7 +268,7 @@ else
     model.prior.weights.sigma2 = 1.5;
     model.prior.weights.spikeMu = 0; 
     model.prior.weights.spikeSigma2 = 0.0001;
-    model.prior.weights.pis = 0.9*ones(1, options.numTFs); 
+    model.prior.weights.pis = options.spikepriors; 
     % binary variables (randomly chosen for each TF and gene)
     model.prior.weights.S = round(rand(NumOfGenes,options.numTFs));
     %
