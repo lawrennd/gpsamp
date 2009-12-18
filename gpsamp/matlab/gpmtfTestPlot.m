@@ -1,6 +1,7 @@
-function gpmtfTestPlot(model, Genes, GeneVars, samples, demdata, printResults)
+function gpmtfTestPlot(model, Genes, GeneVars, fbgn, samples, TFs, demdata, printResults)
 
 dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
+dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
 
 %Genes = model.Likelihood.Genes;
 gg = 1;
@@ -17,10 +18,10 @@ if isfield(model.Likelihood,'GenesTF')
         GeneTFVars = model.Likelihood.sigmasTF;
     end
 end
-
+fbgn
 TimesFF = TimesF(model.Likelihood.startTime:end);
 ok = date;
-fileName = [demdata 'Test' 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointAct]; 
+fileName = [demdata 'Test' 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointAct char(fbgn)]; 
 
 NumOfTFs = model.Likelihood.numTFs;
 
@@ -37,7 +38,13 @@ for r=1:NumOfReplicas
   % 
   GG = zeros(NumOfSamples,model.Likelihood.sizTime);    
   for t=1:NumOfSamples
-      GG(t,:) = samples.predGenes(r,:,t);
+      LikParams = model.Likelihood; 
+      LikParams.kinetics = samples.kinetics(:,t)';
+      LikParams.W = samples.Weights(:,t)';
+      LikParams.W0 = samples.Weights0(t);
+      LikParams.TF = TFs{samples.TFindex(t)};  
+      predgen = gpmtfComputeGeneODE(LikParams, zeros(NumOfTFs, SizF), r, 1);
+      GG(t,:) = predgen;
   end
      
   mu = mean(GG)';
@@ -61,6 +68,7 @@ for r=1:NumOfReplicas
      
   if printResults
      print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneExp' num2str(gg)]);
+     print('-dpng', [dirrhtml fileName 'Replica' num2str(r) 'GeneExp' num2str(gg)]);
   end
   titlestring = 'Expressions: ';
   titlestring = [titlestring, num2str(r)]; 
@@ -78,6 +86,7 @@ title('Basal rates','fontsize', 20);
 
 if printResults
       print('-depsc', [dirr fileName 'Basal']);
+      print('-dpng', [dirrhtml fileName 'Basal']);
 end
   figure;   
 hist(samples.kinetics(3,:));
@@ -85,6 +94,7 @@ title('Sensitivities','fontsize', 20);
 
 if printResults
       print('-depsc', [dirr fileName 'Sensitivity']);
+      print('-dpng', [dirrhtml fileName 'Sensitivity']);
 end
 figure;
 hist(samples.kinetics(2,:));
@@ -92,6 +102,7 @@ title('Decays','fontsize', 20);
 
 if printResults
       print('-depsc', [dirr fileName 'Decay']);
+      print('-dpng', [dirrhtml fileName 'Decay']);
 end
 figure;
 hist(samples.kinetics(4,:));
@@ -99,6 +110,7 @@ title('Initial conditions','fontsize', 20);
 
 if printResults
       print('-depsc', [dirr fileName 'InitCond']);
+      print('-dpng', [dirrhtml fileName 'InitCond']);
 end
 
 
@@ -108,6 +120,7 @@ figure;
 hist(W1);
 if printResults
      print('-depsc', [dirr fileName 'IntWeights' 'TF' num2str(j)]);
+     print('-dpng', [dirrhtml fileName 'IntWeights' 'TF' num2str(j)]);
 end
 titlestring = 'Interaction weights: '; 
 titlestring = [titlestring, num2str(j)];
@@ -120,5 +133,6 @@ figure;
 hist(W0);
 if printResults
       print('-depsc', [dirr fileName 'IntBias']);
+      print('-dpng', [dirrhtml fileName 'IntBias']);
 end
 title('Interaction biases','fontsize', 20);
