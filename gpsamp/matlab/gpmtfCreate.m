@@ -286,8 +286,8 @@ model.prior.GPkernel.lenghtScale.type = 'normal';
 model.prior.GPkernel.lenghtScale.constraint = 'positive';
 model.prior.GPkernel.lenghtScale.priorSpace = 'log';
 ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
-model.prior.GPkernel.lenghtScale.a = 2*log(ok); % mean 
-model.prior.GPkernel.lenghtScale.b = 2;         % variance
+model.prior.GPkernel.lenghtScale.mu = 2*log(ok); % mean 
+model.prior.GPkernel.lenghtScale.sigma2 = 2;         % variance
 %model.prior.GPkernel.lenghtScale.a = 1;
 %model.prior.GPkernel.lenghtScale.b = 1/(ok^2);
  
@@ -315,5 +315,8 @@ model.constraints.geneTFsensitivity_value = 1;
 % constraints on the interaction weigths between TF and genes 
 model.constraints.W = options.constraints.X;
 
+
+% constraints on the interaction weigths between TF and genes 
+model.constraints.W0 = options.constraints.W0;
 % constraint on TF functions across different replicas  
 model.constraints.replicas = options.constraints.replicas;

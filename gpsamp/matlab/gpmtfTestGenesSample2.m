@@ -37,7 +37,7 @@ num_stored = floor(Iters/StoreEvery);
 samples.TFindex = zeros(1, num_stored);
 samples.predGenes = zeros(NumOfReplicas, SizF, num_stored);
 samples.kinetics = zeros(4, num_stored);
-samples.Weights = zeros(5, num_stored);
+samples.Weights = zeros(NumOfTFs, num_stored);
 samples.Weights0 = zeros(1, num_stored);
 samples.LogL = zeros(1, num_stored);
 
@@ -122,7 +122,6 @@ acceptF = 0;
 acceptKin = zeros(1,NumOfGenes);
 acceptW = zeros(1,NumOfGenes);
 numSamples = size(TFs,2);
-
 %
 for it = 1:(BurnInIters + Iters) 
     %
@@ -311,9 +310,15 @@ for it = 1:(BurnInIters + Iters)
         end
         Wnew(1:NumOfTFs) = Wnew(1:NumOfTFs).*model.constraints.W(j,:);
        
+        if model.constraints.W0(j) == 0
+           Wnew(NumOfTFs + 1) = 0;
+        end
+        
         LikParams1 = LikParams;
         LikParams1.W(j,:) = Wnew(1:NumOfTFs);
         LikParams1.W0(j)=Wnew(end);
+        
+       
       
         newLogLik = zeros(1,NumOfReplicas);
         if strcmp(model.constraints.replicas,'free')

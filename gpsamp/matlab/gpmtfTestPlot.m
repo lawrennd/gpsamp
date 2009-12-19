@@ -1,4 +1,4 @@
-function gpmtfTestPlot(model, Genes, GeneVars, fbgn, samples, TFs, demdata, printResults)
+function gpmtfTestPlot(model, Genes, GeneVars, fbgn, samples, TFs, demdata, printResults, Grtruth)
 
 dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
 dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
@@ -18,7 +18,7 @@ if isfield(model.Likelihood,'GenesTF')
         GeneTFVars = model.Likelihood.sigmasTF;
     end
 end
-fbgn
+
 TimesFF = TimesF(model.Likelihood.startTime:end);
 ok = date;
 fileName = [demdata 'Test' 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointAct char(fbgn)]; 
@@ -81,32 +81,68 @@ for r=1:NumOfReplicas
 end
 
 figure;
+h = hist(samples.kinetics(1,:));
 hist(samples.kinetics(1,:));
 title('Basal rates','fontsize', 20);
+% ground truth 
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.kinetics(1) Grtruth.kinetics(1)], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
+    
 
 if printResults
       print('-depsc', [dirr fileName 'Basal']);
       print('-dpng', [dirrhtml fileName 'Basal']);
 end
-  figure;   
+figure;   
+h = hist(samples.kinetics(3,:));
 hist(samples.kinetics(3,:));
 title('Sensitivities','fontsize', 20);
+% ground truth 
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.kinetics(3) Grtruth.kinetics(3)], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
+
+
 
 if printResults
       print('-depsc', [dirr fileName 'Sensitivity']);
       print('-dpng', [dirrhtml fileName 'Sensitivity']);
 end
 figure;
+h = hist(samples.kinetics(2,:));
 hist(samples.kinetics(2,:));
 title('Decays','fontsize', 20);
+% ground truth 
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.kinetics(2) Grtruth.kinetics(2)], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
+
 
 if printResults
       print('-depsc', [dirr fileName 'Decay']);
       print('-dpng', [dirrhtml fileName 'Decay']);
 end
 figure;
+h = hist(samples.kinetics(4,:));
 hist(samples.kinetics(4,:));
 title('Initial conditions','fontsize', 20);
+% ground truth 
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.kinetics(4) Grtruth.kinetics(4)], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
 
 if printResults
       print('-depsc', [dirr fileName 'InitCond']);
@@ -117,7 +153,16 @@ end
 for j=1:NumOfTFs
 W1 = samples.Weights(j,:);
 figure;
+h = hist(W1);
 hist(W1);
+% ground truth 
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.W(j) Grtruth.W(j)], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
+
 if printResults
      print('-depsc', [dirr fileName 'IntWeights' 'TF' num2str(j)]);
      print('-dpng', [dirrhtml fileName 'IntWeights' 'TF' num2str(j)]);
@@ -129,8 +174,17 @@ title(titlestring,'fontsize', 20);
 end
 
 W0 = samples.Weights0';
+
 figure;
+h = hist(W0);
 hist(W0);
+if nargin == 9
+    %
+    hold on;
+    plot([Grtruth.W0 Grtruth.W0], [0 max(h)], 'LineWidth', 5,'Color', 'r');
+    %
+end
+
 if printResults
       print('-depsc', [dirr fileName 'IntBias']);
       print('-dpng', [dirrhtml fileName 'IntBias']);

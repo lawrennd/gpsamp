@@ -90,6 +90,9 @@ else
         options.constraints.initialConds = ones(1,NumOfGenes); 
         %
         options.constraints.geneTFsensitivity = zeros(1,numTFs);
+        
+        % constrain interaction bias to be zero
+        options.constraints.W0 = ones(1,numTFs);
         %
         % CONSTRAINTS coming from side information about which TFs do not regulate 
         % certain genes. This means that certain values in the interaction 
