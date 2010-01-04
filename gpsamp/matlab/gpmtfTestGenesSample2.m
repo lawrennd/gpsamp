@@ -47,6 +47,12 @@ if strcmp(model.constraints.InitialConds_value,'fixed')==1
     fixInitCond = 1;
 end
 
+% check if the observation noise is known/fixed
+fixsigma2 = 0;
+if strcmp(model.constraints.sigmas,'fixed')
+    fixsigma2 = 1;
+end
+
 % check if the interaction weigths in the connectivity network are
 % constrained to be positive
 posw = 0; 
@@ -301,24 +307,45 @@ for it = 1:(BurnInIters + Iters)
     % sample the interaction weights 
     for j=1:NumOfGenes
         % 
-        %  
+        %   
+        newLogProp = 0;  % forward Hastings Q(w_t+1 | w_t)
+        oldLogProp = 0;  % backward Hastings Q(w_t| w_t+1)  
         if posw == 1
-            Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + log([LikParams.W(j,:), LikParams.W0(j)]+eps);     
-            Wnew = exp(Wnew);
+            %
+            % sample from a truncated Gaussian using rejection
+            % sampling 
+            while 1
+                trW = randn(1,NumOfTFs).*sqrt(PropDist.W(j,1:NumOfTFs)) + LikParams.W(j,:);  
+                if min(trW) >= 0
+                    break; 
+                end
+            end 
+            Wnew(1:NumOfTFs) = trW;
+            % sample also the bias which is allowed to be negative
+            Wnew0 = randn.*sqrt(PropDist.W(j,NumOfTFs+1)) +  LikParams.W0(j);
+            Wnew = [trW, Wnew0]; 
+            
+            trprior.sigma2 = PropDist.W(j,1:NumOfTFs); 
+            trprior.mu = LikParams.W(j,:); 
+        
+            newLogProp = sum(lntruncNormalpdf(trW, trprior)); 
+            
+            trprior.mu = trW; 
+            oldLogProp  = sum(lntruncNormalpdf(LikParams.W(j,:), trprior)); 
+            
+            %
         else
             Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + [LikParams.W(j,:), LikParams.W0(j)];     
         end
         Wnew(1:NumOfTFs) = Wnew(1:NumOfTFs).*model.constraints.W(j,:);
-       
+        
         if model.constraints.W0(j) == 0
            Wnew(NumOfTFs + 1) = 0;
         end
-        
+       
         LikParams1 = LikParams;
         LikParams1.W(j,:) = Wnew(1:NumOfTFs);
         LikParams1.W0(j)=Wnew(end);
-        
-       
       
         newLogLik = zeros(1,NumOfReplicas);
         if strcmp(model.constraints.replicas,'free')
@@ -346,8 +373,8 @@ for it = 1:(BurnInIters + Iters)
         % Metropolis-Hastings to accept-reject the proposal
         oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2) + oldLogPriorW0(j);
         newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)) + LogPriorWnew0; 
-        %
-        [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
+         
+        [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
         if accept == 1
            LikParams.W(j,:) = Wnew(1:NumOfTFs);
            LikParams.W0(j) = Wnew(end);
@@ -362,16 +389,40 @@ for it = 1:(BurnInIters + Iters)
         %
     end
     
+    % sample the noise of the likelihood when is free parameter.
+    % The posterior is gamma so this step involves exact simualtion from
+    % the gamma distribution
+    if fixsigma2 == 0
+       sumSquerrors1 = oldLogLik + 0.5*SizG*log(2*pi*repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1));
+       sumSquerrors1 = -2*repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1).*sumSquerrors1;
+       sumSquerrors = sum(sumSquerrors1,1);
+                
+       anew = model.prior.invsigma2.a + 0.5*NumOfReplicas*SizG;
+       bnew = model.prior.invsigma2.b + 0.5*sumSquerrors;
+       newinvsigma2 = gamrnd(anew,1./bnew);
+       Nnewsigma2 = 1./newinvsigma2;
+       LikParams.sigmas = repmat(Nnewsigma2(:),[1 SizG NumOfReplicas]);
+       % 
+       okk = repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1);
+       oldLogLik = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+       % 
+       %
+    end
+    
+    
     %
     % keep samples after burn in
     if (it > BurnInIters)  & (mod(it,StoreEvery) == 0)
         %
         cnt = cnt + 1;
         samples.TFindex(cnt) = TFindex;
-        samples.predGenes(:,:,cnt) = PredictedGenes;
+        %samples.predGenes(:,:,cnt) = PredictedGenes;
         samples.kinetics(:,cnt) = LikParams.kinetics;
         samples.Weights(:,cnt) = LikParams.W;
         samples.Weights0(:,cnt) = LikParams.W0;
+        if fixsigma2 == 0
+           samples.sigmas(cnt) = LikParams.sigmas(1,1,1);
+        end
         samples.LogL(cnt) = sum(oldLogLik(:));
         %
     end

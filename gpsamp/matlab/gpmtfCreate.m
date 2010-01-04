@@ -247,9 +247,10 @@ model.prior.weight0.sigma2 = 1.5;
 if strcmp(options.spikePriorW,'no')
     %
     model.prior.weights.type = 'normal'; %'normal' or Laplace
-    if strcmp(model.Likelihood.jointAct,'michMenten')
+    if strcmp(model.Likelihood.jointAct,'michMenten') | strcmp(options.constraints.spaceW,'positive'); 
     model.prior.weights.constraint = 'positive';
-    model.prior.weights.priorSpace = 'log';
+    model.prior.weights.type = 'truncNormal';
+    model.prior.weights.priorSpace = 'lin';
     model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
     else
     model.prior.weights.constraint = 'real';
@@ -261,9 +262,16 @@ if strcmp(options.spikePriorW,'no')
 else
     %
     % use the two mixture model with the spike 
-    model.prior.weights.type = 'twoMixNormal';
+    model.prior.weights.type = 'spikeNormal';
+    if strcmp(model.Likelihood.jointAct,'michMenten') | strcmp(options.constraints.spaceW,'positive'); 
+    model.prior.weights.constraint = 'positive';
+    model.prior.weights.type = 'spikeTruncNormal';
+    model.prior.weights.priorSpace = 'lin';
+    model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
+    else    
     model.prior.weights.constraint = 'real';
     model.prior.weights.priorSpace = 'lin';
+    end
     model.prior.weights.mu = 0;
     model.prior.weights.sigma2 = 1.5;
     model.prior.weights.spikeMu = 0; 
