@@ -54,11 +54,11 @@ TFset = [2 3 5];
 for cnt=1:size(samples.F,2)
     modelTest.Likelihood.kineticsTF = samples.kineticsTF(TFset,:,cnt);
     for r=1:modelTest.Likelihood.numReplicas
-        TFs{cnt}(:,:,r) = gpmtfComputeTF(modelTest.Likelihood, samples.F{cnt}(TFset,:,r), 1:numTFs);
+        TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, samples.F{cnt}(TFset,:,r), 1:numTFs);
     end
     samples.F{cnt} = samples.F{cnt}(TFset,:,r);
     
-    TFs{cnt} = log(TFs{cnt});
+    TFs{cnt} = log(TFs{cnt} + 1e-100);
 end
 samples.kinetics = samples.kinetics(TFset, :);
 samples.kineticsTF = samples.kineticsTF(TFset, :);

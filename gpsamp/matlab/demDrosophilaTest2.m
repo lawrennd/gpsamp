@@ -5,12 +5,12 @@ storeRes = 0;
 printPlot = 0;
 
 %%%%%%%%%%%%%%  Load the test genes data  %%%%%%%%%%%%%%%% 
-load /usr/local/michalis/mlprojects/gpsamp/matlab/datasets/drosophila_data;
-load /usr/local/michalis/mlprojects/gpsamp/matlab/datasets/trainScaleDros;
-load /usr/local/michalis/mlprojects/gpsamp/matlab/datasets/testset;
-load /usr/local/michalis/mlprojects/gpsamp/matlab/drosTrainTotal;
+load datasets/drosophila_data;
+load datasets/trainScaleDros;
+load datasets/testset;
+load drosTrainTotal;
 
-numGenes = 100;
+numGenes = 500;
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
 GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 
@@ -49,16 +49,16 @@ if strcmp(modelTest.constraints.replicas,'free')
     for cnt=1:size(samples.F,2)
         modelTest.Likelihood.kineticsTF = samples.kineticsTF(:,:,cnt);
         for r=1:modelTest.Likelihood.numReplicas
-            TFs{cnt}(:,:,r) = gpmtfComputeTF(modelTest.Likelihood, samples.F{cnt}(:,:,r), 1:numTFs);
+            TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, samples.F{cnt}(:,:,r), 1:numTFs);
         end
-        TFs{cnt} = log(TFs{cnt});
+        TFs{cnt} = log(TFs{cnt} + 1e-100);
     end
 else 
     % replicas are coupled 
     for cnt=1:size(samples.F,2)
         modelTest.Likelihood.kineticsTF = samples.kineticsTF(:,:,cnt);
-        TFs{cnt} = gpmtfComputeTF(modelTest.Likelihood, samples.F{cnt}, 1:numTFs);
-        TFs{cnt} = log(TFs{cnt});
+        TFs{cnt} = gpmtfComputeTFODE(modelTest.Likelihood, samples.F{cnt}, 1:numTFs);
+        TFs{cnt} = log(TFs{cnt} + 1e-100);
     end
     %
 end
