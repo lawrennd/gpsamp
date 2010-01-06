@@ -38,9 +38,9 @@ function fx = michMenten(ff, W, NetX)
 SizF = size(ff,2);
 
 % find all repressors 
-R = (netX==-1);
+R = (NetX==-1);
 % find all activators 
-A = (netX==1);
+A = (NetX==1);
 xp = (W.*A)*ff;
 xpR = W.*R;
 
