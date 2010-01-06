@@ -239,7 +239,7 @@ model.M = M;
 PropDist.kin = 0.5*ones(NumOfGenes,SizKin);
 % interaction weigths and bias 
 PropDist.W = 0.5*ones(NumOfGenes,NumOfTFs+1);
-PropDist.LengSc = 0.1*(1/model.prior.GPkernel.lenghtScale.b)*ones(1,NumOfTFs);
+PropDist.LengSc = 0.1*(1/model.prior.GPkernel.lenghtScale.sigma2)*ones(1,NumOfTFs);
 
 % additional proposal distribution for the TF kinetic parameters
 if isfield(model.Likelihood,'GenesTF')
@@ -272,9 +272,9 @@ while 1
    if isfield(model.Likelihood,'GenesTF')
        accRateTFKin = accRates.TFKin;
    end
-
-   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
+   
    if AdaptOps.disp == 1
+   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
    fprintf(1,'Acceptance Rates for GP functions\n');
    for jj=1:NumOfTFs 
        if strcmp(model.constraints.replicas,'free')
@@ -303,9 +303,8 @@ while 1
    else
        fprintf(1,'\n');
    end
-   end
    fprintf(1,'------------------------------- \n',cnt+1);
-   
+   end   
        
    if (min(accRateKin(:))>15) & (min(accRateW(:))>15) & (min(accRateLengSc(:))>15)
    %

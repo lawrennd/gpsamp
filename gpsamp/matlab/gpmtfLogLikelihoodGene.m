@@ -19,7 +19,7 @@ function [loglikval, PredGenes] = gpmtfLogLikelihoodGene(LikParams, F, R, Gindex
 
 
 %Genes = LikParams.Genes(:,:,R);
-PredGenes = gpmtfComputeGeneODE(LikParams, F, Gindex);
+PredGenes = gpmtfComputeGeneODE(LikParams, F, R, Gindex);
 
 %uu = LikParams.TimesF(LikParams.startTime:end);
 %[commonSlots, comInds] = intersect(uu,LikParams.TimesG);

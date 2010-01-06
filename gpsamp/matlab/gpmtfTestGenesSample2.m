@@ -35,7 +35,7 @@ NumOfTFs = model.Likelihood.numTFs;
 
 num_stored = floor(Iters/StoreEvery);
 samples.TFindex = zeros(1, num_stored);
-samples.predGenes = zeros(NumOfReplicas, SizF, num_stored);
+%samples.predGenes = zeros(NumOfReplicas, SizF, num_stored);
 samples.kinetics = zeros(4, num_stored);
 samples.Weights = zeros(NumOfTFs, num_stored);
 samples.Weights0 = zeros(1, num_stored);
@@ -401,10 +401,15 @@ for it = 1:(BurnInIters + Iters)
        bnew = model.prior.invsigma2.b + 0.5*sumSquerrors;
        newinvsigma2 = gamrnd(anew,1./bnew);
        Nnewsigma2 = 1./newinvsigma2;
+       
+       %[Nnewsigma2 LikParams.sigmas(1,1,1)]
+       
        LikParams.sigmas = repmat(Nnewsigma2(:),[1 SizG NumOfReplicas]);
        % 
-       okk = repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1);
+       okk = repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1); 
+       
        oldLogLik = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+       
        % 
        %
     end

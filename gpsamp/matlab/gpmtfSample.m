@@ -144,21 +144,21 @@ end
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
 TrspaceKin = model.prior.kinetics.priorSpace; 
 Likkin = feval(TrspaceKin, LikParams.kinetics+eps);
-oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics.a, model.prior.kinetics.b);
+oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics);
 if isfield(model.Likelihood,'GenesTF')
   LikkinTF = feval(TrspaceKin, LikParams.kineticsTF+eps); 
-  oldLogPriorKinTF = feval(lnpriorKin, LikkinTF, model.prior.kinetics.a, model.prior.kinetics.b);
+  oldLogPriorKinTF = feval(lnpriorKin, LikkinTF, model.prior.kinetics);
 end      
 % evaluation of the prior for the interaction weights
 lnpriorW = ['ln',model.prior.weights.type,'pdf'];
 TrspaceW = model.prior.weights.priorSpace; 
-LikW = feval(TrspaceW, [LikParams.W, LikParams.W0]+eps);
-oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights.mu, model.prior.weights.sigma2);
+LikW = feval(TrspaceW, [LikParams.W, LikParams.W0]);
+oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights);
 % log prior of the lengthscale lengthscale 
 lnpriorLengSc = ['ln',model.prior.GPkernel.lenghtScale.type,'pdf'];
 %oldLogPriorLengSc = feval(lnpriorLengSc, exp(2*model.GP.logtheta(:,1)), model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b);
 for j=1:NumOfTFs
-oldLogPriorLengSc(j) = feval(lnpriorLengSc, 2*model.GP{j}.logtheta(1), model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b);
+oldLogPriorLengSc(j) = feval(lnpriorLengSc, 2*model.GP{j}.logtheta(1), model.prior.GPkernel.lenghtScale);
 end
 
 cnt = 0;
@@ -378,7 +378,7 @@ for it = 1:(BurnInIters + Iters)
         end
         %        
         Likkin = feval(TrspaceKin, TFKineticsNew);
-        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics.a, model.prior.kinetics.b);
+        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
         
         % Metropolis-Hastings to accept-reject the proposal
         newP = sum(newLogLik(:)) + sum(LogPriorKinNew(:));
@@ -435,7 +435,7 @@ for it = 1:(BurnInIters + Iters)
         end
         %        
         Likkin = feval(TrspaceKin, KineticsNew);
-        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics.a, model.prior.kinetics.b);
+        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
         % Metropolis-Hastings to accept-reject the proposal
         oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
         newP = sum(newLogLik(:))+ sum(LogPriorKinNew(:)); 
@@ -490,7 +490,7 @@ for it = 1:(BurnInIters + Iters)
         end
         
         LikW = feval(TrspaceW, Wnew+eps);
-        LogPriorWnew = feval(lnpriorW, LikW, model.prior.weights.mu, model.prior.weights.sigma2);
+        LogPriorWnew = feval(lnpriorW, LikW, model.prior.weights);
         % Metropolis-Hastings to accept-reject the proposal
         oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2);
         newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)); 
@@ -651,7 +651,7 @@ for it = 1:(BurnInIters + Iters)
             oldlogGP = oldlogGP - 0.5*temp'*temp;
         end
             
-        LogPriorLengScnew = feval(lnpriorLengSc, newlogEll, model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b);
+        LogPriorLengScnew = feval(lnpriorLengSc, newlogEll, model.prior.GPkernel.lenghtScale);
         % Metropolis-Hastings to accept-reject the proposal
         oldlogGP = oldlogGP + oldLogPriorLengSc(j);
         newlogGP = newlogGP + LogPriorLengScnew; 
@@ -736,16 +736,20 @@ for it = 1:(BurnInIters + Iters)
         cnt = cnt + 1;
         samples.F{cnt} = F;
         samples.Fu{cnt} = Fu;
-        samples.predGenes{cnt} = PredictedGenes;
+        %samples.predGenes{cnt} = PredictedGenes;
         samples.kinetics(:,:,cnt) = LikParams.kinetics;
         samples.Weights(:,:,cnt) = LikParams.W;
         samples.Weights0(:,cnt) = LikParams.W0;
-        samples.Taus(:,cnt) = LikParams.Taus(:);
-        samples.Tausindex(:,cnt) = LikParams.Tausindex(:);
+        %
+        if model.Likelihood.tauMax < 0
+           samples.Taus(:,cnt) = LikParams.Taus(:);
+           samples.Tausindex(:,cnt) = LikParams.Tausindex(:);
+        end
+        %
         if isfield(model.Likelihood,'GenesTF')
             samples.kineticsTF(:,:,cnt) = LikParams.kineticsTF;
             samples.LogLTF(cnt) = sum(oldLogLikTF(:));
-            samples.predGenesTF{cnt} = PredictedGenesTF;
+            %samples.predGenesTF{cnt} = PredictedGenesTF;
             if fixsigma2TF == 0
                 samples.sigmasTF(:,:,cnt) = LikParams.sigmasTF(:,:,1);
             end
@@ -753,11 +757,11 @@ for it = 1:(BurnInIters + Iters)
         if fixsigma2 == 0
            samples.sigmas(:,:,cnt) = LikParams.sigmas(:,:,1);
         end
-        if netLearn == 1
-            samples.NetX(:,:,cnt) = LikParams.Net_X;
-        end
+        %if netLearn == 1
+        %    samples.NetX(:,:,cnt) = LikParams.Net_X;
+        %end
         for jin=1:NumOfTFs
-            samples.logthetas(jin,:,cnt) = model.GP{jin}.logtheta;
+            samples.logthetas(jin,cnt) = model.GP{jin}.logtheta(1);
         end
         samples.LogL(cnt) = sum(oldLogLik(:));
         %save(trainOps.ResFile,'samples','model');

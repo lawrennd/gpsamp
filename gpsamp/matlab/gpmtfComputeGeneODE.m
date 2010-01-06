@@ -1,4 +1,4 @@
-function PredGenes = gpmtfComputeGeneODE(LikParams, F, Gindex)
+function PredGenes = gpmtfComputeGeneODE(LikParams, F, R, Gindex)
 % Description: Computes the log likelihood of the linear differential
 %              equation model with possibly multiple TFs 
 %
@@ -20,8 +20,12 @@ function PredGenes = gpmtfComputeGeneODE(LikParams, F, Gindex)
 
 Ngenes = size(Gindex,2);
 
-%
-F = gpmtfComputeTF(LikParams, F, 1:LikParams.numTFs);
+% This useful to speed up computation when TF are fixed (therefore precomputed once)
+if ~isempty(LikParams.TF) 
+   F = LikParams.TF(:,:,R);
+else
+   F = gpmtfComputeTF(LikParams, F, 1:LikParams.numTFs);
+end
 %
 
 % compute the joint activation function of the TFs 
