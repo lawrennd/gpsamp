@@ -34,6 +34,7 @@ mcmcoptions.train.Burnin = 1000;
 options = gpmtfOptions(ones(1,12,3),numTFs); 
 options.jointAct = 'sigmoid';
 options.spikePriorW = 'yes';
+options.constraints.spaceW = '';
 % prior probablity for each interaction weight to be around zero 
 % for each TF
 options.spikepriors = 1 - [0.0751 0.1163 0.1729  0.0378  0.2387];
