@@ -14,5 +14,5 @@ if (min(x) >= prior.mu) &  (min(x) >= prior.spikeMu)
    g2 = 2*g2;
    logpdf = log((1-prior.pis).*g1 + prior.pis.*g2);
 else
-    disp('x cannot be smaller than the mean of the borad Gaussian')
+    disp('x cannot be smaller than zero')
 end
