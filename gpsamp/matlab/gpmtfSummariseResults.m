@@ -38,9 +38,9 @@ for k=1:length(testGenes),
   switch method,
    case 'meansigmaweight',
     if isfield(testGenes{k}, 'sigmas'),
-      results(:, k) = mean(W .* repmat(testGenes{K}.sigmas, [d, 1]), 2);
+      results(:, k) = mean(W .* repmat(testGenes{k}.sigmas, [d, 1]), 2);
     else
-      results(:, k) = mean(W .* repmat(testGenes{K}.kinetics(2, :), [d, 1]), 2);
+      results(:, k) = mean(W .* repmat(testGenes{k}.kinetics(2, :), [d, 1]), 2);
     end
    case 'meanweight',
     results(:, k) = mean(W, 2);
