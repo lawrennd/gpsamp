@@ -40,8 +40,8 @@ for r=1:NumOfReplicas
   for t=1:NumOfSamples
       LikParams = model.Likelihood; 
       LikParams.kinetics = samples.kinetics(:,t)';
-      LikParams.W = samples.Weights(:,t)';
-      LikParams.W0 = samples.Weights0(t);
+      LikParams.W = samples.W(:,t)';
+      LikParams.W0 = samples.W0(t);
       LikParams.TF = TFs{samples.TFindex(t)};  
       predgen = gpmtfComputeGeneODE(LikParams, zeros(NumOfTFs, SizF), r, 1);
       GG(t,:) = predgen;
@@ -61,7 +61,7 @@ for r=1:NumOfReplicas
   plot(TF,mu,'b','lineWidth',3);
    
   plot(TimesG,Genes(1,:,r),'rx','markersize', 14','lineWidth', 2);
-  if strcmp(model.constraints.sigmas,'fixed')
+  if model.Likelihood.noiseModel.active(1) == 1 & sum(model.Likelihood.noiseModel.active(2:3)==0)
      errorbar(TimesG,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
   end
   axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 0.95*min(min(Genes(1,:,r))) 1.05*max(max(Genes(1,:,r)))]);
@@ -151,7 +151,7 @@ end
 
 
 for j=1:NumOfTFs
-W1 = samples.Weights(j,:);
+W1 = samples.W(j,:);
 figure;
 h = hist(W1);
 hist(W1);
@@ -173,7 +173,7 @@ titlestring = [titlestring, ' TF'];
 title(titlestring,'fontsize', 20);
 end
 
-W0 = samples.Weights0';
+W0 = samples.W0';
 
 figure;
 h = hist(W0);

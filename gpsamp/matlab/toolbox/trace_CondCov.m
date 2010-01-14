@@ -1,4 +1,4 @@
-function [f, df] = trace_CondCov(Xu, X, logtheta)
+function [f, df] = trace_CondCov(Xu, X, logtheta, FixedFirst)
 % Description:  Function and gradient evalaution with respect to  pseudo-inputs 
 %               of the trace of the conditional prior (given inducing variables)
 %               for the expenential kernel with varied length-scale (ARD kernel)
@@ -53,6 +53,10 @@ for d=1:D
     dXu(:,d) = -(sum(Knm.*Cnm1,1) - sum(Kmm.*BB1,1))'; 
     %
 end
+
 %
 dXu = 2*dXu;
+if FixedFirst == 1
+    dXu(1,:) = zeros(1,D);
+end
 df = reshape(dXu, m*D, 1);

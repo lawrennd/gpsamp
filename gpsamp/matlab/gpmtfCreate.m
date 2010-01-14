@@ -96,26 +96,116 @@ model.Likelihood.numReplicas = NumOfReplicas;
 model.Likelihood.numTFs = options.numTFs;
 
 model.Likelihood.Genes = Genes;
-% gene variances
-if ~isempty(GenesVar)
-   model.Likelihood.sigmas = GenesVar;
-   model.constraints.sigmas = 'fixed';  % 'free' or 'fixed'
+
+% the noise model for the likelihoods
+if (size(options.noiseModel,2) < 2) | (size(options.noiseModel,2) == 2  & strcmp(options.noiseModel{1},'pumaWhite') )
+    %
+    noisetype = options.noiseModel{1};
+    for g = 2:size(options.noiseModel,2)
+        noisetype = strcat(noisetype, '+'); 
+        noisetype = strcat(noisetype, options.noiseModel{g});
+    end
+    model.Likelihood.noiseModel.type = noisetype; 
+    
+    active = [0 0 0];
+    for g = 1:size(options.noiseModel,2)
+    % 
+        switch options.noiseModel{g}
+        % 
+           case 'pumaWhite'
+           %
+              active(1) = 1;
+              if ~isempty(GenesVar)   
+                 model.Likelihood.noiseModel.pumaSigma2 = GenesVar;
+              else
+                 warning('PUMA variances are not provided')  
+              end
+           %   
+           case 'white' 
+           % 
+              active(2) = 1;
+              % *Learned* white variance per gene
+              model.Likelihood.noiseModel.sigma2 = 0.05*ones(1, NumOfGenes);
+           %
+           case 'rbf'
+              active(3) = 1;
+              %
+              % full covariance matrix (separate for each gene) computed using 
+              % the rbf kernel 
+              X = TimesG(:);
+              X2 = -2*X*X' + repmat(sum(X.*X,2)', NumOfTimes, 1) + repmat(sum(X.*X,2), 1, NumOfTimes);
+         
+              model.Likelihood.noiseModel.X2 = X2;
+              model.Likelihood.noiseModel.sigma2f = 0.02*ones(1,  NumOfGenes);
+              lengthscale = (max(TimesG(:))-min(TimesG(:)))/10;
+              model.Likelihood.noiseModel.lengthScale = lengthscale*ones(1,  NumOfGenes);
+          %
+          %
+        end
+    end
+    %
+    model.Likelihood.noiseModel.active = active;
+   
+    % rbf GP nosie model is used, then precomputed the *WHOLE* noise
+    % covariance matrix, its determinant and its inverse Cholesky
+    % decomposition
+    % store kernel matrix and Choleksy decomposition
+    if active(3) == 1
+       % 
+       % add PUMA variances firstly  
+       if active(1) == 1
+          % 
+          for r=1:NumOfReplicas
+          for j=1:NumOfGenes 
+              sigma2f = model.Likelihood.noiseModel.sigma2f(j);
+              lengthscale = model.Likelihood.noiseModel.lengthScale(j);
+              
+              model.Likelihood.noiseModel.totalSigma{r}(:,:,j) = sigma2f*exp(-(0.5/(lengthscale^2)).*X2) + diag(GenesVar(j,:,r));
+                  
+              L = jitterChol( model.Likelihood.noiseModel.totalSigma{r}(:,:,j)  )'; % lower triangular 
+              
+              model.Likelihood.noiseModel.InvL{r}(:,:,j) = L\eye(size(L,1)); 
+              model.Likelihood.noiseModel.LogDetSigma(j,r) = 2*sum(log(diag(L)));
+          end
+          end
+          %
+       else
+          % 
+          % all replicas have the same covariance matrix 
+          for j=1:NumOfGenes 
+              sigma2f = model.Likelihood.noiseModel.sigma2f(j);
+              lengthscale = model.Likelihood.noiseModel.lengthScale(j);
+              
+              model.Likelihood.noiseModel.totalSigma(:,:,j) = sigma2f*exp(-(0.5/(lengthscale^2)).*X2);
+              L =jitterChol( model.Likelihood.noiseModel.totalSigma(:,:,j)  )'; % lower triangular 
+              model.Likelihood.noiseModel.InvL(:,:,j) = L\eye(size(L,1)); 
+              model.Likelihood.noiseModel.LogDetSigma(j) = 2*sum( log(diag(L)) );
+          end
+          %
+       end
+       %
+    end
+    %
+    %
 else
-   model.Likelihood.sigmas = 0.05*ones(NumOfGenes, NumOfTimes, NumOfReplicas);
-   model.constraints.sigmas = 'free';  % 'free' or 'fixed'
+    error('You cannot have more than 2 terms in options.noiseModel and the first must ''pumaWhite'' (terms: ''pumaWhite'', ''white'',''rbf'')');
+    return;
 end
-
-
+ 
+  
 if ~isempty(GenesTF)
    % 
    model.Likelihood.GenesTF = GenesTF;
-   if ~isempty(GenesTFVar)
-      model.Likelihood.sigmasTF = GenesTFVar; 
-      model.constraints.sigmasTF = 'fixed';  % 'free' or 'fixed'
+   
+   % the noise in the elikelihood either will be provided by PUMA 
+   % or a separate variance will be inferred by MCMC
+   if ~isempty(GenesVar)  
+       model.Likelihood.noiseModelTF.type = 'pumaWhite'; 
+       model.Likelihood.noiseModelTF.sigma2 = GenesTFVar;
    else
-      model.Likelihood.sigmasTF = 0.05*ones(options.numTFs, NumOfTimes, NumOfReplicas);
-      model.constraints.sigmasTF = 'free';  % 'free' or 'fixed'
-   end   
+       model.Likelihood.noiseModelTF.type = 'white'; 
+       model.Likelihood.noiseModelTF.sigma2 = 0.05*ones(1, options.numTFs); 
+   end
    %
 end
 
@@ -209,21 +299,23 @@ model.GP{1}.X2 = -2*X*X' + repmat(sum(X.*X,2)',n,1) + repmat(sum(X.*X,2),1,n);
 % define the prior of the TFs regulation types 
 % (repression, non-regulation, activation)
                        % repression, non-regulation, activation
-model.prior.Net.type = 'discrete';
-model.prior.Net.contraint = 'probability';
-model.prior.Net.priorSpace = 'lin'; % it means NoTransform;
-model.prior.Net.prob = [0.025 0.95 0.025];
-model.prior.Net.readme = 'The 3 prior probabilities correspond to: repression, non-regulation, activation';
+%model.prior.Net.type = 'discrete';
+%model.prior.Net.contraint = 'probability';
+%model.prior.Net.priorSpace = 'lin'; % it means NoTransform;
+%model.prior.Net.prob = [0.025 0.95 0.025];
+%model.prior.Net.readme = 'The 3 prior probabilities correspond to: repression, non-regulation, activation';
 
 
 % prior for the kinetics parameters
+model.prior.kinetics.assignedTo = 'kinetic parameters of the ODEs'; 
 model.prior.kinetics.type = 'normal';
-%model.prior.kinetics.readme = 'kinetics are: decays, sensitivities, basals, initial conds'
 model.prior.kinetics.contraint = 'positive';
 model.prior.kinetics.priorSpace = 'log';
 model.prior.kinetics.mu = -0.5; % mean 
 model.prior.kinetics.sigma2 = 2; % variance
 
+
+model.prior.delays.assignedTo = 'delay parameters in the ODEs'; 
 model.prior.delays.type = 'discrete'; 
 a = 1; 
 AllTaus = model.Likelihood.tauMax:model.Likelihood.step:-eps;
@@ -231,73 +323,88 @@ AllTaus = [AllTaus, 0];
 model.prior.delays.prob = exp(a*AllTaus)/(sum(exp(a*AllTaus)));
 
 % prior for the interaction bias
-model.prior.weight0.type = 'normal'; %'normal' or Laplace
+model.prior.W0.assignedTo = 'biases inside the joint-TF sigmoid activation function'; 
+model.prior.W0.type = 'normal'; 
 if strcmp(model.Likelihood.jointAct,'michMenten')
-model.prior.weight0.constraint = 'positive';
-model.prior.weight0.priorSpace = 'log';
+model.prior.W0.type = 'truncNormal';
+model.prior.W0.constraint = 'positive';
+model.prior.W0.priorSpace = 'lin';
 model.Likelihood.W0 = rand(NumOfGenes,1)+0.1;
 else
-model.prior.weight0.constraint = 'real';
-model.prior.weight0.priorSpace = 'lin'; % it means NoTransform;   
+model.prior.W0.constraint = 'real';
+model.prior.W0.priorSpace = 'lin'; % it means NoTransform;   
 end
-model.prior.weight0.mu = 0;
-model.prior.weight0.sigma2 = 1.5;
-    
+model.prior.W0.mu = 0;
+model.prior.W0.sigma2 = 1.5;
+
+
 % prior for the interactino weigths (e.g. inside the sigmoid)
+model.prior.W.assignedTo = 'interaction weights in the joint-TF sigmoid activation function'; 
 if strcmp(options.spikePriorW,'no')
     %
-    model.prior.weights.type = 'normal'; %'normal' or Laplace
+    model.prior.W.type = 'normal'; %'normal' or Laplace
     if strcmp(model.Likelihood.jointAct,'michMenten') | strcmp(options.constraints.spaceW,'positive'); 
-    model.prior.weights.constraint = 'positive';
-    model.prior.weights.type = 'truncNormal';
-    model.prior.weights.priorSpace = 'lin';
+    model.prior.W.type = 'truncNormal';
+    model.prior.W.constraint = 'positive';
+    model.prior.W.priorSpace = 'lin';
     model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
     else
-    model.prior.weights.constraint = 'real';
-    model.prior.weights.priorSpace = 'lin'; % it means NoTransform;   
+    model.prior.W.constraint = 'real';
+    model.prior.W.priorSpace = 'lin'; % it means NoTransform;   
     end
-    model.prior.weights.mu = 0;
-    model.prior.weights.sigma2 = 1.5;
+    model.prior.W.mu = 0;
+    model.prior.W.sigma2 = 1.5;
     %
 else
     %
     % use the two mixture model with the spike 
-    model.prior.weights.type = 'spikeNormal';
+    model.prior.W.type = 'spikeNormal';
     if strcmp(model.Likelihood.jointAct,'michMenten') | strcmp(options.constraints.spaceW,'positive'); 
-    model.prior.weights.constraint = 'positive';
-    model.prior.weights.type = 'spikeTruncNormal';
-    model.prior.weights.priorSpace = 'lin';
+    model.prior.W.type = 'spikeTruncNormal';
+    model.prior.W.constraint = 'positive';
+    model.prior.W.priorSpace = 'lin';
     model.Likelihood.W = rand(NumOfGenes,options.numTFs)+0.1;
     else    
-    model.prior.weights.constraint = 'real';
-    model.prior.weights.priorSpace = 'lin';
+    model.prior.W.constraint = 'real';
+    model.prior.W.priorSpace = 'lin';
     end
-    model.prior.weights.mu = 0;
-    model.prior.weights.sigma2 = 1.5;
-    model.prior.weights.spikeMu = 0; 
-    model.prior.weights.spikeSigma2 = 0.0001;
-    model.prior.weights.pis = options.spikepriors; 
-    % binary variables (randomly chosen for each TF and gene)
-    model.prior.weights.S = round(rand(NumOfGenes,options.numTFs));
+    model.prior.W.mu = 0;
+    model.prior.W.sigma2 = 1.5;
+    model.prior.W.spikeMu = 0; 
+    model.prior.W.spikeSigma2 = 0.0001;
+    model.prior.W.pis = options.spikepriors; 
     %
 end
 
-% prior for the gene specifc noise variances (the inverce of them) 
-model.prior.invsigma2.type = 'gamma';
-model.prior.invsigma2.constraint = 'positive';
-model.prior.invsigma2.priorSpace = 'lin'; % it means NoTransform;
-model.prior.invsigma2.a = 0.1;
-model.prior.invsigma2.b = 0.01;
+% prior for the gene specific white noise variance
+model.prior.sigma2.assignedTo = 'white noise variance'; 
+model.prior.sigma2.type = 'invGamma';
+model.prior.sigma2.constraint = 'positive';
+model.prior.sigma2.priorSpace = 'lin'; % it means NoTransform;
+model.prior.sigma2.a = 0.1;
+model.prior.sigma2.b = 0.01;
+
+% prior for the gene specific kernel noise variances
+model.prior.sigma2f.assignedTo = 'rbf kernel variance'; 
+model.prior.sigma2f.type = 'invGamma';
+model.prior.sigma2f.constraint = 'positive';
+model.prior.sigma2f.priorSpace = 'lin'; % it means NoTransform;
+model.prior.sigma2f.a = 0.01;
+model.prior.sigma2f.b = 0.01;
+
 
 % prior for the lengthscales
-model.prior.GPkernel.lenghtScale.type = 'normal';
-model.prior.GPkernel.lenghtScale.constraint = 'positive';
-model.prior.GPkernel.lenghtScale.priorSpace = 'log';
+model.prior.lengthScale.assignedTo = 'lenghtScale (i.e. ell^2) of the rbf kernel';
+model.prior.lengthScale.type = 'invGamma';
+model.prior.lengthScale.constraint = 'positive';
+model.prior.lengthScale.priorSpace = 'lin';
 ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
-model.prior.GPkernel.lenghtScale.mu = 2*log(ok); % mean 
-model.prior.GPkernel.lenghtScale.sigma2 = 2;         % variance
-%model.prior.GPkernel.lenghtScale.a = 1;
-%model.prior.GPkernel.lenghtScale.b = 1/(ok^2);
+% parameters of the prior
+mu = ok^2;
+var = 6; 
+%define gamma prior to have this mean and variance
+model.prior.lengthScale.a = (mu + 2*var)/var;
+model.prior.lengthScale.b = mu*(model.prior.lengthScale.a - 1);
  
 
 % initial value of the TFs

@@ -239,7 +239,7 @@ model.M = M;
 PropDist.kin = 0.5*ones(NumOfGenes,SizKin);
 % interaction weigths and bias 
 PropDist.W = 0.5*ones(NumOfGenes,NumOfTFs+1);
-PropDist.LengSc = 0.1*(1/model.prior.GPkernel.lenghtScale.sigma2)*ones(1,NumOfTFs);
+PropDist.LengSc = 0.1*(1/model.prior.lenghtScale.sigma2)*ones(1,NumOfTFs);
 
 % additional proposal distribution for the TF kinetic parameters
 if isfield(model.Likelihood,'GenesTF')

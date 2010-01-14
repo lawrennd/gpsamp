@@ -31,7 +31,11 @@ if numTFs == 1
         % maximum positve value for the gene DELAYS
         % -- 0 means that no delays are allowed 
         options.tauMax = 0;
+        
         %
+        options.noiseModel = {'white'};
+        %
+        
         % CONSTRAINTS of the initial value of the TF at time t=0. 
         % if 0, then the TF has concentration 0 at time t=0
         % if 1, then the TF is free to take any value at time t=0
@@ -76,8 +80,12 @@ else
         options.tauMax = 0;
         
         % use or not the two mixture (one spike and one borad) for the interaction weights 
-        options.spikePriorW = 'no'; 
+        options.spikePriorW = 'no';
+        
+        % sophisticated noise model described by a GP (default is not to use this) 
+        options.noiseModel = {'white'}; 
         %
+        
         % CONSTRAINTS of the initial value of the TF at time t=0. 
         % if 0, then the TF has concentration 0 at time t=0
         % if 1, then the TF is free to take any value at time t=0
@@ -94,9 +102,10 @@ else
         % constrain interaction bias to be zero
         options.constraints.W0 = ones(1,NumOfGenes); 
         
-        %
+        % 
         options.constraints.spaceW = 'real'; 
         %
+        
         % CONSTRAINTS coming from side information about which TFs do not regulate 
         % certain genes. This means that certain values in the interaction 
         % matrix W are constrained to be zero. 

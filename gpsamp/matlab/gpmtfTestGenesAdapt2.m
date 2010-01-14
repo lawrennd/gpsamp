@@ -1,4 +1,4 @@
-function [model PropDist samples accRates] = gpmtfTestGenesAdapt2(model, TFs, simMat,  AdaptOps)
+function [model PropDist samples accRates] = gpmtfTestGenesAdapt2(model, TFs, AdaptOps)
 %[model PropDist samples accRates] = gpmtfAdapt(model, AdaptOps)
 %
 % Description: Sample the parameters of the Bayesian differential equation 
@@ -121,42 +121,65 @@ PropDist.kin = 0.05*ones(NumOfGenes,SizKin);
 % interaction weigths and bias 
 PropDist.W = 0.05*ones(NumOfGenes,NumOfTFs+1);
 
+onlyPumaVar = 1; 
+if sum(model.Likelihood.noiseModel.active(2:3)) > 0  
+   onlyPumaVar = 0;
+end
+
+if onlyPumaVar == 0 
+   % they are (at most) three parameters in the likelihood noise model  
+   % 1) white nosie variance, rbf variance, rbf lengthscale 
+   PropDist.noiseModel = 0.02*ones(NumOfGenes,3); 
+end
+
 % useful ranges needed in the adaption of the 
 % variances of theese proposal distribution 
 qKinBelow = 0.000001; qKinAbove = 2;
 qWbelow = 0.000001;   qWabove = 2;
+qNoiseMbelow = 0.000001;   qNoiseMabove = 2;
 epsilon = 0.1;
 
 cnt = 0;
 %
 % do the adaption 
+minAccR = 18; 
+maxAccR = 38; 
+
 nextbreak = 0; 
 while 1
 %
 %  
-   [model PropDist samples accRates] = gpmtfTestGenesSample2(model, TFs, simMat, PropDist, AdaptOps);
+   [model PropDist samples accRates] = gpmtfTestGenesSample2(model, TFs, PropDist, AdaptOps);
  
    accRateKin = accRates.Kin;
    accRateW = accRates.W;
    accRateF = accRates.F;
+   accRateNoiseM = accRates.noiseM;
+   
    if AdaptOps.disp == 1
-   fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
-   fprintf(1,'Acceptance Rates for GP functions\n');
-   disp(accRateF);
+      % 
+      fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
+      fprintf(1,'Acceptance rates for GP functions\n');
+      disp(accRateF);
        
-   fprintf(1,'Acceptance Rates for kinetic parameters (per gene))\n');
-   disp(accRateKin);
+      fprintf(1,'Acceptance rates for kinetic parameters (per gene))\n');
+      disp(accRateKin);
  
-   fprintf(1,'Acceptance Rates for Interaction weights (per gene)\n');
-   disp(accRateW);
-   fprintf(1,'Average likelihood value %15.8f',mean(samples.LogL));
-   fprintf(1,'\n');
-   fprintf(1,'------------------------------- \n',cnt+1);
+      fprintf(1,'Acceptance rates for interaction weights (per gene)\n');
+      disp(accRateW);
+  
+      if onlyPumaVar == 0
+         fprintf(1,'Acceptance rates for the noise parameters in the likelihood\n');
+         disp(accRateNoiseM);
+      end
+      fprintf(1,'Average likelihood value %15.8f\n',mean(samples.LogL));
+      fprintf(1,'------------------------------- \n',cnt+1);
+      %
    end
    
    
    % if you got a good acceptance rate, then stop
-   if  (min(accRateKin(:))>20) & (min(accRateW(:))>20)  & (max(accRateKin(:))<35) & (max(accRateW(:))<35) 
+   if (min(accRateKin(:))>minAccR) & (min(accRateW(:))>minAccR) & (min(accRateNoiseM(:))>minAccR)  & (max(accRateKin(:))<maxAccR) & (max(accRateW(:))<maxAccR)  & (max(accRateNoiseM(:))<maxAccR) 
       if nextbreak == 1
           disp('END OF ADAPTION: acceptance rates OK');
           break;
@@ -166,7 +189,7 @@ while 1
    end
     
    cnt = cnt + 1;
-   % do not allow more than 50 iterations when you adapt the proposal distribution
+   % do not allow more than 150 iterations when you adapt the proposal distribution
    if cnt == 150   
        disp('END OF ADAPTION: acceptance rates OK');
        break;
@@ -216,6 +239,31 @@ while 1
        %
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT WEIGHTS PROPOSAL %%%%%%%%%%%%%%%%
+   
+   
+   if onlyPumaVar == 0 
+      %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
+      % adapt the proposal over the interaction weights (desired acceptance rate: 15-35%)
+      for j=1:NumOfGenes
+         if accRateNoiseM(j) > 35
+            % incease the covariance to reduce the acceptance rate
+            PropDist.noiseModel(j,:) = PropDist.noiseModel(j,:) + epsilon*PropDist.noiseModel(j,:);
+            if PropDist.noiseModel(j,1) > qNoiseMabove 
+               PropDist.noiseModel(j,:) = qNoiseMabove*ones(1, size(PropDist.noiseModel(j,:), 2));
+            end
+         end
+         if accRateNoiseM(j) < 20
+            % decrease the covariance to incease the acceptance rate
+            PropDist.noiseModel(j,:) = PropDist.noiseModel(j,:) - epsilon*PropDist.noiseModel(j,:);    
+            if PropDist.noiseModel(j,1) < qNoiseMbelow 
+               PropDist.noiseModel(j,:) = qNoiseMbelow*ones(1, size(PropDist.noiseModel(j,:), 2));
+            end
+          %
+         end
+       %
+      end
+   end
+   %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
    
 %
 %
