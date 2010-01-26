@@ -73,16 +73,33 @@ end
 % in range [0 10]
 numGenes = 92;
 numTFs = 5; 
-sc = 0.1*(max(Genes(:)) - min(Genes(:)));
-Genes = Genes/sc;
-Genes = reshape(Genes,numGenes,12,3);
-GenesVar = GenesVar/(sc.^2);
-GenesVar = reshape(GenesVar,numGenes,12,3);
+
+
+sc = 10./max(Genes, [], 2);
+Genes = Genes.*repmat(sc, 1, size(Genes,2));
+Genes = reshape(Genes, numGenes, 12, 3);
+GenesVar = GenesVar.*repmat(sc.^2, 1, size(GenesVar,2));
+GenesVar = reshape(GenesVar,numGenes, 12, 3);
+
+
+%sc = 0.1*(max(Genes(:)) - min(Genes(:)));
+%Genes = Genes/sc;
+%Genes = reshape(Genes,numGenes,12,3);
+%GenesVar = GenesVar/(sc.^2);
+%GenesVar = reshape(GenesVar,numGenes,12,3);
 %
-GenesTF = GenesTF/sc;
-GenesTF = reshape(GenesTF,numTFs,12,3);
-GenesTFVar = GenesTFVar/(sc.^2);
-GenesTFVar = reshape(GenesTFVar,numTFs,12,3);
+
+sc = 10./max(GenesTF, [], 2);
+GenesTF = GenesTF.*repmat(sc, 1, size(GenesTF,2));
+GenesTF = reshape(GenesTF, numTFs, 12, 3);
+GenesTFVar = GenesTFVar.*repmat(sc.^2, 1, size(GenesTFVar,2));
+GenesTFVar = reshape(GenesTFVar, numTFs, 12, 3);
+
+%GenesTF = GenesTF/sc;
+%GenesTF = reshape(GenesTF,numTFs,12,3);
+%GenesTFVar = GenesTFVar/(sc.^2);
+%GenesTFVar = reshape(GenesTFVar,numTFs,12,3);
+
 TimesG = 0:11;
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
 
@@ -90,7 +107,8 @@ TimesG = 0:11;
 options = gpmtfOptions(Genes,numTFs); 
 genesAndChip.data(genesAndChip.data~=0)=1;
 options.constraints.X = genesAndChip.data; 
-options.constraints.replicas = 'coupled'; 
+options.noiseModel = {'pumaWhite' 'white'};
+%options.constraints.replicas = 'coupled'; 
 %options.constraints.Ft0 = ones(1,numTFs);
 
 options.tauMax = 0; % no delays
@@ -102,7 +120,9 @@ model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, option
 
 mcmcoptions = mcmcOptions('controlPnts'); 
 mcmcoptions.adapt.T = 100;
-mcmcoptions.train.StoreEvery = 20;
+mcmcoptions.train.StoreEvery = 50;
+mcmcoptions.train.Burnin = 5000;
+mcmcoptions.train.T = 50000;
 % adaption phase
 [model PropDist samples accRates] = gpmtfAdapt(model, mcmcoptions.adapt);
 % training/sampling phase

@@ -100,23 +100,18 @@ model.Likelihood.Genes = Genes;
 % the noise model for the likelihoods
 if (size(options.noiseModel,2) < 2) | (size(options.noiseModel,2) == 2  & strcmp(options.noiseModel{1},'pumaWhite') )
     %
-    noisetype = options.noiseModel{1};
-    for g = 2:size(options.noiseModel,2)
-        noisetype = strcat(noisetype, '+'); 
-        noisetype = strcat(noisetype, options.noiseModel{g});
-    end
-    model.Likelihood.noiseModel.type = noisetype; 
-    
+    model.Likelihood.noiseModel.type = ''; 
     active = [0 0 0];
+    noisetype = [];
     for g = 1:size(options.noiseModel,2)
     % 
         switch options.noiseModel{g}
         % 
            case 'pumaWhite'
            %
-              active(1) = 1;
               if ~isempty(GenesVar)   
                  model.Likelihood.noiseModel.pumaSigma2 = GenesVar;
+                 active(1) = 1;
               else
                  warning('PUMA variances are not provided')  
               end
@@ -142,8 +137,18 @@ if (size(options.noiseModel,2) < 2) | (size(options.noiseModel,2) == 2  & strcmp
           %
           %
         end
+        %
+        if ~(strcmp(options.noiseModel{g},'pumaWhite') & active(1) == 0)
+        if isempty(noisetype) 
+           noisetype = options.noiseModel{g};
+        else
+           noisetype = strcat(noisetype, '+', options.noiseModel{g});
+        end
+        end
+       % 
     end
     %
+    model.Likelihood.noiseModel.type = noisetype; 
     model.Likelihood.noiseModel.active = active;
    
     % rbf GP nosie model is used, then precomputed the *WHOLE* noise
@@ -196,15 +201,15 @@ end
 if ~isempty(GenesTF)
    % 
    model.Likelihood.GenesTF = GenesTF;
-   
    % the noise in the elikelihood either will be provided by PUMA 
    % or a separate variance will be inferred by MCMC
-   if ~isempty(GenesVar)  
-       model.Likelihood.noiseModelTF.type = 'pumaWhite'; 
-       model.Likelihood.noiseModelTF.sigma2 = GenesTFVar;
+   if model.Likelihood.noiseModel.active(1) == 1 & (~isempty(GenesVar))   
+       model.Likelihood.noiseModel.pumaSigma2_TF = GenesTFVar;
    else
-       model.Likelihood.noiseModelTF.type = 'white'; 
-       model.Likelihood.noiseModelTF.sigma2 = 0.05*ones(1, options.numTFs); 
+       warning('PUMA variances for the TF-Genes are not provided')    
+   end    
+   if model.Likelihood.noiseModel.active(2) == 1 
+       model.Likelihood.noiseModel.sigma2_TF = 0*0.05*ones(1, options.numTFs); 
    end
    %
 end
@@ -287,9 +292,14 @@ timescale = 1.5*(max(TimesG(:))-min(TimesG(:)))/(size(TimesG,2)-1);
 lengthscale = (max(TimesG(:))-min(TimesG(:)))/10;%(size(TimesG,2)-1);
 %lengthscale = 1.5*(max(TimesG(:))-min(TimesG(:)))/(size(TimesG,2)-1);
 for j=1:options.numTFs
+   % 
    model.GP{j}.type = {'rbf','white'};
    model.GP{j}.TF = j;
-   model.GP{j}.logtheta = [log(lengthscale) 0 0.5*log(1e-06)];
+   
+   model.GP{j}.lengthScale = lengthscale^2;
+   model.GP{j}.sigma2f = 1;
+   model.GP{j}.sigma2 = 1e-06;
+   %
 end
 X = TimesF(:);
 [n D] = size(X);
@@ -353,7 +363,7 @@ if strcmp(options.spikePriorW,'no')
     model.prior.W.priorSpace = 'lin'; % it means NoTransform;   
     end
     model.prior.W.mu = 0;
-    model.prior.W.sigma2 = 1.5;
+    model.prior.W.sigma2 = 2;
     %
 else
     %
@@ -381,7 +391,7 @@ model.prior.sigma2.assignedTo = 'white noise variance';
 model.prior.sigma2.type = 'invGamma';
 model.prior.sigma2.constraint = 'positive';
 model.prior.sigma2.priorSpace = 'lin'; % it means NoTransform;
-model.prior.sigma2.a = 0.1;
+model.prior.sigma2.a = 0.01;
 model.prior.sigma2.b = 0.01;
 
 % prior for the gene specific kernel noise variances
@@ -403,8 +413,8 @@ ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
 mu = ok^2;
 var = 6; 
 %define gamma prior to have this mean and variance
-model.prior.lengthScale.a = (mu + 2*var)/var;
-model.prior.lengthScale.b = mu*(model.prior.lengthScale.a - 1);
+model.prior.lengthScale.a = 0.01; % (mu + 2*var)/var;
+model.prior.lengthScale.b = 0.01; % mu*(model.prior.lengthScale.a - 1);
  
 
 % initial value of the TFs

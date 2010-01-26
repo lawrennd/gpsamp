@@ -98,7 +98,7 @@ end
 % evaluation of the log prior for the kinetic parameters
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
 TrspaceKin = model.prior.kinetics.priorSpace; 
-Likkin = feval(TrspaceKin, LikParams.kinetics+eps);
+Likkin = feval(TrspaceKin, LikParams.kinetics);
 oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics);
 
 % evaluation of the prior for the interaction bias
@@ -258,7 +258,11 @@ for it = 1:(BurnInIters + Iters)
         if model.constraints.InitialConds(j) == 0
         KineticsNew(4) = KineticsNew(1)/KineticsNew(2); 
         end
-  
+        
+        %%%%
+        %KineticsNew = [eps 1 eps eps];
+        %%%% 
+       
         LikParams1 = LikParams;
         LikParams1.kinetics(j,:)=KineticsNew; 
         newLogLik = zeros(1,NumOfReplicas);
@@ -662,7 +666,7 @@ accRates.W = (acceptW/Iters)*100;
 if onlyPumaVar == 0 & ~(model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1) 
     accRates.noiseM = (accRateNoiseM/Iters)*100;
 else
-    accRates.noiseM = 100;
+    accRates.noiseM = 25;
 end
 
 

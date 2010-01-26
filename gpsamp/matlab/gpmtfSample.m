@@ -30,6 +30,7 @@ Genes = model.Likelihood.Genes;
 TimesG = model.Likelihood.TimesG; 
 TimesF = model.Likelihood.TimesF; 
 SizF = size(TimesF,2);
+SizKin = size(model.Likelihood.kinetics,2);
 [NumOfGenes SizG NumOfReplicas] = size(Genes);
 
 
@@ -49,36 +50,29 @@ if strcmp(model.constraints.InitialConds_value,'fixed')==1
     fixInitCond = 1;
 end
 
-% check if the observation noise is known/fixed
-fixsigma2 = 0;
-if strcmp(model.constraints.sigmas,'fixed')
-    fixsigma2 = 1;
-end
-
-% check if the observation noise is known/fixed for the TF genes
 if isfield(model.Likelihood,'GenesTF')
-fixsigma2TF = 0;  
-SizTFKin = size(model.Likelihood.kineticsTF,2);
-if strcmp(model.constraints.sigmasTF,'fixed')
-    fixsigma2TF = 1;
-end
+    SizTFKin = size(model.Likelihood.kineticsTF,2);
 end
 
 
 % check if the interaction weigths in the connectivity network are
 % constrained to be positive
 posw = 0; 
-if strcmp(model.prior.weights.constraint,'positive')
+if strcmp(model.prior.W.constraint,'positive')
     posw = 1;
+end
+
+onlyPumaVar = 1; 
+if model.Likelihood.noiseModel.active(2) > 0
+   onlyPumaVar = 0;
 end
 
 % Construct the Comp binary matrix when you learn the 
 % structure with Gibbs sampling --> not included in this version
 netLearn = 0; 
 
-% take the initial likelihood-kinetics parameters (defined out of this function)
 LikParams = model.Likelihood;
-SizKin = size(LikParams.kinetics,2);
+
 
 % the latent function values are also special parameters that appear in both 
 % the likelihood and the GP prior
@@ -98,25 +92,21 @@ if strcmp(model.constraints.replicas,'free')
    for r=1:NumOfReplicas
    %
    % evaluate the likelihood 
-   [oldLogLik(r,:) predgen] = gpmtfLogLikelihoodGene(model.Likelihood, F(:,:,r), r, 1:NumOfGenes);
-   PredictedGenes(:,:,r) = predgen;
+   oldLogLik(r,:) = gpmtfLogLikelihoodGene(model.Likelihood, F(:,:,r), r, 1:NumOfGenes);
   
    % additional likelihood when you have observations for the TF genes  
    if isfield(model.Likelihood,'GenesTF')      
-      [oldLogLikTF(r,:) predgen] = gpmtfLogLikelihoodGeneTF(model.Likelihood, F(:,:,r), r, 1:NumOfTFs);
-      PredictedGenesTF(:,:,r) = predgen;
+      oldLogLikTF(r,:) = gpmtfLogLikelihoodGeneTF(model.Likelihood, F(:,:,r), r, 1:NumOfTFs);
    end
    %     
    end
 else
    %
    % evaluate the likelihood for the first replica
-   [oldLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(model.Likelihood, F, 1, 1:NumOfGenes);
-   PredictedGenes = predgen;
+   oldLogLik(1,:) = gpmtfLogLikelihoodGene(model.Likelihood, F, 1, 1:NumOfGenes);
    % compute fast the additional likelihood when you have observations for the TF genes  
    if isfield(model.Likelihood,'GenesTF')      
-      [oldLogLikTF(1,:) predgen] = gpmtfLogLikelihoodGeneTF(model.Likelihood, F, 1, 1:NumOfTFs);
-      PredictedGenesTF = predgen;
+      oldLogLikTF(1,:) = gpmtfLogLikelihoodGeneTF(model.Likelihood, F, 1, 1:NumOfTFs);
    end
    %
    % the predicted genes are the same for the remaining coupled replicas
@@ -131,35 +121,49 @@ else
    %              
    %
 end
-%save ok PredictedGenesTF PredictedGenes;
-%oldLogLikTF
-%sum(oldLogLik(:))
-%model.Likelihood.kineticsTF 
-%model.groundtr.kineticsTF
-%model.Likelihood.kinetics 
-%model.groundtr.kinetics
-%[model.Likelihood.Taus; model.groundtr.Taus]
-%pause
+%
 % evaluation of the log prior for the kinetic parameters
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
 TrspaceKin = model.prior.kinetics.priorSpace; 
-Likkin = feval(TrspaceKin, LikParams.kinetics+eps);
+Likkin = feval(TrspaceKin, LikParams.kinetics);
 oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics);
 if isfield(model.Likelihood,'GenesTF')
-  LikkinTF = feval(TrspaceKin, LikParams.kineticsTF+eps); 
+  LikkinTF = feval(TrspaceKin, LikParams.kineticsTF); 
   oldLogPriorKinTF = feval(lnpriorKin, LikkinTF, model.prior.kinetics);
 end      
 % evaluation of the prior for the interaction weights
-lnpriorW = ['ln',model.prior.weights.type,'pdf'];
-TrspaceW = model.prior.weights.priorSpace; 
+lnpriorW = ['ln',model.prior.W.type,'pdf'];
+TrspaceW = model.prior.W.priorSpace; 
 LikW = feval(TrspaceW, [LikParams.W, LikParams.W0]);
-oldLogPriorW = feval(lnpriorW, LikW, model.prior.weights);
+oldLogPriorW = feval(lnpriorW, LikW, model.prior.W);
 % log prior of the lengthscale lengthscale 
-lnpriorLengSc = ['ln',model.prior.GPkernel.lenghtScale.type,'pdf'];
-%oldLogPriorLengSc = feval(lnpriorLengSc, exp(2*model.GP.logtheta(:,1)), model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b);
+lnpriorLengSc = ['ln',model.prior.lengthScale.type,'pdf'];
 for j=1:NumOfTFs
-oldLogPriorLengSc(j) = feval(lnpriorLengSc, 2*model.GP{j}.logtheta(1), model.prior.GPkernel.lenghtScale);
+oldLogPriorLengSc(j) = feval(lnpriorLengSc, model.GP{j}.lengthScale, model.prior.lengthScale);
 end
+
+if onlyPumaVar == 0 
+  %
+  % evaluation of the noise variance prior in the likelihood 
+  if model.Likelihood.noiseModel.active(2) == 1
+  % 
+     % white GP noise model is used
+     lnpriorNoiseWHITE = ['ln',model.prior.sigma2.type,'pdf'];
+     TrspaceNoiseWHITE = model.prior.sigma2.priorSpace; 
+     temp = feval(TrspaceNoiseWHITE, LikParams.noiseModel.sigma2);
+     oldLogPriorNoiseWHITE = feval(lnpriorNoiseWHITE, temp, model.prior.sigma2);
+     
+     if isfield(model.Likelihood,'GenesTF')
+        lnpriorNoiseWHITETF = ['ln',model.prior.sigma2.type,'pdf'];
+        TrspaceNoiseWHITETF = model.prior.sigma2.priorSpace; 
+        temp = feval(TrspaceNoiseWHITETF, LikParams.noiseModel.sigma2_TF);        
+        oldLogPriorNoiseWHITETF = feval(lnpriorNoiseWHITE, temp, model.prior.sigma2); 
+     end
+  %
+  end
+  %
+end
+
 
 cnt = 0;
 for j=1:NumOfTFs
@@ -174,13 +178,17 @@ end
 acceptKin = zeros(1,NumOfGenes);
 acceptTFKin = zeros(1,NumOfTFs);
 acceptW = zeros(1,NumOfGenes); 
-acceptLengSc = zeros(1,NumOfTFs); 
+acceptLengSc = zeros(1, NumOfTFs);  
+accRateNoiseM = zeros(1, NumOfGenes); 
+accRateNoiseMTF = zeros(1, NumOfTFs); 
+
 %
 for it = 1:(BurnInIters + Iters) 
-    %
-    %
+    % 
+    
+    % *
+    % SAMPLE THE TFs USING CONTROL VARIABLES
     %F = model.groundtr.F;
-    % Sample the TFs -----------------------------------------
     if 1 
     for j=1:NumOfTFs
     if strcmp(model.constraints.replicas,'free')   
@@ -213,14 +221,14 @@ for it = 1:(BurnInIters + Iters)
    
              if ~isfield(model.Likelihood,'GenesTF')
              % perform an evaluation of the likelihood p(Genes | F) 
-             [newLogLik predgen] = gpmtfLogLikelihoodGene(LikParams, FFnew, r, 1:NumOfGenes);
+             newLogLik = gpmtfLogLikelihoodGene(LikParams, FFnew, r, 1:NumOfGenes);
        
              % Metropolis-Hastings to accept-reject the proposal
              [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(r,:),2), 0, 0);
              else
              % perform an evaluation of the likelihood p(Genes | F) 
-             [newLogLik predgen] = gpmtfLogLikelihoodGene(LikParams, FFnew, r, 1:NumOfGenes);        
-             [newLogLikTF predgenTF] = gpmtfLogLikelihoodGeneTF(LikParams, FFnew, r, j); 
+             newLogLik = gpmtfLogLikelihoodGene(LikParams, FFnew, r, 1:NumOfGenes);        
+             newLogLikTF = gpmtfLogLikelihoodGeneTF(LikParams, FFnew, r, j); 
            
              % Metropolis-Hastings to accept-reject the proposal
              newL = sum(newLogLik(:)) + newLogLikTF;
@@ -243,12 +251,10 @@ for it = 1:(BurnInIters + Iters)
             if accept == 1
                  F(j,:,r) = Fnew;
                  Fu{j}(:,r) = Funew';
-                 PredictedGenes(:,:,r) = predgen;
                  oldLogLik(r,:) = newLogLik;
          
                  if isfield(model.Likelihood,'GenesTF')      
                     oldLogLikTF(r,j) = newLogLikTF;
-                    PredictedGenesTF(j,:,r) = predgenTF;
                  end
             %   
             end
@@ -284,7 +290,7 @@ for it = 1:(BurnInIters + Iters)
              newLogLik = zeros(NumOfReplicas,NumOfGenes);
              if ~isfield(model.Likelihood,'GenesTF')
                  % perform an evaluation of the likelihood p(Genes | F)      
-                 [newLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(LikParams, FFnew, 1, 1:NumOfGenes);
+                 newLogLik(1,:) = gpmtfLogLikelihoodGene(LikParams, FFnew, 1, 1:NumOfGenes);
               
                  % computed faster the remaining likelihood terms  
                  for r=2:NumOfReplicas
@@ -294,8 +300,8 @@ for it = 1:(BurnInIters + Iters)
                  [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), 0, 0);
              else
                  % perform an evaluation of the likelihood p(Genes | F)      
-                 [newLogLik(1,:) predgen] = gpmtfLogLikelihoodGene(LikParams, FFnew, 1, 1:NumOfGenes);   
-                 [newLogLikTF(1) predgenTF] = gpmtfLogLikelihoodGeneTF(LikParams, FFnew, 1, j); 
+                 newLogLik(1,:) = gpmtfLogLikelihoodGene(LikParams, FFnew, 1, 1:NumOfGenes);   
+                 newLogLikTF(1) = gpmtfLogLikelihoodGeneTF(LikParams, FFnew, 1, j); 
            
                  % computed faster the remaining likelihood terms  
                  for r=2:NumOfReplicas
@@ -326,12 +332,10 @@ for it = 1:(BurnInIters + Iters)
             if accept == 1
                  F(j,:) = Fnew;
                  Fu{j} = Funew';
-                 PredictedGenes = predgen;
                  oldLogLik = newLogLik;
          
                  if isfield(model.Likelihood,'GenesTF')      
                     oldLogLikTF(:,j) = newLogLikTF(:);
-                    PredictedGenesTF(j,:) = predgenTF;
                  end
             %   
             end
@@ -341,10 +345,12 @@ for it = 1:(BurnInIters + Iters)
         %
     end % num TFs loop
     end % zero-one if
-   
+    % END SAMPLE THE TFs USING CONTROL VARIABLES
+    % *
     
+    % *
+    % SAMPLE KINETIC PARAMETERS FOR THE TF TRANSLATION MODEL
     if 1
-    % sample new kinetic parameters for each TF-gene  
     if isfield(model.Likelihood,'GenesTF')
     for j=1:NumOfTFs
         TFKineticsNew = randn(1,SizTFKin).*sqrt(PropDist.TFkin(j,:)) + log(LikParams.kineticsTF(j,:));
@@ -369,7 +375,7 @@ for it = 1:(BurnInIters + Iters)
            %
                % perform an evaluation of the likelihood p(GENES | TFs)
                % only for the first replica
-               [newLogLik(1,:), predgen] = gpmtfLogLikelihoodGene(LikParams1, F, 1, 1:NumOfGenes);
+               newLogLik(1,:) = gpmtfLogLikelihoodGene(LikParams1, F, 1, 1:NumOfGenes);
                % computed faster the remaining likelihood terms  
                for r=2:NumOfReplicas
                    newLogLik(r,:) = remainRepsLikelihood(LikParams1, predgen, r, 1:NumOfGenes);
@@ -398,11 +404,12 @@ for it = 1:(BurnInIters + Iters)
     end
     end
     end
+    % *
+    % END SAMPLE KINETIC PARAMETERS FOR THE TF TRANSLATION MODEL
     
-    
-    
-    if 1
-    % sample new kinetic parameters for each gene separately 
+    % *
+    % SAMPLE KINETIC PARAMETERS FOR EACH GENE ODE
+    if 1 
     for j=1:NumOfGenes
         KineticsNew = randn(1,SizKin).*sqrt(PropDist.kin(j,:)) + log(LikParams.kinetics(j,:));
         KineticsNew(KineticsNew<-10) =-10; 
@@ -454,16 +461,17 @@ for it = 1:(BurnInIters + Iters)
     end
     %
     end % if 0
-    
-    
-    
-    if 1 
-    % sample the interaction weights 
+    % *
+    % END SAMPLE KINETIC PARAMETERS FOR EACH GENE ODE
+   
+    % *
+    % SAMPLE INTERACTION WEIGHTS FOR EACH GENE
+    if 1  
     for j=1:NumOfGenes
         % 
         %  
         if posw == 1
-            Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + log([LikParams.W(j,:), LikParams.W0(j)]+eps);     
+            Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + log([LikParams.W(j,:), LikParams.W0(j)]);     
             Wnew = exp(Wnew);
         else
             Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + [LikParams.W(j,:), LikParams.W0(j)];     
@@ -490,7 +498,7 @@ for it = 1:(BurnInIters + Iters)
         end
         
         LikW = feval(TrspaceW, Wnew+eps);
-        LogPriorWnew = feval(lnpriorW, LikW, model.prior.weights);
+        LogPriorWnew = feval(lnpriorW, LikW, model.prior.W);
         % Metropolis-Hastings to accept-reject the proposal
         oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2);
         newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)); 
@@ -509,55 +517,224 @@ for it = 1:(BurnInIters + Iters)
         %
     end
     end % if 0
+    % *
+    % END SAMPLE INTERACTION WEIGHTS FOR EACH GENE
     
-    
-    % sample the noise of the likelihood when is free parameter.
-    % The posterior is gamma so this step involves exact simualtion from
-    % the gamma distribution
-    if fixsigma2 == 0
-       sumSquerrors1 = oldLogLik + 0.5*SizG*log(2*pi*repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1));
-       sumSquerrors1 = -2*repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1).*sumSquerrors1;
-       sumSquerrors = sum(sumSquerrors1,1);
+    % * 
+    % SAMPLE THE NOISE MODEL IN THE LIKELIHOOD of THE GENES 
+    if onlyPumaVar == 0 
+       %  only white noise (no PUMA variances)
+       if model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1 
+           %
+           sumSquerrors1 = oldLogLik + 0.5*SizG*log(2*pi*repmat(LikParams.noiseModel.sigma2, NumOfReplicas, 1));
+           sumSquerrors1 = -2*repmat(LikParams.noiseModel.sigma2, NumOfReplicas, 1).*sumSquerrors1;
+           sumSquerrors = sum(sumSquerrors1,1);
                 
-       anew = model.prior.invsigma2.a + 0.5*NumOfReplicas*SizG;
-       bnew = model.prior.invsigma2.b + 0.5*sumSquerrors;
-       newinvsigma2 = gamrnd(anew,1./bnew);
-       Nnewsigma2 = 1./newinvsigma2;
-       LikParams.sigmas = repmat(Nnewsigma2(:),[1 SizG NumOfReplicas]);
-       %for r=1:NumOfReplicas
-       %oldLogLik(r,:) = genesLogLikelihood(LikParams, F(:,:,r), r, 1:NumOfGenes, Genes(:,:,r), TimesG, TimesF);
-       %end  
-       okk = repmat(LikParams.sigmas(:,1,1)',NumOfReplicas,1);
-       oldLogLik = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+           anew = model.prior.sigma2.a + 0.5*NumOfReplicas*SizG;
+           bnew = model.prior.sigma2.b + 0.5*sumSquerrors;
+           newinvSigma2 = gamrnd(anew,1./bnew);
+           newSigma2 = 1./newinvSigma2;
+         
+           LikParams.noiseModel.sigma2 = newSigma2;
+           
+           okk = repmat(LikParams.noiseModel.sigma2, NumOfReplicas, 1); 
+       
+           oldLogLik = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+           % always accepted
+           if (it > BurnInIters) 
+                accRateNoiseM = accRateNoiseM + ones(1, NumOfGenes);
+           end
+           %
+       elseif model.Likelihood.noiseModel.active(1) == 1 & model.Likelihood.noiseModel.active(2) == 1 
+           %
+           % there exist only white noise variance (per gene) that is added to the PUMA variance
+           %
+           % sample new variances from truncated Gaussians
+           for j =1:NumOfGenes
+               %
+               newLogProp = 0;  % forward Hastings Q(sigma2_t+1 | sigma2_t)
+               oldLogProp = 0;  % backward Hastings Q(sigma2_t| sigma2_t+1) 
+               % sample from a truncated Gaussian proposal distribution
+               while 1
+                   newSigma2 = randn.*sqrt(PropDist.noiseModel(j)) + LikParams.noiseModel.sigma2(j);  
+                   if newSigma2 > 0
+                       break; 
+                   end
+               end
+               %
+                   
+               LikParams1 = LikParams; 
+               LikParams1.noiseModel.sigma2(j) = newSigma2;
+ 
+               % evaluate the new log likelihood 
+               newLogLik = zeros(1,NumOfReplicas);
+               if strcmp(model.constraints.replicas,'free')
+                   for r=1:NumOfReplicas
+                       % call the function only with j gene expressions  
+                       newLogLik(r) = gpmtfLogLikelihoodGene(LikParams1, F(:,:,r), r, j);
+                   end
+               else
+                   % call the function only for the first replica
+                   [newLogLik(1), predgen]  = gpmtfLogLikelihoodGene(LikParams1, F, 1, j);
+                   % compute faster the remaining likelihood terms  
+                   for r=2:NumOfReplicas
+                       newLogLik(r) = remainRepsLikelihood(LikParams1, predgen, r, j);
+                   end 
+               end
+              
+               
+               % evaluation of the prior to the new white variance
+               LikSigma2 = feval(TrspaceNoiseWHITE, newSigma2);
+               LogPriorNewWHITE = feval(lnpriorNoiseWHITE, LikSigma2, model.prior.sigma2);
+       
+               % Metropolis-Hastings to accept-reject the proposal
+               oldP = sum(oldLogLik(:,j),1) + oldLogPriorNoiseWHITE(j);
+               newP = sum(newLogLik(:)) + LogPriorNewWHITE; 
+         
+               % compute the proposal distribution forward and backwards terms
+               trprior.sigma2 = PropDist.noiseModel(j); 
+               trprior.mu = LikParams.noiseModel.sigma2(j); 
+        
+               newLogProp = sum(lntruncNormalpdf(newSigma2, trprior)); 
+            
+               trprior.mu = newSigma2; 
+               oldLogProp  = sum(lntruncNormalpdf(LikParams.noiseModel.sigma2(j), trprior)); 
+               
+               [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
+               %
+               if accept == 1
+                  LikParams.noiseModel.sigma2(j) = newSigma2;
+                  oldLogLik(:,j) = newLogLik(:); 
+                  oldLogPriorNoiseWHITE(j) = LogPriorNewWHITE;
+               end
+               %
+               if (it > BurnInIters) 
+                  accRateNoiseM(j) = accRateNoiseM(j) + accept;
+               end
+               %
+           end % for loop 
+           %
+       else
+           %
+           % do nothing (only PUMA variances are used whihc are fixed)
+           %
+       end % if-then-else statement 
        % 
        %
-    end
-    
-    % sample the noise of the TF-Genes likelihood when is free parameter.
-    if isfield(model.Likelihood,'GenesTF')
-    if fixsigma2TF == 0
-       sumSquerrors1 = oldLogLikTF + 0.5*SizG*log(2*pi*repmat(LikParams.sigmasTF(:,1,1)',NumOfReplicas,1));
-       sumSquerrors1 = -2*repmat(LikParams.sigmasTF(:,1,1)',NumOfReplicas,1).*sumSquerrors1;
-       sumSquerrors = sum(sumSquerrors1,1);
+    end % if statement
+    % END SAMPLE THE NOISE MODEL IN THE LIKELIHOOD of THE GENES 
+    % *
+   
+   
+    % * 
+    % SAMPLE THE NOISE MODEL IN THE LIKELIHOOD OF THE !!TF!! GENES 
+    if 0 % onlyPumaVar == 0 
+       %  only white noise (no PUMA variances)
+       if model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1 
+           %
+           sumSquerrors1 = oldLogLikTF + 0.5*SizG*log(2*pi*repmat(LikParams.noiseModel.sigma2_TF, NumOfReplicas, 1));
+           sumSquerrors1 = -2*repmat(LikParams.noiseModel.sigma2_TF, NumOfReplicas,1).*sumSquerrors1; 
+           sumSquerrors = sum(sumSquerrors1,1);
                 
-       anew = model.prior.invsigma2.a + 0.5*NumOfReplicas*SizG;
-       bnew = model.prior.invsigma2.b + 0.5*sumSquerrors;
-       newinvsigma2 = gamrnd(anew,1./bnew);
-       Nnewsigma2 = 1./newinvsigma2;
-       LikParams.sigmasTF = repmat(Nnewsigma2(:),[1 SizG NumOfReplicas]);
-       %for r=1:NumOfReplicas
-       %oldLogLik(r,:) = genesLogLikelihood(LikParams, F(:,:,r), r, 1:NumOfGenes, Genes(:,:,r), TimesG, TimesF);
-       %end  
-       okk = repmat(LikParams.sigmasTF(:,1,1)',NumOfReplicas,1);
-       oldLogLikTF = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+           anew = model.prior.sigma2.a + 0.5*NumOfReplicas*SizG;
+           bnew = model.prior.sigma2.b + 0.5*sumSquerrors;
+           newinvSigma2 = gamrnd(anew,1./bnew);
+           newSigma2 = 1./newinvSigma2;
+           
+           LikParams.noiseModel.sigma2_TF = newSigma2;
+           
+           okk = repmat(LikParams.noiseModel.sigma2_TF, NumOfReplicas, 1); 
+       
+           oldLogLikTF = - 0.5*SizG*log(2*pi*okk) - (0.5./okk).*sumSquerrors1;
+           % always accepted
+           if (it > BurnInIters) 
+                 accRateNoiseMTF = accRateNoiseMTF + ones(1, NumOfTFs);
+           end
+           %
+       elseif model.Likelihood.noiseModel.active(1) == 1 & model.Likelihood.noiseModel.active(2) == 1 
+           %
+           % there exist only white noise variance (per gene) that is added to the PUMA variance
+           %
+           % sample new variances from truncated Gaussians
+           for j =1:NumOfTFs
+               %
+               newLogProp = 0;  % forward Hastings Q(sigma2_t+1 | sigma2_t)
+               oldLogProp = 0;  % backward Hastings Q(sigma2_t| sigma2_t+1) 
+               % sample from a truncated Gaussian proposal distribution
+               while 1
+                   newSigma2 = randn.*sqrt(PropDist.noiseModelTF(j)) + LikParams.noiseModel.sigma2_TF(j);  
+                   if newSigma2 > 0
+                       break; 
+                   end
+               end 
+               %
+               
+               LikParams1 = LikParams; 
+               LikParams1.noiseModel.sigma2_TF(j) = newSigma2;
+ 
+               % evaluate the new log likelihood 
+               newLogLikTF = zeros(1,NumOfReplicas);
+               if strcmp(model.constraints.replicas,'free')
+                   for r=1:NumOfReplicas
+                       % call the function only with j gene expressions  
+                       newLogLikTF(r) = gpmtfLogLikelihoodGeneTF(LikParams1, F(:,:,r), r, j);
+                   end
+               else
+                   % call the function only for the first replica
+                   [newLogLikTF(1), predgen]  = gpmtfLogLikelihoodGeneTF(LikParams1, F, 1, j);
+                   % compute faster the remaining likelihood terms  
+                   for r=2:NumOfReplicas
+                       newLogLikTF(r) = remainRepsLikelihood(LikParams1, predgen, r, j);
+                   end 
+               end
+            
+               % evaluation of the prior to the new white variance
+               LikSigma2 = feval(TrspaceNoiseWHITETF, newSigma2);
+               LogPriorNewWHITETF = feval(lnpriorNoiseWHITETF, LikSigma2, model.prior.sigma2);
+       
+               % Metropolis-Hastings to accept-reject the proposal
+               oldP = sum(oldLogLikTF(:,j),1) + oldLogPriorNoiseWHITETF(j);
+               newP = sum(newLogLikTF(:)) + LogPriorNewWHITETF; 
+         
+               % compute the proposal distribution forward and backwards terms
+               trprior.sigma2 = PropDist.noiseModelTF(j); 
+               trprior.mu = LikParams.noiseModel.sigma2_TF(j); 
+        
+               newLogProp = sum(lntruncNormalpdf(newSigma2, trprior)); 
+            
+               trprior.mu = newSigma2; 
+               oldLogProp  = sum(lntruncNormalpdf(LikParams.noiseModel.sigma2_TF(j), trprior)); 
+               
+               [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
+               %
+               if accept == 1
+                  LikParams.noiseModel.sigma2_TF(j) = newSigma2;
+                  oldLogLikTF(:,j) = newLogLikTF(:); 
+                  oldLogPriorNoiseWHITETF(j) = LogPriorNewWHITETF;
+               end
+               %
+               if (it > BurnInIters) 
+                  accRateNoiseMTF(j) = accRateNoiseMTF(j) + accept;
+               end
+               %
+           end % for loop 
+           %
+       else
+           %
+           % do nothing (only PUMA variances are used whihc are fixed)
+           %
+       end % if-then-else statement 
        % 
        %
-    end
-    end
-
+    end % if statement
+    % END SAMPLE THE NOISE MODEL IN THE LIKELIHOOD OF THE !!TF!! GENES 
+    % *
+    
+    
+    % * 
+    % SAMPLE THE DELAYS IN THE GENE ODES 
     if 1 
     if model.Likelihood.tauMax < 0
-    % sample the delay parameters in the ODEs 
     for j=1:NumOfGenes
         LikParams1 = LikParams;
         if LikParams1.Tausindex(j) == 1
@@ -610,23 +787,29 @@ for it = 1:(BurnInIters + Iters)
     end
     end
     end
-   
-   
-    %
-    %
-    if 1
-    % sample the lenghtscale of the TFs 
+    % END SAMPLE THE DELAYS IN THE GENE ODES 
+    % *
+    
+    % * 
+    % SAMPLE THE LENGTHSCALES OF THE GP FUNCTIONS 
+    if 1 
     for j=1:NumOfTFs
         %
         % to samples the lengthscale you need to evaluate 
-        % the GP pior compute the new and the current/old GP prior 
-        newlogEll = randn.*sqrt(PropDist.LengSc(j)) + 2*model.GP{j}.logtheta(1);
-        %newlogEll = model.GP{j}.logtheta(1);
-        newEll2 = exp(newlogEll);  
-        newK = exp(-(0.5/newEll2)*model.GP{j}.X2) + ...
-               exp(2*model.GP{j}.logtheta(end))*eye(size(model.GP{j}.X2,1)); 
+        
+        newLogProp = 0;  % forward Hastings Q(kern_t+1 | kern_t)
+        oldLogProp = 0;  % backward Hastings Q(kern_t| kenr_t+1) 
+        % sample from a truncated Gaussian proposal distribution
+        while 1
+            newEll2 = randn.*sqrt(PropDist.Kern(j)) + model.GP{j}.lengthScale; 
+            if min(newEll2) > 0
+                break; 
+            end
+        end
+        %
+        newK = exp(-(0.5/newEll2)*model.GP{j}.X2) + model.GP{j}.sigma2*eye(size(model.GP{j}.X2,1)); 
         % compute the Cholesky decomposition of the new K
-        [newL,er]=jitterChol(newK);
+        [newL, er]=jitterChol(newK);
         newL = newL';
         % evaluate the new log GP prior value 
         invnewL = newL\eye(SizF+M(j));
@@ -651,47 +834,25 @@ for it = 1:(BurnInIters + Iters)
             oldlogGP = oldlogGP - 0.5*temp'*temp;
         end
             
-        LogPriorLengScnew = feval(lnpriorLengSc, newlogEll, model.prior.GPkernel.lenghtScale);
+        LogPriorLengScnew = feval(lnpriorLengSc, newEll2, model.prior.lengthScale);
         % Metropolis-Hastings to accept-reject the proposal
         oldlogGP = oldlogGP + oldLogPriorLengSc(j);
         newlogGP = newlogGP + LogPriorLengScnew; 
+       
+        % compute the proposal distribution forward and backwards terms
+        trprior.sigma2 = PropDist.Kern(j); 
+        trprior.mu = model.GP{j}.lengthScale; 
         
-        
-        %YnewlogEll = 2*model.GP{j}.logtheta(1);
-        %%newlogEll = model.GP{j}.logtheta(1);
-        %YnewEll2 = exp(YnewlogEll);  
-        %YnewK = kernCompute(model.GP{j}, [TimesF(:); Xu(:)]);
-        %%ok     = exp(-(0.5/YnewEll2)*model.GP{1}.X2) + ...
-        %%        exp(2*model.GP{j}.logtheta(end))*eye(size(model.GP{1}.X2,1));
+        newLogProp = sum(lntruncNormalpdf(newEll2, trprior)); 
             
-           
-        %% compute the Cholesky decomposition of the new K
-        %[YnewL,er]=jitterChol(YnewK);
-        %YnewL = YnewL';
-        %% evaluate the new log GP prior value 
-        %YinvnewL = YnewL\eye(SizF+M);
-        %YnewLogDetK = 2*sum(log(diag(YnewL)));
-        %YnewlogGP = - 0.5*NumOfReplicas*YnewLogDetK;
-        %for r=1:NumOfReplicas     
-        %   temp = YinvnewL*([F(j,:,r), Fu(j,:,r)]'); 
-        %   YnewlogGP = YnewlogGP - 0.5*temp'*temp;
-        %end
-        %
-        %YLogPriorLengScnew = feval(lnpriorLengSc, YnewlogEll, model.prior.GPkernel.lenghtScale.a, model.prior.GPkernel.lenghtScale.b); 
-        %YnewlogGP = YnewlogGP + oldLogPriorLengSc(j);
-        
-        %if mod(it,100) == 0
-        %[oldlogGP  newlogGP]
-        %[oldLogPriorLengSc(j) LogPriorLengScnew]
-        %[exp(2*model.GP{j}.logtheta(1)) newEll2]
-        %end
-        %
-        
-        [accept, uprob] = metropolisHastings(newlogGP, oldlogGP, 0, 0);
+        trprior.mu = newEll2; 
+        oldLogProp  = sum(lntruncNormalpdf(model.GP{j}.lengthScale, trprior)); 
+                                               
+        [accept, uprob] = metropolisHastings(newlogGP, oldlogGP, newLogProp, oldLogProp);
         %%%%%%%%%%%%%%%%  start accept/update proposal for the lengthscale %%%%%%%%%%%% 
         if accept == 1
            U = n+1:n+M(j);
-           model.GP{j}.logtheta(1) = newlogEll/2;
+           model.GP{j}.lengthScale = newEll2; 
            oldLogPriorLengSc(j) = LogPriorLengScnew;
            %newEll2
            %pause
@@ -726,7 +887,9 @@ for it = 1:(BurnInIters + Iters)
         %%%%%%%%%%%%%%%%%%%%%%% end accept/update proposal for the lengthscale %%%%%%%%%%%%%%%%
         %
     end
-    end
+    end 
+    % END SAMPLE THE LENGTHSCALES OF THE GP FUNCTIONS
+    % *
     
     %
     %
@@ -736,10 +899,9 @@ for it = 1:(BurnInIters + Iters)
         cnt = cnt + 1;
         samples.F{cnt} = F;
         samples.Fu{cnt} = Fu;
-        %samples.predGenes{cnt} = PredictedGenes;
         samples.kinetics(:,:,cnt) = LikParams.kinetics;
-        samples.Weights(:,:,cnt) = LikParams.W;
-        samples.Weights0(:,cnt) = LikParams.W0;
+        samples.W(:,:,cnt) = LikParams.W;
+        samples.W0(:,cnt) = LikParams.W0;
         %
         if model.Likelihood.tauMax < 0
            samples.Taus(:,cnt) = LikParams.Taus(:);
@@ -750,21 +912,20 @@ for it = 1:(BurnInIters + Iters)
             samples.kineticsTF(:,:,cnt) = LikParams.kineticsTF;
             samples.LogLTF(cnt) = sum(oldLogLikTF(:));
             %samples.predGenesTF{cnt} = PredictedGenesTF;
-            if fixsigma2TF == 0
-                samples.sigmasTF(:,:,cnt) = LikParams.sigmasTF(:,:,1);
+            if onlyPumaVar == 0
+                samples.sigma2_TF(:,cnt) = LikParams.noiseModel.sigma2_TF';
             end
         end
-        if fixsigma2 == 0
-           samples.sigmas(:,:,cnt) = LikParams.sigmas(:,:,1);
+        if onlyPumaVar == 0
+           samples.sigma2(:,cnt) = LikParams.noiseModel.sigma2';
         end
         %if netLearn == 1
         %    samples.NetX(:,:,cnt) = LikParams.Net_X;
         %end
         for jin=1:NumOfTFs
-            samples.logthetas(jin,cnt) = model.GP{jin}.logtheta(1);
+            samples.lengthScale(jin,cnt) = model.GP{jin}.lengthScale;
         end
         samples.LogL(cnt) = sum(oldLogLik(:));
-        %save(trainOps.ResFile,'samples','model');
         %
     end
     %
@@ -780,13 +941,18 @@ model.Likelihood.Tausindex = LikParams.Tausindex;
 model.Likelihood.Taus = LikParams.Taus;
 if isfield(model.Likelihood,'GenesTF')
     model.Likelihood.kineticsTF = LikParams.kineticsTF;
-    model.Likelihood.sigmasTF = LikParams.sigmasTF;
 end
 
-model.Likelihood.sigmas = LikParams.sigmas;
-if netLearn == 1
-model.Likelihood.Net_x = LikParams.Net_X;
+if onlyPumaVar == 0
+    model.Likelihood.noiseModel.sigma2 = LikParams.noiseModel.sigma2;
+    if isfield(model.Likelihood,'GenesTF')
+        model.Likelihood.noiseModel.sigma2_TF = LikParams.noiseModel.sigma2_TF;
+    end
 end
+
+%if netLearn == 1
+%model.Likelihood.Net_x = LikParams.Net_X;
+%end
 model.F = F;
 model.Fu = Fu;
 %
@@ -804,11 +970,15 @@ end
 
 accRates.Kin = (acceptKin/Iters)*100;
 accRates.W = (acceptW/Iters)*100;
-accRates.LengSc = (acceptLengSc/Iters)*100;
+accRates.Kern = (acceptLengSc/Iters)*100;
 if isfield(model.Likelihood,'GenesTF')
    accRates.TFKin = (acceptTFKin/Iters)*100;
 end
 
+accRates.noiseM = (accRateNoiseM/Iters)*100;
+if isfield(model.Likelihood,'GenesTF')
+    accRates.noiseMTF = (accRateNoiseMTF/Iters)*100;
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

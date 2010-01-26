@@ -31,7 +31,10 @@ if numTFs == 1
         % maximum positve value for the gene DELAYS
         % -- 0 means that no delays are allowed 
         options.tauMax = 0;
-        
+        %
+        %
+        % use or not the two mixture (one spike and one borad) for the interaction weights 
+        options.spikePriorW = 'no';
         %
         options.noiseModel = {'white'};
         %
@@ -48,6 +51,12 @@ if numTFs == 1
         options.constraints.initialConds = ones(1,NumOfGenes); 
         options.constraints.geneTFsensitivity = 0;
         %
+        
+        % constrain interaction bias to be zero
+        options.constraints.W0 = ones(1,NumOfGenes); 
+        % 
+        options.constraints.spaceW = 'real'; 
+        
         %
         options.constraints.X = ones(NumOfGenes,1);
         options.constraints.replicas = 'free'; % 'free' or 'coupled'

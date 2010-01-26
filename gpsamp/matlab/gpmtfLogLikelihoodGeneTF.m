@@ -25,31 +25,20 @@ function [loglikvalTF, PredGenesTF] = gpmtfLogLikelihoodGeneTF(LikParams, F, R, 
 GenesTF = LikParams.GenesTF(:,:,R);
 PredGenesTF = singleactFunc(LikParams.singleAct, F(TFindex,:));
 
-%uu = LikParams.TimesF;
-%[commonSlots, comInds] = intersect(uu,LikParams.TimesG);
 
-%for m=1:size(TFindex,2)
-%    %
-%    j = TFindex(m);
-%    loglikvalTF(m) = - 0.5*sum(log(2*pi*LikParams.sigmasTF(j,:,R)),2)....
-%                   - 0.5*sum(((GenesTF(j,:) - PredGenesTF(m,LikParams.comInds)).^2)./LikParams.sigmasTF(j,:,R),2);
-%    
-%                   
-%    %totalmse(m) = sum(sum((GenesTF(j,:) -  PredGenesTF(m,LikParams.comInds)).^2)); 
-%    
-%    %[GenesTF(j,:);PredGenesTF(m,comInds)]
-%    %plot(LikParams.TimesG, LikParams.GenesTF(j,:),'r');
-%    %hold on; 
-%    %plot(LikParams.TimesF, PredGenesTF(m,:));
-%    %disp('in TF')
-%    %pause
-%    %hold off
-%    %
-%end
+if LikParams.noiseModel.active(1) == 1
+    sigmas = LikParams.noiseModel.pumaSigma2_TF(TFindex, : , R);
+else
+    sigmas = zeros(size(TFindex(:),1), LikParams.numTimes);
+end
+    
+%
+if LikParams.noiseModel.active(2) == 1
+    sigmas = sigmas + repmat(LikParams.noiseModel.sigma2_TF(TFindex)', 1, LikParams.numTimes ); 
+end
 
-
-loglikvalTF = - 0.5*sum(log(2*pi*LikParams.sigmasTF(TFindex,:,R)),2)....
-               - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comIndsTF)).^2)./LikParams.sigmasTF(TFindex,:,R),2);
+loglikvalTF = - 0.5*sum(log(2*pi*sigmas),2)....
+               - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comIndsTF)).^2)./sigmas,2);
 
 loglikvalTF = loglikvalTF';
 %sum(abs(loglikvalTF - loglikvalTF1))

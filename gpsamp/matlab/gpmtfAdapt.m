@@ -174,7 +174,7 @@ for j=1:NumOfTFs
 %    
    U = n+1:n+M(j);
    PropDist.qF{j}.m = zeros(n+M(j),1);
-   PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); Xu{j}(:)]); 
+   PropDist.qF{j}.K = covfunCompute(model.GP{j}, [TimesF(:); Xu{j}(:)]); 
    %PropDist.qF{1}.K = PropDist.qF{1}.K + 0.1*eye(size(PropDist.qF{1}.K)); 
    L=jitterChol(PropDist.qF{j}.K)';
    PropDist.qF{j}.invL = L\eye(n+M(j)); 
@@ -239,19 +239,37 @@ model.M = M;
 PropDist.kin = 0.5*ones(NumOfGenes,SizKin);
 % interaction weigths and bias 
 PropDist.W = 0.5*ones(NumOfGenes,NumOfTFs+1);
-PropDist.LengSc = 0.1*(1/model.prior.lenghtScale.sigma2)*ones(1,NumOfTFs);
+PropDist.Kern = 0.5*ones(1, NumOfTFs);
+
+
+onlyPumaVar = 1; 
+if model.Likelihood.noiseModel.active(2) > 0  
+   onlyPumaVar = 0;
+end
+
+if onlyPumaVar == 0 
+   % white nosie variance per gene possibly added to the PUMA variances
+   PropDist.noiseModel = 0.5*ones(1, NumOfGenes); 
+end
+
 
 % additional proposal distribution for the TF kinetic parameters
-if isfield(model.Likelihood,'GenesTF')
+if isfield(model.Likelihood,'GenesTF')  
   PropDist.TFkin = 0.5*ones(NumOfTFs,2);
+  if onlyPumaVar == 0
+     PropDist.noiseModelTF = 0.5*ones(1, NumOfTFs); 
+  end
+  %
 end
 
 % useful ranges needed in the adaption of the 
 % variances of theese proposal distribution 
 qKinBelow = 0.000001; qKinAbove = 2;
 qWbelow = 0.000001;   qWabove = 2;
-qLengScBelow = 0.0001*PropDist.LengSc(1); 
-qLengScAbove = 2*PropDist.LengSc(1);
+qNoiseMbelow = 0.000001;  qNoiseMabove = 2;
+qKernBelow = 0.0001*PropDist.Kern(1); 
+qKernAbove = 2;
+
 epsilon = 0.1;
 
 cnt = 0;
@@ -263,15 +281,18 @@ while 1
    %tic;
    [model PropDist samples accRates] = gpmtfSample(model, PropDist, AdaptOps);
    %toc;
-   [model.GP{1}.logtheta(1)]
    accRateF = accRates.F;
    accRateKin = accRates.Kin;
-   accRateW = accRates.W;
-   accRateLengSc = accRates.LengSc;
+   accRateW = accRates.W; 
+   accRateNoiseM = accRates.noiseM;
+   accRateKern = accRates.Kern;
    %
    if isfield(model.Likelihood,'GenesTF')
        accRateTFKin = accRates.TFKin;
+       accRateNoiseMTF = accRates.noiseMTF;
    end
+
+   model.Likelihood.noiseModel.sigma2
    
    if AdaptOps.disp == 1
    fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 
@@ -296,17 +317,28 @@ while 1
    fprintf(1,'Acceptance Rates for Interaction weights (per gene)\n');
    disp(accRateW);
    fprintf(1,'Acceptance Rates for lengthscales (per GP function)\n');
-   disp(accRateLengSc);
+   disp(accRateKern);
+  
+   if onlyPumaVar == 0
+         fprintf(1,'Acceptance rates for the noise parameters in the likelihood\n');
+         disp(accRateNoiseM);
+         if isfield(model.Likelihood,'GenesTF')
+         fprintf(1,'Acceptance rates for the noise parameters in the TF-Genes likelihood\n');
+         disp(accRateNoiseMTF);
+         end
+   end   
+   
    fprintf(1,'Average likelihood value %15.8f',mean(samples.LogL));
    if isfield(model.Likelihood,'GenesTF')
        fprintf(1,' TFGenes LogL %15.8f\n',mean(samples.LogLTF));
    else
        fprintf(1,'\n');
    end
+   
    fprintf(1,'------------------------------- \n',cnt+1);
    end   
        
-   if (min(accRateKin(:))>15) & (min(accRateW(:))>15) & (min(accRateLengSc(:))>15)
+   if (min(accRateKin(:))>15) & (min(accRateW(:))>15) & (min(accRateKern(:))>15)
    %
        allTFs = 0;
        for jj=1:NumOfTFs
@@ -324,7 +356,7 @@ while 1
    
     
    cnt = cnt + 1;
-   % do not allow more than 80 iterations when you adapt the proposal distribution
+   % do not allow more than 100 iterations when you adapt the proposal distribution
    if cnt == 100
        warning('END OF ADAPTION: acceptance rates were not all OK');
        break;
@@ -355,7 +387,7 @@ while 1
           U = n+1:n+M(j);
           %
           PropDist.qF{j}.m = zeros(n+M(j),1);
-          PropDist.qF{j}.K = kernCompute(model.GP{j}, [TimesF(:); model.Xu{j}(:)]);     
+          PropDist.qF{j}.K = covfunCompute(model.GP{j}, [TimesF(:); model.Xu{j}(:)]);     
           L=jitterChol(PropDist.qF{j}.K)';
           PropDist.qF{j}.invL = L\eye(n+M(j)); 
           PropDist.qF{j}.LogDetK = 2*sum(log(diag(L)));
@@ -477,24 +509,71 @@ while 1
    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT LENGTHSCALES PROPOSAL %%%%%%%%%%%%%%%%
    % adapt the proposal over the interaction weights (desired acceptance rate: 15-35%)
    for j=1:NumOfTFs
-      if accRateLengSc(j) > 35
+      if accRateKern(j) > 35
          % incease the covariance to reduce the acceptance rate
-         PropDist.LengSc(j) = PropDist.LengSc(j) + epsilon*PropDist.LengSc(j);
-         if PropDist.LengSc(j) > qLengScAbove
-             PropDist.LengSc(j) = qLengScAbove;
+         PropDist.Kern(j) = PropDist.Kern(j) + epsilon*PropDist.Kern(j);
+         if PropDist.Kern(j) > qKernAbove
+             PropDist.Kern(j) = qKernAbove;
          end
       end
-      if accRateLengSc(j) < 15
+      if accRateKern(j) < 15
          % decrease the covariance to incease the acceptance rate
-         PropDist.LengSc(j) = PropDist.LengSc(j) - epsilon*PropDist.LengSc(j);    
-         if PropDist.LengSc(j) < qLengScBelow 
-             PropDist.LengSc(j) = qLengScBelow;
+         PropDist.Kern(j) = PropDist.Kern(j) - epsilon*PropDist.Kern(j);    
+         if PropDist.Kern(j) < qKernBelow 
+             PropDist.Kern(j) = qKernBelow;
          end
          %
       end
        %
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT LENGTHSCALES PROPOSAL %%%%%%%%%%%%%%%%
+   
+   
+   if onlyPumaVar == 0 
+    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
+      for j=1:NumOfGenes
+         if accRateNoiseM(j) > 35
+            % incease the covariance to reduce the acceptance rate
+            PropDist.noiseModel(j) = PropDist.noiseModel(j) + epsilon*PropDist.noiseModel(j);
+            if PropDist.noiseModel(j) > qNoiseMabove 
+               PropDist.noiseModel(j) = qNoiseMabove;
+            end
+         end
+         if accRateNoiseM(j) < 15
+            % decrease the covariance to incease the acceptance rate
+            PropDist.noiseModel(j) = PropDist.noiseModel(j) - epsilon*PropDist.noiseModel(j);    
+            if PropDist.noiseModel(j) < qNoiseMbelow 
+               PropDist.noiseModel(j) = qNoiseMbelow;
+            end
+          %
+         end
+       %
+      end
+      %
+      if isfield(model.Likelihood,'GenesTF')
+      for j=1:NumOfTFs
+         if accRateNoiseMTF(j) > 35
+            % incease the covariance to reduce the acceptance rate
+            PropDist.noiseModelTF(j) = PropDist.noiseModelTF(j) + epsilon*PropDist.noiseModelTF(j);
+            if PropDist.noiseModelTF(j) > qNoiseMabove 
+               PropDist.noiseModelTF(j) = qNoiseMabove;
+            end
+         end
+         if accRateNoiseMTF(j) < 15
+            % decrease the covariance to incease the acceptance rate
+            PropDist.noiseModelTF(j) = PropDist.noiseModelTF(j) - epsilon*PropDist.noiseModelTF(j);    
+            if PropDist.noiseModelTF(j) < qNoiseMbelow 
+               PropDist.noiseModelTF(j) = qNoiseMbelow;
+            end
+          %
+         end
+       %
+      end   
+      end
+      %
+   end
+   %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
+   
 %
 %
 end
