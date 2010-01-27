@@ -2,8 +2,7 @@ function [Genes, TimesG, GeneVars, TFGenes, TFGeneVars, GroundTruth] = loadDatas
 %
 % Load the gene expression dataset 
 
-
-
+GroundTruth = [];
 switch dname 
     case 'toy3TfsDelays' 
         %
@@ -42,10 +41,10 @@ switch dname
         GroundTruth.sigmas = LikParams.sigmas;
         GroundTruth.sigmasTF = LikParams.sigmasTF; 
         %
-    case 'p53_barenco5'
+    case 'p53Barenco5Genes'
         %
         load Barencodata;
-        TimesG = times';
+        TimesG = [0 2 4 6 8 10 12];
         Genes(:,:,1) = y{1}'; 
         Genes(:,:,2) = y{2}'; 
         Genes(:,:,3) = y{3}';
@@ -53,9 +52,9 @@ switch dname
         GeneVars(:,:,2) = yvar{2}';
         GeneVars(:,:,3) = yvar{3}';
         TFGenes = [];
-        TFGeneVars = []; 
+        TFGeneVars = [];
         %
-    case 'ecoli_rogersetal14'
+    case 'ecoliRogersetal14Genes'
         %
         load ecoliNormalisedData; 
         TimesG = times';
@@ -92,4 +91,5 @@ end
 if (size(TimesG,2) ~= NumOfTimes) 
     disp('Error: the number of time points must be consistent with the Gene expressions.');
 end
+
 
