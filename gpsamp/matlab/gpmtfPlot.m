@@ -36,19 +36,20 @@ function gpmtfPlot(model, samples, demdata, printResults)
 %if strcmp(model.Likelihood.TFjointAct,'sigmoid') 
 %   model.Likelihood.TFsingleAct = 'exp';
 %end
+dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
 
 Genes = model.Likelihood.Genes;
 
-if strcmp(model.constraints.sigmas,'fixed')
-    GeneVars = model.Likelihood.sigmas;
+if model.Likelihood.noiseModel.active(1) == 1
+    GeneVars = model.Likelihood.noiseModel.pumaSigma2;
 end
  
 TimesG = model.Likelihood.TimesG; 
 TimesF = model.Likelihood.TimesF;
 if isfield(model.Likelihood,'GenesTF')
     GenesTF = model.Likelihood.GenesTF;
-    if strcmp(model.constraints.sigmasTF,'fixed')
-        GeneTFVars = model.Likelihood.sigmasTF;
+    if model.Likelihood.noiseModel.active(1) == 1
+        GeneTFVars = model.Likelihood.noiseModel.pumaSigma2_TF;
     end
 end
 
@@ -58,14 +59,16 @@ fileName = [demdata 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointA
 
 NumOfTFs = model.Likelihood.numTFs;
 
-if strcmp(model.constraints.sigmas,'free') 
+if 0
+
+if model.Likelihood.noiseModel.active(1) == 1
   % plots sigma2s and the lengghscales
   for j=1:model.Likelihood.numGenes
-  sigma2j = squeeze(samples.sigmas(j,1,:));
+  sigma2j = squeeze(samples.sigma2(j,:));
   figure;
   hist(sigma2j,100);   
   if printResults
-       print('-depsc', ['./results/' fileName 'Sigma2']);
+       print('-depsc', [dirr fileName 'Sigma2']);
   end
   titlestring = 'Observation variance: ';
   titlestring = [titlestring, num2str(j)]; 
@@ -75,14 +78,14 @@ if strcmp(model.constraints.sigmas,'free')
 end    
 
 if isfield(model.Likelihood,'sigmasTF')
-if strcmp(model.constraints.sigmasTF,'free') 
+if 0
   % plots sigma2s and the lengghscales
   for j=1:model.Likelihood.numTFs
   sigma2j = squeeze(samples.sigmasTF(j,1,:));
   figure;
   hist(sigma2j,100);   
   if printResults
-       print('-depsc', ['./results/' fileName 'SigmasTF']);
+       print('-depsc', [dirr fileName 'SigmasTF']);
   end
   titlestring = 'Observation variance-TF Genes: ';
   titlestring = [titlestring, num2str(j)]; 
@@ -95,15 +98,18 @@ end
 % plot the lengthscales
 for j=1:NumOfTFs
     figure;
-    hist(squeeze(exp(2*samples.logthetas(j,1,:))),100); 
+    hist(squeeze(exp(2*samples.lengthScale(j,:))),30); 
     %title('Lengthscale','fontsize', 20);
     if printResults
-      print('-depsc', ['./results/' fileName 'LengthSc' 'TF' num2str(j)]);
+      print('-depsc', [dirr fileName 'LengthSc' 'TF' num2str(j)]);
     end
     titlestring = 'Lengthscale: ';
     titlestring = [titlestring, num2str(j)]; 
     titlestring = [titlestring, ' TF'];
     title(titlestring,'fontsize', 20);
+end
+
+
 end
 
 NumOfGenes = model.Likelihood.numGenes;
@@ -158,7 +164,7 @@ for r=1:NumOfReplicas
      end
      
      if printResults
-      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'TF' num2str(j)]);
+      print('-depsc', [dirr fileName 'Replica' num2str(r) 'TF' num2str(j)]);
      end 
      titlestring = 'Profile: ';
      titlestring = [titlestring, num2str(r)]; 
@@ -176,10 +182,23 @@ end
 for r=1:NumOfReplicas
   %  
   for j=1:NumOfGenes
+    
      % 
      GG = zeros(NumOfSamples,model.Likelihood.sizTime);    
      for t=1:NumOfSamples
-         GG(t,:) = samples.predGenes{t}(j,:,r);
+         %
+         LikParams = model.Likelihood; 
+         LikParams.kinetics = samples.kinetics(:,:,t);
+         LikParams.kineticsTF = samples.kineticsTF(:,:,t);
+         LikParams.W = samples.W(:,:,t);
+         LikParams.W0 = samples.W0(:,t);
+         %LikParams.TF = TFs{samples.TFindex(t)};
+         predgen = gpmtfComputeGeneODE(LikParams, samples.F{t}(:,:,r), r, j);
+         GG(t,:) = predgen;
+         %predgen(model.Likelihood.comInds)
+         %Genes(j,:,r)
+         %pause
+         %
      end
      
      mu = mean(GG)';
@@ -205,13 +224,13 @@ for r=1:NumOfReplicas
      plot(TF,mu,'b','lineWidth',3);
    
      plot(TimesG,Genes(j,:,r),'rx','markersize', 14','lineWidth', 2);
-     if strcmp(model.constraints.sigmas,'fixed')
+     if model.Likelihood.noiseModel.active(1) == 1
      errorbar(TimesG,  Genes(j,:,r), 2*sqrt(GeneVars(j,:,r)), 'rx','lineWidth', 1.5);
      end
-     axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 0.95*min(min(Genes(j,:,r))) 1.05*max(max(Genes(j,:,r)))]);
+     axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1  0.95*min([Genes(j,:,r), mu' - stds'])  1.05*max([Genes(j,:,r), mu' - stds'])  ]);
      
      if printResults
-      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'GeneExp' num2str(j)]);
+      print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneExp' num2str(j)]);
      end
      titlestring = 'Expressions: ';
      titlestring = [titlestring, num2str(r)]; 
@@ -230,9 +249,10 @@ for r=1:NumOfReplicas
   %  
   for j=1:NumOfTFs
      % 
-     GG = zeros(NumOfSamples,size(model.F,2));    
+     GG = zeros(NumOfSamples, size(model.Likelihood.TimesF,2));    
      for t=1:NumOfSamples
-         GG(t,:) = samples.predGenesTF{t}(j,:,r);
+         PredGenesTF = singleactFunc(model.Likelihood.singleAct, samples.F{t}(j,:,r));
+         GG(t,:) = PredGenesTF;
      end
      
      mu = mean(GG)';
@@ -251,13 +271,14 @@ for r=1:NumOfReplicas
      plot(TF,mu,'b','lineWidth',3);
    
      plot(TimesG,GenesTF(j,:,r),'rx','markersize', 14','lineWidth', 2);
-     if strcmp(model.constraints.sigmasTF,'fixed')
+     if model.Likelihood.noiseModel.active(1) == 1
      errorbar(TimesG,  GenesTF(j,:,r), 2*sqrt(GeneTFVars(j,:,r)), 'rx','lineWidth', 1.5);
      end
-     axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 0.95*min(min(GenesTF(j,:,r))) 1.05*max(max(GenesTF(j,:,r)))]);
+     
+     axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1  0.95*min([GenesTF(j,:,r), mu' - stds'])  1.05*max([GenesTF(j,:,r), mu' - stds'])]);
      
      if printResults
-      print('-depsc', ['./results/' fileName 'Replica' num2str(r) 'GeneTFExp' num2str(j)]);
+      print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneTFExp' num2str(j)]);
      end
      titlestring = 'Expressions: ';
      titlestring = [titlestring, num2str(r)]; 
@@ -305,7 +326,7 @@ errorbar([1:NumOfGenes]-0.14, modelB(order), modelB(order)-stdBB1(order), stdBB2
 title('Basal rates','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'Basal']);
+      print('-depsc', [dirr fileName 'Basal']);
 end
      
 
@@ -322,7 +343,7 @@ errorbar([1:NumOfGenes]-0.14, modelS(order), modelS(order)-stdSS1(order), stdSS2
 title('Sensitivities','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'Sensitivity']);
+      print('-depsc', [dirr fileName 'Sensitivity']);
 end
 
 figure;
@@ -338,7 +359,7 @@ errorbar([1:NumOfGenes]-0.14, modelD(order), modelD(order)-stdDD1(order), stdDD2
 title('Decays','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'Decay']);
+      print('-depsc', [dirr fileName 'Decay']);
 end
 
 figure;
@@ -354,7 +375,7 @@ errorbar([1:NumOfGenes]-0.14, modelA(order), modelA(order)-stdAA1(order), stdAA2
 title('Initial conditions','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'InitCond']);
+      print('-depsc', [dirr fileName 'InitCond']);
 end
 
 
@@ -385,7 +406,7 @@ errorbar([1:NumOfTFs]-0.14, modelD(orderTF), modelD(orderTF)-stdDD1(orderTF), st
 title('TF-Genes Decays','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'TFGeneDecay']);
+      print('-depsc', [dirr fileName 'TFGeneDecay']);
 end
 
 % Plot the sensitivities.
@@ -401,7 +422,7 @@ errorbar([1:NumOfTFs]-0.14, modelS(orderTF), modelS(orderTF)-stdSS1(orderTF), st
 title('TF-Genes Sensitivities','fontsize', 20);
 
 if printResults
-      print('-depsc', ['./results/' fileName 'TFGeneSensitivity']);
+      print('-depsc', [dirr fileName 'TFGeneSensitivity']);
 end
 %
 end
@@ -409,7 +430,7 @@ end
 
 
 for j=1:NumOfTFs
-W1 = squeeze(samples.Weights(:,j,:))';
+W1 = squeeze(samples.W(:,j,:))';
 modelW1 = mean(W1,1);
 stdW1_1 = sqrt(var(W1));
 stdW1_2 = sqrt(var(W1));
@@ -425,7 +446,7 @@ errorbar([1:NumOfGenes]-0.14, modelW1(order), modelW1(order)-stdW1_1(order), std
 %errorbar([1:NumOfGenes], modelB(order), modelB(order)-stdBB1(order), stdBB2(order)-modelB(order),'.'); 
 %title(j,'fontsize', 20);
 if printResults
-      print('-depsc', ['./results/' fileName 'IntWeights' 'TF' num2str(j)]);
+      print('-depsc', [dirr fileName 'IntWeights' 'TF' num2str(j)]);
 end
 titlestring = 'Interaction weights: '; 
 titlestring = [titlestring, num2str(j)];
@@ -433,7 +454,7 @@ titlestring = [titlestring, ' TF'];
 title(titlestring,'fontsize', 20);
 end
 
-W0 = samples.Weights0';
+W0 = samples.W0';
 modelW0 = mean(W0,1);
 stdW0_1 = sqrt(var(W0));
 stdW0_2 = sqrt(var(W0));
@@ -449,7 +470,7 @@ errorbar([1:NumOfGenes]-0.14, modelW0(order), modelW0(order)-stdW0_1(order), std
 %errorbar([1:NumOfGenes], modelA(order), modelA(order)-stdAA1(order), stdAA2(order)-modelA(order),'.');
 %title('W0','fontsize', 20);
 if printResults
-      print('-depsc', ['./results/' fileName 'IntBias']);
+      print('-depsc', [dirr fileName 'IntBias']);
 end
 title('Interaction biases','fontsize', 20);
 
@@ -472,7 +493,7 @@ errorbar([1:NumOfGenes]-0.14, modelTaus(order), modelTaus(order)-stdTaus_1(order
 %errorbar([1:NumOfGenes], modelA(order), modelA(order)-stdAA1(order), stdAA2(order)-modelA(order),'.');
 %title('W0','fontsize', 20);
 if printResults
-      print('-depsc', ['./results/' fileName 'Delays']);
+      print('-depsc', [dirr fileName 'Delays']);
 end
 title('Delays','fontsize', 20);
 end

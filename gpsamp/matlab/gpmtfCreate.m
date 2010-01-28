@@ -209,7 +209,7 @@ if ~isempty(GenesTF)
        warning('PUMA variances for the TF-Genes are not provided')    
    end    
    if model.Likelihood.noiseModel.active(2) == 1 
-       model.Likelihood.noiseModel.sigma2_TF = 0*0.05*ones(1, options.numTFs); 
+       model.Likelihood.noiseModel.sigma2_TF = 0.05*ones(1, options.numTFs); 
    end
    %
 end
