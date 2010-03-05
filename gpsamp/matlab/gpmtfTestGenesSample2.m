@@ -113,7 +113,7 @@ TrspaceW = model.prior.W.priorSpace;
 LikW = feval(TrspaceW, LikParams.W);
 oldLogPriorW = feval(lnpriorW, LikW, model.prior.W);
 
-
+oldLogPriorNoiseWHITE = [];
 if onlyPumaVar == 0 
     %
     % evaluation of the noise variance in the likelihood 
@@ -630,7 +630,10 @@ for it = 1:(BurnInIters + Iters)
            end
         end
         samples.LogL(cnt) = sum(oldLogLik(:));
-        samples.LogPrioKin_WW0(cnt) = sum(oldLogPriorW(:)) + sum(oldLogPriorW0(:)) + sum(oldLogPriorKin(:)); 
+        samples.LogPrior(cnt) = sum(oldLogPriorW(:)) + sum(oldLogPriorW0(:)) + sum(oldLogPriorKin(:)); 
+        if ~isempty(oldLogPriorNoiseWHITE)
+           samples.LogPrior(cnt) = samples.LogPrior(cnt) + sum(oldLogPriorNoiseWHITE(:));
+        end
         %
         %
     end

@@ -628,7 +628,7 @@ for it = 1:(BurnInIters + Iters)
    
     % * 
     % SAMPLE THE NOISE MODEL IN THE LIKELIHOOD OF THE !!TF!! GENES 
-    if 0 % onlyPumaVar == 0 
+    if onlyPumaVar == 0 
        %  only white noise (no PUMA variances)
        if model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1 
            %

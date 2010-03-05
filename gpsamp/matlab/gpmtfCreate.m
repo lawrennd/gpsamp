@@ -94,8 +94,79 @@ model.Likelihood.numTimes = NumOfTimes;
 model.Likelihood.numReplicas = NumOfReplicas;
 % number of transcription factors
 model.Likelihood.numTFs = options.numTFs;
-
 model.Likelihood.Genes = Genes;
+
+% check if only the decay model is used 
+if model.Likelihood.numTFs == 0 
+%  
+   model.Likelihood.TimesG = TimesG;
+   model.Likelihood.kineticsReadme = '1st column: basals, 2st decays, 3st initial conds';
+   model.Likelihood.kinetics(:,1) = rand(NumOfGenes,1) + 0.5; %B: basal rates 
+   model.Likelihood.kinetics(:,2) = rand(NumOfGenes,1) + 0.5; %D: decay rates
+   model.Likelihood.kinetics(:,3) = rand(NumOfGenes,1) + 0.5; %A: initial conditions
+   
+   % the noise model for the likelihood
+   model.Likelihood.noiseModel.type = ''; 
+   active = [0 0 0];
+   noisetype = [];
+   for g = 1:size(options.noiseModel,2)
+   % 
+        switch options.noiseModel{g}
+        % 
+           case 'pumaWhite'
+           %
+              if ~isempty(GenesVar)   
+                 model.Likelihood.noiseModel.pumaSigma2 = GenesVar;
+                 active(1) = 1;
+              else
+                 warning('PUMA variances are not provided')  
+              end
+           %   
+           case 'white' 
+           % 
+              active(2) = 1;
+              % *Learned* white variance per gene
+              model.Likelihood.noiseModel.sigma2 = 0.05*ones(1, NumOfGenes);
+          %
+        end
+        %
+        if ~(strcmp(options.noiseModel{g},'pumaWhite') & active(1) == 0)
+          if isempty(noisetype) 
+             noisetype = options.noiseModel{g};
+          else
+             noisetype = strcat(noisetype, '+', options.noiseModel{g});
+          end
+        end
+       % 
+   end
+   %
+   model.Likelihood.noiseModel.type = noisetype; 
+   model.Likelihood.noiseModel.active = active;
+   
+   
+   % prior for the kinetics parameters
+   model.prior.kinetics.assignedTo = 'kinetic parameters of the ODEs'; 
+   model.prior.kinetics.type = 'normal';
+   model.prior.kinetics.contraint = 'positive';
+   model.prior.kinetics.priorSpace = 'log';
+   model.prior.kinetics.mu = -0.5; % mean 
+   model.prior.kinetics.sigma2 = 2; % variance
+   
+   % prior for the gene specific white noise variance
+   model.prior.sigma2.assignedTo = 'white noise variance'; 
+   model.prior.sigma2.type = 'invGamma';
+   model.prior.sigma2.constraint = 'positive';
+   model.prior.sigma2.priorSpace = 'lin'; % it means NoTransform;
+   model.prior.sigma2.a = 0.01;
+   model.prior.sigma2.b = 0.01;
+   
+   % initial condition of the differential equation 
+   % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
+   % if 1, then the ODE initial cond is free to take any value at time t=0
+   model.constraints.InitialConds = options.constraints.initialConds;  
+   return;
+%
+end
 
 % the noise model for the likelihoods
 if (size(options.noiseModel,2) < 2) | (size(options.noiseModel,2) == 2  & strcmp(options.noiseModel{1},'pumaWhite') )

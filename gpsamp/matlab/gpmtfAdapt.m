@@ -291,8 +291,6 @@ while 1
        accRateTFKin = accRates.TFKin;
        accRateNoiseMTF = accRates.noiseMTF;
    end
-
-   model.Likelihood.noiseModel.sigma2
    
    if AdaptOps.disp == 1
    fprintf(1,'------ ADAPTION STEP #%2d ------ \n',cnt+1); 

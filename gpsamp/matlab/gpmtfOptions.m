@@ -5,8 +5,24 @@ function options = gpmtfOptions(Genes,numTFs)
 
 
 NumOfGenes = size(Genes,1);
-
-if numTFs == 1
+%
+if numTFs == 0
+        %
+        % NUMBER of TFs
+        options.numTFs = 0;
+        %
+        options.noiseModel = {'white'};
+        % 
+        % CONSTRAINTS of the initial conditions of each differential equation 
+        % for each gene  
+        % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
+        % if 1, then the ODE initial cond is free to take any value at time t=0
+        options.constraints.initialConds = ones(1,NumOfGenes); 
+        %
+        options.constraints.X = ones(NumOfGenes,1);
+        options.constraints.replicas = 'free'; % 'free' or 'coupled'
+        %
+elseif numTFs == 1
         %
         % NUMBER of TFs
         options.numTFs = 1;
