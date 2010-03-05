@@ -7,10 +7,13 @@ printPlot = 0;
 %%%%%%%%%%%%%%  Load the test genes data  %%%%%%%%%%%%%%%% 
 load datasets/drosophila_data;
 load datasets/trainScaleDros;
-load datasets/testset;
+%load datasets/testset;
 load drosTrainTotal;
 
-numGenes = 500;
+%testset.indices = [12197];
+testset.indices = [12197, 2428, 1021, 983, 13538, 10898, 10339, 1958, 11320, 12182];
+%numGenes = 500;
+numGenes = length(testset.indices);
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
 GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 

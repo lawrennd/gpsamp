@@ -1,5 +1,9 @@
 function gpmtfTestPlot(model, Genes, GeneVars, fbgn, samples, TFs, demdata, printResults, Grtruth)
 
+NumPlotRows = 4;
+NumPlotCols = 3;
+FONTSIZE=8;
+
 dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
 dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
 
@@ -140,7 +144,7 @@ for r=1:NumOfReplicas
         + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
   plot(TF,mu,'b','lineWidth',3);
    
-  plot(TimesG,Genes(1,:,r),'rx','markersize', 14','lineWidth', 2);
+  plot(TimesG,Genes(1,:,r),'rx','markersize', 6,'lineWidth', 2);
   if model.Likelihood.noiseModel.active(1) == 1 & sum(model.Likelihood.noiseModel.active(2:3)==0)
      errorbar(TimesG,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
   end
@@ -172,10 +176,11 @@ for r=1:NumOfReplicas
   titlestring = [titlestring, ' replica, '];
   titlestring = [titlestring, num2str(gg)];
   titlestring = [titlestring, ' gene'];
-  title(titlestring,'fontsize', 20);
+  title(titlestring,'fontsize', FONTSIZE);
   %
   %
 end
+plotIndex = r;
 
 
 %figure;
@@ -209,7 +214,7 @@ end
 figure;
 h = hist(samples.kinetics(1,:),D);
 hist(samples.kinetics(1,:),D);
-title('Basal rates','fontsize', 20);
+title('Basal rates','fontsize', FONTSIZE);
 % ground truth 
 if nargin == 9
     %
@@ -223,10 +228,11 @@ if printResults
       print('-depsc', [dirr fileName 'Basal']);
       print('-dpng', [dirrhtml fileName 'Basal']);
 end
-figure;   
+plotIndex = plotIndex+1;
+subplot(NumPlotRows, NumPlotCols, plotIndex);
 h = hist(samples.kinetics(3,:), D);
 hist(samples.kinetics(3,:), D);
-title('Sensitivities','fontsize', 20);
+title('Sensitivities','fontsize', FONTSIZE);
 % ground truth 
 if nargin == 9
     %
@@ -241,10 +247,11 @@ if printResults
       print('-depsc', [dirr fileName 'Sensitivity']);
       print('-dpng', [dirrhtml fileName 'Sensitivity']);
 end
-figure;
+plotIndex = plotIndex+1;
+subplot(NumPlotRows, NumPlotCols, plotIndex);
 h = hist(samples.kinetics(2,:), D);
 hist(samples.kinetics(2,:), D);
-title('Decays','fontsize', 20);
+title('Decays','fontsize', FONTSIZE);
 % ground truth 
 if nargin == 9
     %
@@ -258,10 +265,11 @@ if printResults
       print('-depsc', [dirr fileName 'Decay']);
       print('-dpng', [dirrhtml fileName 'Decay']);
 end
-figure;
+plotIndex = plotIndex+1;
+subplot(NumPlotRows, NumPlotCols, plotIndex);
 h = hist(samples.kinetics(4,:), D);
 hist(samples.kinetics(4,:), D);
-title('Initial conditions','fontsize', 20);
+title('Initial conditions','fontsize', FONTSIZE);
 % ground truth 
 if nargin == 9
     %
@@ -278,7 +286,8 @@ end
 
 for j=1:NumOfTFs
 W1 = samples.W(j,:);
-figure;
+plotIndex = plotIndex+1;
+subplot(NumPlotRows, NumPlotCols, plotIndex);
 h = hist(W1, D);
 hist(W1, D);
 % ground truth 
@@ -296,12 +305,13 @@ end
 titlestring = 'Interaction weights: '; 
 titlestring = [titlestring, num2str(j)];
 titlestring = [titlestring, ' TF'];
-title(titlestring,'fontsize', 20);
+title(titlestring,'fontsize', FONTSIZE);
 end
 
 W0 = samples.W0';
 
-figure;
+plotIndex = plotIndex+1;
+subplot(NumPlotRows, NumPlotCols, plotIndex);
 h = hist(W0, D);
 hist(W0, D);
 if nargin == 9
@@ -315,4 +325,4 @@ if printResults
       print('-depsc', [dirr fileName 'IntBias']);
       print('-dpng', [dirrhtml fileName 'IntBias']);
 end
-title('Interaction biases','fontsize', 20);
+title('Interaction biases','fontsize', FONTSIZE);

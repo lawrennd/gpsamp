@@ -76,6 +76,7 @@ end
 samples.kinetics = samples.kinetics(TFset, :);
 samples.kineticsTF = samples.kineticsTF(TFset, :);
 
+testGene = {};
 if exist(outfile, 'file'),
   load(outfile);
 end

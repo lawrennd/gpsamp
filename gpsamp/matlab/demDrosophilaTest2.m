@@ -10,7 +10,7 @@ load datasets/trainScaleDros;
 load datasets/testset;
 load drosTrainTotal;
 
-numGenes = 500;
+numGenes = 1;
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
 GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 

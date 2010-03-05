@@ -13,35 +13,63 @@ if strcmp(method, 'loglike'),
 elseif strcmp(method, 'harmmeanlike'),
   results = zeros(1, length(testGenes));
   for k=1:length(testGenes),
-    results(k) = 1./mean(1 ./ testGenes{k}.LogL);
+    results(k) = log(1./mean(1 ./ exp(testGenes{k}.LogL)));
+  end
+  return;
+elseif strcmp(method, 'meansens'),
+  results = zeros(1, length(testGenes));
+  for k=1:length(testGenes),
+    results(k) = mean(testGenes{k}.kinetics(2, :));
   end
   return;
 elseif strcmp(method, 'meansigma'),
-  results = zeros(1, length(testGenes));
   if isfield(testGenes{1}, 'sigmas'),
+    results = zeros(1, length(testGenes));
     for k=1:length(testGenes),
       results(k) = mean(testGenes{k}.sigmas);
     end
   else
+    results = [];
+  end
+  return;
+elseif strcmp(method, 'sigma2f'),
+  if isfield(testGenes{1}, 'sigma2f'),
+    results = zeros(1, length(testGenes));
     for k=1:length(testGenes),
-      results(k) = mean(testGenes{k}.kinetics(2, :));
+      results(k) = mean(testGenes{k}.sigma2f);
     end
+  else
+    results = [];
+  end
+  return;
+elseif strcmp(method, 'lengthScale'),
+  if isfield(testGenes{1}, 'lengthScale'),
+    results = zeros(1, length(testGenes));
+    for k=1:length(testGenes),
+      results(k) = mean(testGenes{k}.lengthScale);
+    end
+  else
+    results = [];
   end
   return;
 end
 
-results = zeros(size(testGenes{1}.Weights, 1), length(testGenes));
+if isfield(testGenes{1}, 'Weights'),
+  results = zeros(size(testGenes{1}.Weights, 1), length(testGenes));
+else
+  results = zeros(size(testGenes{1}.W, 1), length(testGenes));
+end
 
 for k=1:length(testGenes),
-  W = testGenes{k}.Weights;
+  if isfield(testGenes{k}, 'Weights'),
+    W = testGenes{k}.Weights;
+  else
+    W = testGenes{k}.W;
+  end
   d = size(W, 1);
   switch method,
-   case 'meansigmaweight',
-    if isfield(testGenes{k}, 'sigmas'),
-      results(:, k) = mean(W .* repmat(testGenes{k}.sigmas, [d, 1]), 2);
-    else
-      results(:, k) = mean(W .* repmat(testGenes{k}.kinetics(2, :), [d, 1]), 2);
-    end
+   case 'meansensweight',
+    results(:, k) = mean(W .* repmat(testGenes{k}.kinetics(2, :), [d, 1]), 2);
    case 'meanweight',
     results(:, k) = mean(W, 2);
    case 'zscore',
