@@ -10,32 +10,32 @@ end
 % marginal likelihoods) 
 if strcmp(method, 'margLogLik1')
   %  
-  results = zeros(size(testGenes{end,1}.W, 1), size(testGenes, 2));
+  results = zeros( size(testGenes) );
   % compute all marginal likelihoods for all trained models
-  for c=1:size(testGenes,1) 
-  for k=1:size(testGenes,2) 
+  for k=1:size(testGenes,1) 
+  for c=1:size(testGenes,2) 
     %
     % approximate the entropy using Gaussian density estimation 
-    if isfield(testGenes{c,k}, 'W')
-       X = [testGenes{c,k}.kinetics; testGenes{c,k}.W; testGenes{c,k}.W0; testGenes{c,k}.sigma2]';
-       %X = [testGenes{c,k}.kinetics; testGenes{c,k}.W; testGenes{c,k}.W0]';
+    if isfield(testGenes{k,c}, 'W')
+       X = [testGenes{k,c}.kinetics; testGenes{k,c}.W; testGenes{k,c}.W0; testGenes{k,c}.sigma2]';
+       %X = [testGenes{k,c}.kinetics; testGenes{k,c}.W; testGenes{k,c}.W0]';
     else
-       X = [testGenes{c,k}.kinetics; testGenes{c,k}.sigma2]'; 
-       %X = [testGenes{c,k}.kinetics]';
+       X = [testGenes{k,c}.kinetics; testGenes{k,c}.sigma2]'; 
+       %X = [testGenes{k,c}.kinetics]';
     end
     mu = mean(X,1);
     Sigma = cov(X);
     [N D] = size(X);
     jit = 1e-10;
     entropy = (0.5*D)*log(2*pi) + (0.5*D) + 0.5*log(det(Sigma + jit*eye(size(Sigma,1))));
-    LogMargL(c,k) = mean(testGenes{c,k}.LogL) + mean(testGenes{c,k}.LogPrior) + entropy;
+    LogMargL(k,c) = mean(testGenes{k,c}.LogL) + mean(testGenes{k,c}.LogPrior) + entropy;
     %
   end
   end
-  results = LogMargL;
+  results = real(LogMargL);
   return;
   %
-if strcmp(method, 'loglike'),
+elseif strcmp(method, 'loglike'),
   results = zeros(1, length(testGenes));
   for k=1:length(testGenes),
     results(k) = mean(testGenes{k}.LogL);
