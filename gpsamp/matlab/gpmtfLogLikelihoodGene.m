@@ -67,9 +67,18 @@ else
        sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(Gindex)', 1, LikParams.numTimes ); 
    end
     
+<<<<<<< .mine
+   if isfield(LikParams, 'crValMask')    
+     loglikval = - 0.5*sum(log(2*pi*sigmas(:, LikParams.crValMask)),2)....
+               - 0.5*sum(((LikParams.Genes(Gindex, LikParams.crValMask,R)...
+               - PredGenes(:,LikParams.comInds(LikParams.crValMask))).^2)./sigmas(:,LikParams.crValMask),2);
+   else 
+     loglikval = - 0.5*sum(log(2*pi*sigmas),2)....
+=======
    loglikval = - 0.5*sum(log(2*pi*sigmas),2) ...
+>>>>>>> .r764
                - 0.5*sum(((LikParams.Genes(Gindex,:,R) - PredGenes(:,LikParams.comInds)).^2)./sigmas,2);
-             
+   end            
    %
    %
 end

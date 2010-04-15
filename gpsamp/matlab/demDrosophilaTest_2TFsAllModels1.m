@@ -8,13 +8,13 @@ addpath ~/mlprojects/gpsamp/matlab/toolbox
 
 %outdir = '~/mlprojects/gpsamp/matlab/results';
 outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-
 outfile = sprintf('%s/multitf3_%s_m%d_r%d.mat', outdir, datestr(now, 29), modulus, remainder);
 
 dataName = 'drosophila_dataTest';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
+noiseM = {'pumaWhite' 'white'};
 
 %%%%%%%%%%%%%%  Load the test genes data  %%%%%%%%%%%%%%%% 
 %load ~/mlprojects/gpsamp/matlab/datasets/drosophila_data;
@@ -73,11 +73,9 @@ for n=1:size(Genes,1)
 %    
     if size(testGene,1) > n,
         continue;
-    end
-    
+    end    
     TestGenes = Genes(n,:,:);
     TestGenesVar = GenesVar(n,:,:); 
-    %
     for c=1:size(comb,1)  
     %
         numTFs = sum(comb(c,:)); 
@@ -85,7 +83,7 @@ for n=1:size(Genes,1)
         options = gpmtfOptions(ones(1,12,3), numTFs); 
         options.jointAct = 'sigmoid';   
         %options.spikePriorW = 'yes';
-        options.noiseModel = {'pumaWhite' 'white'};
+        options.noiseModel = noiseM;
         options.constraints.spaceW = 'positive'; 
         options.tauMax = 0; % no delays
         % define the dense discretized grid in the time axis for the TF latent functions 
@@ -118,7 +116,6 @@ for n=1:size(Genes,1)
         
         % CREATE the model
         modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-   
         if numTFs > 0
            [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, mcmcoptions.adapt); 
            % training/sampling phase

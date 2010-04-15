@@ -143,8 +143,6 @@ while 1
       end
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
-   
-%
 %
 end
 
@@ -153,7 +151,6 @@ end
 function [model PropDist samples accRates] = gpmtfOnlyDecayModelSample(model, PropDist, trainOps)
 %
 %
-
 
 BurnInIters = trainOps.Burnin; 
 Iters = trainOps.T; 
@@ -180,7 +177,7 @@ SizKin = size(LikParams.kinetics,2);
 % compute initial values for the log likelihood 
 oldLogLik = zeros(NumOfReplicas, NumOfGenes);
 for r=1:NumOfReplicas
-   %
+%
    for j=1:NumOfGenes
      %  
      B = LikParams.kinetics(j,1);
@@ -198,10 +195,16 @@ for r=1:NumOfReplicas
    if LikParams.noiseModel.active(2) == 1
        sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(:)', 1, LikParams.numTimes ); 
    end
-  
-   oldLogLik(r,:) = - 0.5*sum(log(2*pi*sigmas),2)...
-                    - 0.5*sum(((LikParams.Genes(:,:,r) - PredGenes).^2)./sigmas,2);   
-   %     
+
+   if isfield(LikParams, 'crValMask')    
+       oldLogLik(r,:) = - 0.5*sum(log(2*pi*sigmas(:, LikParams.crValMask)),2)....
+                    - 0.5*sum(((LikParams.Genes(:, LikParams.crValMask,r)...
+                    - PredGenes(:,LikParams.crValMask)).^2)./sigmas(:,LikParams.crValMask),2);
+   else 
+       oldLogLik(r,:) = - 0.5*sum(log(2*pi*sigmas),2)....
+                    - 0.5*sum(((LikParams.Genes(:,:,r) - PredGenes).^2)./sigmas,2);
+   end
+%     
 end
 
 %
@@ -273,9 +276,16 @@ for it = 1:(BurnInIters + Iters)
             if LikParams.noiseModel.active(2) == 1
                sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(j), 1, LikParams.numTimes ); 
             end
+            
+            if isfield(LikParams, 'crValMask')    
+               newLogLik(r) = - 0.5*sum(log(2*pi*sigmas(LikParams.crValMask)),2)....
+                        - 0.5*sum(((LikParams.Genes(j, LikParams.crValMask, r)...
+                        - PredGenes(LikParams.crValMask)).^2)./sigmas(LikParams.crValMask),2);
+            else 
+               newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
+                         - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
+            end
   
-            newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
-                           - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
             %              
         end
        
@@ -359,9 +369,15 @@ for it = 1:(BurnInIters + Iters)
                    if LikParams.noiseModel.active(2) == 1
                       sigmas = sigmas + repmat(newSigma2, 1, LikParams1.numTimes ); 
                    end
-  
-                   newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
-                                  - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
+                   
+                   if isfield(LikParams, 'crValMask')    
+                      newLogLik(r) = - 0.5*sum(log(2*pi*sigmas(LikParams.crValMask)),2)....
+                            - 0.5*sum(((LikParams.Genes(j, LikParams.crValMask, r)...
+                            - PredGenes(LikParams.crValMask)).^2)./sigmas(LikParams.crValMask),2);
+                   else
+                      newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
+                            - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
+                   end  
                %              
                end
             

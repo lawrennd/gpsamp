@@ -142,6 +142,17 @@ for j=1:NumOfTFs
 oldLogPriorLengSc(j) = feval(lnpriorLengSc, model.GP{j}.lengthScale, model.prior.lengthScale);
 end
 
+%%% IF there are observations for the TF-genes then you sample also
+%%% the variance of the rbf kernel 
+if isfield(model.Likelihood,'GenesTF')
+   lnpriorNoiseRBFsigma2f = ['ln',model.prior.sigma2f.type,'pdf'];
+   TrspaceNoiseRBFsigma2f = model.prior.sigma2f.priorSpace; 
+   for j=1:NumOfTFs
+       temp = feval(TrspaceNoiseRBFsigma2f, model.GP{j}.sigma2f);
+       oldLogPriorNoiseRBFsigma2f(j) = feval(lnpriorNoiseRBFsigma2f, temp, model.prior.sigma2f);
+   end
+end
+
 if onlyPumaVar == 0 
   %
   % evaluation of the noise variance prior in the likelihood 
@@ -796,18 +807,46 @@ for it = 1:(BurnInIters + Iters)
     for j=1:NumOfTFs
         %
         % to samples the lengthscale you need to evaluate 
-        
         newLogProp = 0;  % forward Hastings Q(kern_t+1 | kern_t)
         oldLogProp = 0;  % backward Hastings Q(kern_t| kenr_t+1) 
         % sample from a truncated Gaussian proposal distribution
-        while 1
-            newEll2 = randn.*sqrt(PropDist.Kern(j)) + model.GP{j}.lengthScale; 
-            if min(newEll2) > 0
-                break; 
-            end
-        end
-        %
-        newK = exp(-(0.5/newEll2)*model.GP{j}.X2) + model.GP{j}.sigma2*eye(size(model.GP{j}.X2,1)); 
+        if isfield(model.Likelihood,'GenesTF')
+            while 1
+              newKern = randn(1, 2).*sqrt(PropDist.Kern(j, 1:2)) + [model.GP{j}.sigma2f, model.GP{j}.lengthScale];  
+              if min(newKern) > 0
+              %    
+                 if strcmp(model.prior.lengthScale.type, 'uniform')
+                    if newKern(2) >= model.prior.lengthScale.constraint(1)  & newKern(2) <= model.prior.lengthScale.constraint(2) 
+                       break;
+                    end
+                 else
+                    break;  
+                 end
+              %   
+              end
+            end 
+        else    
+            while 1
+            %    
+              tmpK = randn.*sqrt(PropDist.Kern(j, 2)) + model.GP{j}.lengthScale;  
+              if min(tmpK) > 0
+              %    
+                 if strcmp(model.prior.lengthScale.type, 'uniform')
+                    if tmpK >= model.prior.lengthScale.constraint(1)  & tmpK <= model.prior.lengthScale.constraint(2) 
+                       break;
+                    end
+                 else
+                    break;  
+                 end
+              %   
+              end
+            % 
+            end 
+            newKern = [model.GP{j}.sigma2f, tmpK];
+        end        
+
+        newK = newKern(1)*exp(-(0.5/newKern(2))*model.GP{j}.X2) + model.GP{j}.sigma2*eye(size(model.GP{j}.X2,1)); 
+        
         % compute the Cholesky decomposition of the new K
         [newL, er]=jitterChol(newK);
         newL = newL';
@@ -833,29 +872,33 @@ for it = 1:(BurnInIters + Iters)
             temp = PropDist.qF{j}.invL*([F(j,:), Fu{j}(:,1)']'); 
             oldlogGP = oldlogGP - 0.5*temp'*temp;
         end
-            
-        LogPriorLengScnew = feval(lnpriorLengSc, newEll2, model.prior.lengthScale);
+         
+        LogPriorNewRBFsigma2fnew = feval(lnpriorNoiseRBFsigma2f, newKern(1), model.prior.sigma2f);
+        LogPriorLengScnew = feval(lnpriorLengSc, newKern(2), model.prior.lengthScale);
+        
         % Metropolis-Hastings to accept-reject the proposal
-        oldlogGP = oldlogGP + oldLogPriorLengSc(j);
-        newlogGP = newlogGP + LogPriorLengScnew; 
+        oldlogGP = oldlogGP + oldLogPriorNoiseRBFsigma2f(j) + oldLogPriorLengSc(j);
+        newlogGP = newlogGP + LogPriorNewRBFsigma2fnew + LogPriorLengScnew; 
        
         % compute the proposal distribution forward and backwards terms
-        trprior.sigma2 = PropDist.Kern(j); 
-        trprior.mu = model.GP{j}.lengthScale; 
+        trprior.sigma2 = PropDist.Kern(j, 1:2); 
+        trprior.mu = [model.GP{j}.sigma2f, model.GP{j}.lengthScale]; 
         
-        newLogProp = sum(lntruncNormalpdf(newEll2, trprior)); 
+        newLogProp = sum(lntruncNormalpdf(newKern, trprior)); 
             
-        trprior.mu = newEll2; 
-        oldLogProp  = sum(lntruncNormalpdf(model.GP{j}.lengthScale, trprior)); 
+        trprior.mu = newKern; 
+        oldLogProp  = sum(lntruncNormalpdf([model.GP{j}.sigma2f, model.GP{j}.lengthScale], trprior)); 
                                                
         [accept, uprob] = metropolisHastings(newlogGP, oldlogGP, newLogProp, oldLogProp);
+        
         %%%%%%%%%%%%%%%%  start accept/update proposal for the lengthscale %%%%%%%%%%%% 
         if accept == 1
            U = n+1:n+M(j);
-           model.GP{j}.lengthScale = newEll2; 
+           model.GP{j}.sigma2f = newKern(1); 
+           model.GP{j}.lengthScale = newKern(2); 
+           oldLogPriorNoiseRBFsigma2f(j) = LogPriorNewRBFsigma2fnew;
            oldLogPriorLengSc(j) = LogPriorLengScnew;
-           %newEll2
-           %pause
+          
            PropDist.qF{j}.K = newK;
            PropDist.qF{j}.invL = invnewL; 
            PropDist.qF{j}.LogDetK = newLogDetK;
@@ -924,6 +967,7 @@ for it = 1:(BurnInIters + Iters)
         %end
         for jin=1:NumOfTFs
             samples.lengthScale(jin,cnt) = model.GP{jin}.lengthScale;
+            samples.sigma2f(jin,cnt) = model.GP{jin}.sigma2f;
         end
         samples.LogL(cnt) = sum(oldLogLik(:));
         %
@@ -987,7 +1031,7 @@ function visualize(model,F,Fu,FFnew,Funew,i,j,r)
 %
 trform = 'lin'; % model.Likelihood.singleAct; % 'exp' or 'linear'
 if strcmp(model.constraints.replicas,'free')
-subplot(1,model.Likelihood.numReplicas,r);    
+subplot(2,model.Likelihood.numReplicas,r);    
 end
 Futmp = feval(model.Likelihood.singleAct,Fu{j}(:,r)');
 Ftmp = feval(model.Likelihood.singleAct,F(j,:,r));
@@ -1006,9 +1050,22 @@ pause(0.3);
 plot(model.Xu{j}(i), feval(trform,Futmp(i)),'oy','MarkerSize', 14,'lineWidth', 3);
 plot(model.Xu{j}(i), feval(trform,Funewtmp(i)), 'md','MarkerSize', 14, 'lineWidth',3);
 plot(model.Likelihood.TimesF, feval(trform,FFnewtmp(j,:)), '--b', 'lineWidth', 4);
+hold off;
+
+% plot old and propsoed TFs 
+subplot(2,model.Likelihood.numReplicas,r+model.Likelihood.numReplicas);
+PredTFold = gpmtfComputeTF(model.Likelihood, F(j,:,r), j);
+PredTFnew = gpmtfComputeTF(model.Likelihood, FFnew(j,:), j);
+plot(model.Likelihood.TimesF, PredTFold, 'r', 'lineWidth', 4);
+hold on;
+plot(model.Likelihood.TimesF, PredTFnew(1,:), 'b', 'lineWidth', 4);
+
+
+
 pause(0.5);
 hold off;
 %%%%%%%%%%%%%%%%%%%%%%%%%%% end of visualization %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function loglikval = remainRepsLikelihood(LikParams,  PredictedGenes, r, Gindex)

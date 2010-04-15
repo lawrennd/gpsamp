@@ -475,18 +475,27 @@ model.prior.sigma2f.b = 0.01;
 
 
 % prior for the lengthscales
+lengScPrior = 'uniform';
 model.prior.lengthScale.assignedTo = 'lenghtScale (i.e. ell^2) of the rbf kernel';
-model.prior.lengthScale.type = 'invGamma';
-model.prior.lengthScale.constraint = 'positive';
-model.prior.lengthScale.priorSpace = 'lin';
-ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
-% parameters of the prior
-mu = ok^2;
-var = 6; 
-%define gamma prior to have this mean and variance
-model.prior.lengthScale.a = 0.01; % (mu + 2*var)/var;
-model.prior.lengthScale.b = 0.01; % mu*(model.prior.lengthScale.a - 1);
- 
+if strcmp(lengScPrior, 'uniform')
+   minlength = min(TimesG(2:end) - TimesG(1:end-1));
+   maxlength = TimesG(end) - TimesG(1); 
+   model.prior.lengthScale.type = 'uniform';
+   model.prior.lengthScale.constraint = [minlength^2 maxlength^2];
+   model.prior.lengthScale.priorSpace = 'lin';
+else
+   model.prior.lengthScale.assignedTo = 'lenghtScale (i.e. ell^2) of the rbf kernel';
+   model.prior.lengthScale.type = 'invGamma';
+   model.prior.lengthScale.constraint = 'positive';
+   model.prior.lengthScale.priorSpace = 'lin';
+   ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
+   % parameters of the prior
+   mu = ok^2;
+   var = 6; 
+   %define gamma prior to have this mean and variance
+   model.prior.lengthScale.a = 0.01; % (mu + 2*var)/var;
+   model.prior.lengthScale.b = 0.01; % mu*(model.prior.lengthScale.a - 1);
+end
 
 % initial value of the TFs
 % if 0, then the TF has concentration 0 at time t=0

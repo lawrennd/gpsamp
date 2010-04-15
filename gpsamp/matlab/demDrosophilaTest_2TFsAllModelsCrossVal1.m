@@ -1,6 +1,8 @@
-% demDrosophilaTest_2TFsAllModelsWhite2 runs the multi-TF for screening
-% using all possible combinations of two TFs(twist and mef2) 
-function demDrosophilaTest_2TFsAllModelsWhite2(modulus, remainder),
+% demDrosophilaTest_2TFsAllModelsCrossVal1 runs the multi-TF for screening
+% using all possible combinations of two TFs(twist and mef2)
+% It also used cros validation validatino by excluding each time 
+% point at a time
+function demDrosophilaTest_2TFsAllModelsCrossVal1(modulus, remainder),
 
 addpath ~/mlprojects/gpsamp/matlab
 addpath ~/mlprojects/gpsamp/matlab/activFuncts
@@ -8,13 +10,14 @@ addpath ~/mlprojects/gpsamp/matlab/toolbox
 
 %outdir = '~/mlprojects/gpsamp/matlab/results';
 outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-
+outdir = 'results/';
 outfile = sprintf('%s/multitf3_%s_m%d_r%d.mat', outdir, datestr(now, 29), modulus, remainder);
 
 dataName = 'drosophila_dataTest';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
+noiseM = {'pumaWhite' 'white'};
 
 %%%%%%%%%%%%%%  Load the test genes data  %%%%%%%%%%%%%%%% 
 %load ~/mlprojects/gpsamp/matlab/datasets/drosophila_data;
@@ -33,7 +36,7 @@ numGenes = 20;
 mygenes = drosexp.genes(G);
 Genes = drosexp.fitmean(G, :);
 GenesVar = drosexp.fitvar(G, :);
-else`
+else
 testindices = remainder:modulus:length(testset.indices);
 indices = testset.indices(testindices);
 numGenes = length(indices);
@@ -58,9 +61,8 @@ mcmcoptions.train.Burnin = 1000;
 
 TimesG = 0:11;
 
-% All possible models os twi and mef2
+% All possible models of twi and mef2
 comb = [0 0; 1 0; 0 1; 1 1];
-%
 
 models = {};
 testGene = {};
@@ -73,31 +75,30 @@ for n=1:size(Genes,1)
 %    
     if size(testGene,1) > n,
         continue;
-    end
-    
+    end    
     TestGenes = Genes(n,:,:);
     TestGenesVar = GenesVar(n,:,:); 
+    for m=1:size(comb,1)  
     %
-    for c=1:size(comb,1)  
-    %
-        numTFs = sum(comb(c,:)); 
+      for cv=1:size(TimesG,2)
+      %    
+        numTFs = sum(comb(m,:)); 
         % model options 
         options = gpmtfOptions(ones(1,12,3), numTFs); 
         options.jointAct = 'sigmoid';   
         %options.spikePriorW = 'yes';
-        options.noiseModel = {'pumaWhite' 'white'};
+        options.noiseModel = noiseM;
         options.constraints.spaceW = 'positive'; 
         options.tauMax = 0; % no delays
-        % define the dense discretized grid in the time axis for the TF latent functions 
+        % define the dense discretized grid in the time axis for the TF latent functions
         [options, TimesF] = gpmtfDiscretize(TimesG, options); 
-        modelTest = gpmtfCreate(ones(1,12,3), ones(1,12,3), [], [], TimesG, TimesF, options);
-
+        modelTest = gpmtfCreate(ones(1,12,3), ones(1,12,3), [], [], TimesG, TimesF, options);  
         TFs = [];
         if numTFs > 0
         %
-           if comb(c,1) == 1
+           if comb(m,1) == 1
               TFset = 3; 
-              if comb(c,2) == 1
+              if comb(m,2) == 1
                  TFset = [3 5];
               end
            else
@@ -118,7 +119,10 @@ for n=1:size(Genes,1)
         
         % CREATE the model
         modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-   
+        % This mask will zero the log ikelihood of the cvth data point 
+        % which implies that the contribution of the cvth time point is p(y_cv|parameters)=1
+        % and the data point is essentially excluded from the model
+        modelTest.Likelihood.crValMask = [1:cv-1, cv+1:modelTest.Likelihood.numTimes];
         if numTFs > 0
            [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, mcmcoptions.adapt); 
            % training/sampling phase
@@ -127,13 +131,14 @@ for n=1:size(Genes,1)
            [modelTest PropDist samplesTest accRates] = gpmtfOnlyDecayModel(modelTest, mcmcoptions);
         end
         %
-        testGene{n,c} = samplesTest;
-        testaccRates{n,c} = accRates; 
-        models{c} = modelTest;
+        testGene{n, m, cv} = samplesTest;
+        testaccRates{n, m, cv} = accRates; 
+        models{m, cv} = modelTest;
         save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
+      end
+      %
     end
-   %
    %
 end
 save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');

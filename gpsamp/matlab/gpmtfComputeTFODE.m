@@ -17,7 +17,7 @@ function PredTFs = gpmtfComputeTFODE(LikParams, F, TFindex)
 Ntfs = size(TFindex,2);
 
 % apply single activation for the GP functions  
-fx = singleactFunc(LikParams.singleAct,F);
+fx = singleactFunc(LikParams.singleAct, F);
 
 %
 uu = LikParams.TimesF;
@@ -37,7 +37,6 @@ for m=1:Ntfs
     IntVals(2:end) = .5 * Delta*cumsum(ffx(1:end-1) + ffx(2:end));
     %IntVals = Delta*cumtrapz(IntVals);
     
-    
     % Simpson rule of integration 
     %ffx = exp(D*uu).*fx(m,:); 
     %IntVals = ffx;
@@ -51,4 +50,3 @@ for m=1:Ntfs
     PredTFs(m,:) = S*(expD.*IntVals);
     %
 end
- 

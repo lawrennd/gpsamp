@@ -239,7 +239,7 @@ model.M = M;
 PropDist.kin = 0.5*ones(NumOfGenes,SizKin);
 % interaction weigths and bias 
 PropDist.W = 0.5*ones(NumOfGenes,NumOfTFs+1);
-PropDist.Kern = 0.5*ones(1, NumOfTFs);
+PropDist.Kern = 0.5*ones(NumOfTFs, 2); % 2 possible parameters: kenrle variacne and kernel lengthscale
 
 
 onlyPumaVar = 1; 
@@ -314,7 +314,7 @@ while 1
 
    fprintf(1,'Acceptance Rates for Interaction weights (per gene)\n');
    disp(accRateW);
-   fprintf(1,'Acceptance Rates for lengthscales (per GP function)\n');
+   fprintf(1,'Acceptance Rates for kernel hyperparameters (per GP function)\n');
    disp(accRateKern);
   
    if onlyPumaVar == 0
@@ -504,28 +504,27 @@ while 1
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT WEIGHTS PROPOSAL %%%%%%%%%%%%%%%%
    
    
-   %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT LENGTHSCALES PROPOSAL %%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT KERNEL HYPRS PROPOSAL %%%%%%%%%%%%%%%%
    % adapt the proposal over the interaction weights (desired acceptance rate: 15-35%)
    for j=1:NumOfTFs
       if accRateKern(j) > 35
          % incease the covariance to reduce the acceptance rate
-         PropDist.Kern(j) = PropDist.Kern(j) + epsilon*PropDist.Kern(j);
-         if PropDist.Kern(j) > qKernAbove
-             PropDist.Kern(j) = qKernAbove;
+         PropDist.Kern(j, :) = PropDist.Kern(j, :) + epsilon*PropDist.Kern(j, :);
+         if PropDist.Kern(j, 1) > qKernAbove
+             PropDist.Kern(j, :) = qKernAbove*ones(1, size(PropDist.Kern, 2));
          end
       end
       if accRateKern(j) < 15
          % decrease the covariance to incease the acceptance rate
-         PropDist.Kern(j) = PropDist.Kern(j) - epsilon*PropDist.Kern(j);    
-         if PropDist.Kern(j) < qKernBelow 
-             PropDist.Kern(j) = qKernBelow;
+         PropDist.Kern(j, :) = PropDist.Kern(j, :) - epsilon*PropDist.Kern(j, :);    
+         if PropDist.Kern(j, 1) < qKernBelow 
+             PropDist.Kern(j, :) = qKernBelow*ones(1, size(PropDist.Kern, 2));
          end
          %
       end
        %
    end
-   %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT LENGTHSCALES PROPOSAL %%%%%%%%%%%%%%%%
-   
+   %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT KERNEL HYPRS PROPOSAL %%%%%%%%%%%%%%%%
    
    if onlyPumaVar == 0 
     %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT NOISE-MODEL PROPOSAL %%%%%%%%%%%%%%%%
