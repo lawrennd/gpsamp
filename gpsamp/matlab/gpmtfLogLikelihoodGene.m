@@ -21,7 +21,7 @@ function [loglikval, PredGenes] = gpmtfLogLikelihoodGene(LikParams, F, R, Gindex
 PredGenes = gpmtfComputeGeneODE(LikParams, F, R, Gindex);
 
 
-%loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,R)),2)....
+%loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,R)),2) ...
 %                   - 0.5*sum(((Genes(Gindex,:) - PredGenes(:,LikParams.comInds)).^2)./LikParams.sigmas(Gindex,:,R),2);
 
 % REMINDER about what the active variable mean
@@ -67,7 +67,7 @@ else
        sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(Gindex)', 1, LikParams.numTimes ); 
    end
     
-   loglikval = - 0.5*sum(log(2*pi*sigmas),2)....
+   loglikval = - 0.5*sum(log(2*pi*sigmas),2) ...
                - 0.5*sum(((LikParams.Genes(Gindex,:,R) - PredGenes(:,LikParams.comInds)).^2)./sigmas,2);
              
    %

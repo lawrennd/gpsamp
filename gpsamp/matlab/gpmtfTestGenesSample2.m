@@ -678,7 +678,7 @@ end
 function loglikval = remainRepsLikelihood(LikParams,  PredictedGenes, r, Gindex)
 %
     Gns = LikParams.Genes(:,:,r);
-    loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,r)),2)....
+    loglikval = - 0.5*sum(log(2*pi*LikParams.sigmas(Gindex,:,r)),2) ...
                 - 0.5*sum(((Gns(Gindex,:) - PredictedGenes(:,LikParams.comInds)).^2)./LikParams.sigmas(Gindex,:,r),2);
     loglikval = loglikval';
 % 
@@ -688,7 +688,7 @@ function loglikvalTF = remainRepsLikelihoodTF(LikParams, PredictedGenesTF, r, TF
 %    
   
   GnsTF = LikParams.GenesTF(:,:,r);
-  loglikvalTF = - 0.5*sum(log(2*pi*LikParams.sigmasTF(TFindex,:,r)),2)....
+  loglikvalTF = - 0.5*sum(log(2*pi*LikParams.sigmasTF(TFindex,:,r)),2) ...
                        - 0.5*sum(((GnsTF(TFindex,:) - PredictedGenesTF(:,LikParams.comIndsTF)).^2)./LikParams.sigmasTF(TFindex,:,r),2);
   loglikvalTF = loglikvalTF';
 %  

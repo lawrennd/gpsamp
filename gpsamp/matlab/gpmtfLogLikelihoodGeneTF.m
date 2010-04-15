@@ -37,7 +37,7 @@ if LikParams.noiseModel.active(2) == 1
     sigmas = sigmas + repmat(LikParams.noiseModel.sigma2_TF(TFindex)', 1, LikParams.numTimes ); 
 end
 
-loglikvalTF = - 0.5*sum(log(2*pi*sigmas),2)....
+loglikvalTF = - 0.5*sum(log(2*pi*sigmas),2) ...
                - 0.5*sum(((GenesTF(TFindex,:) - PredGenesTF(:,LikParams.comIndsTF)).^2)./sigmas,2);
 
 loglikvalTF = loglikvalTF';
