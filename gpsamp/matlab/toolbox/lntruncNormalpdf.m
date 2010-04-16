@@ -9,6 +9,6 @@ z = (x-prior.mu)./sigma;
 
 logpdf = -0.5*log(2*pi*prior.sigma2) - 0.5.*(z.^2); 
 
-den = 1 - normcdf(0, prior.mu, sigma); 
+den = 1 - nrmcdfMine(0, prior.mu, sigma); 
 
 logpdf = logpdf - log(den); 

@@ -30,7 +30,7 @@ load datasets/testset;
 load drosTrainTotal;
 
 
-if 1
+if 0
 load topranked10GenesMef2Twi;   
 numGenes = 20;
 mygenes = drosexp.genes(G);

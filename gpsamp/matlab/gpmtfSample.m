@@ -543,7 +543,11 @@ for it = 1:(BurnInIters + Iters)
                 
            anew = model.prior.sigma2.a + 0.5*NumOfReplicas*SizG;
            bnew = model.prior.sigma2.b + 0.5*sumSquerrors;
-           newinvSigma2 = gamrnd(anew,1./bnew);
+           if exist('xgamrnd')
+           newinvSigma2 = xgamrnd(anew, 1./bnew);
+           else
+           newinvSigma2 = gamrnd(anew, 1./bnew);
+           end
            newSigma2 = 1./newinvSigma2;
          
            LikParams.noiseModel.sigma2 = newSigma2;
@@ -649,7 +653,11 @@ for it = 1:(BurnInIters + Iters)
                 
            anew = model.prior.sigma2.a + 0.5*NumOfReplicas*SizG;
            bnew = model.prior.sigma2.b + 0.5*sumSquerrors;
-           newinvSigma2 = gamrnd(anew,1./bnew);
+           if exist('xgamrnd')
+           newinvSigma2 = xgamrnd(anew, 1./bnew);
+           else
+           newinvSigma2 = gamrnd(anew, 1./bnew);
+           end
            newSigma2 = 1./newinvSigma2;
            
            LikParams.noiseModel.sigma2_TF = newSigma2;
@@ -1059,8 +1067,6 @@ PredTFnew = gpmtfComputeTF(model.Likelihood, FFnew(j,:), j);
 plot(model.Likelihood.TimesF, PredTFold, 'r', 'lineWidth', 4);
 hold on;
 plot(model.Likelihood.TimesF, PredTFnew(1,:), 'b', 'lineWidth', 4);
-
-
 
 pause(0.5);
 hold off;
