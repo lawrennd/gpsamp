@@ -128,7 +128,7 @@ if strcmp(method, 'margLogLik2')
     %max(LogLik)
     %modelTest.Likelihood.numTFs
     %pause
-    LogMargL(k,c,f) = logsumexp(LogLik) - log(size(TFs,2))  +  LogPrior - logPosteriorOfSelectedPoint;
+    LogMargL(k,c,f) = logsumexp(LogLik, 2) - log(size(TFs,2))  +  LogPrior - logPosteriorOfSelectedPoint;
     %
   end
   end
