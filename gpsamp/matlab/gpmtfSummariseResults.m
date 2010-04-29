@@ -10,6 +10,7 @@ if strcmp(method, 'margLogLik2')
   results = zeros( size(testGenes) );
   % compute all marginal likelihoods for all trained models
   for k=1:size(testGenes,1) 
+    fprintf('Running gene %d/%d...\n', k, size(testGenes, 1));
   for c=1:size(testGenes,2) 
   for f=1:size(testGenes,3)    
     %

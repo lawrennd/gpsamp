@@ -2,7 +2,9 @@
 % using all possible combinations of two TFs(twist and mef2) 
 function [Genes, GenesVar, TFs, models] = demDrosophilaTest_2TFsAllModels2(modulus, remainder, identifier, flag)
 
-
+if nargin < 4,
+  flag=1;
+end
 
 % if flag =0 , then jsut retutn the precomputations 
 if flag == 0
