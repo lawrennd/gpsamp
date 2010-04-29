@@ -1,14 +1,19 @@
 % demDrosophilaTest_2TFsAllModels1 runs the multi-TF for screening
 % using all possible combinations of two TFs(twist and mef2) 
-function demDrosophilaTest_2TFsAllModels1(modulus, remainder)
+function demDrosophilaTest_2TFsAllModels2(modulus, remainder, identifier)
 
+addpath ~/mlprojects/ndlutil/matlab
 addpath ~/mlprojects/gpsamp/matlab
 addpath ~/mlprojects/gpsamp/matlab/activFuncts
 addpath ~/mlprojects/gpsamp/matlab/toolbox
 
-%outdir = '~/mlprojects/gpsamp/matlab/results';
-outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-outfile = sprintf('%s/multitf3_%s_m%d_r%d.mat', outdir, datestr(now, 29), modulus, remainder);
+if nargin < 3,
+  identifier = datestr(now, 29);
+end
+
+outdir = '~/mlprojects/gpsamp/matlab/results';
+%outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
+outfile = sprintf('%s/multitf5b_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
 dataName = 'drosophila_dataTest';
 expNo = 1;
@@ -65,7 +70,9 @@ comb = [0 0; 1 0; 0 1; 1 1];
 models = {};
 testGene = {};
 if exist(outfile, 'file'),
-     load(outfile);
+    fprintf('Loading existing results from %s...\n', outfile);
+    load(outfile);
+    fprintf('Loaded results for %d genes.\n', size(testGene, 1));
 end 
 
 %
@@ -73,7 +80,8 @@ for n=1:size(Genes,1)
 %    
     if size(testGene,1) > n,
         continue;
-    end    
+    end
+    fprintf('Running gene %d/%d...\n', n, size(Genes, 1));
     TestGenes = Genes(n,:,:);
     TestGenesVar = GenesVar(n,:,:); 
     for c=1:size(comb,1)  
@@ -127,10 +135,12 @@ for n=1:size(Genes,1)
         testGene{n,c} = samplesTest;
         testaccRates{n,c} = accRates; 
         models{c} = modelTest;
-        save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
     end
+    % Only save after each gene is completed
+    safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
    %
    %
 end
-save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+%safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+fprintf('Completed.\n');
