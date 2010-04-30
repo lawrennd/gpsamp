@@ -263,7 +263,7 @@ for it = 1:(BurnInIters + Iters)
         B = LikParams1.kinetics(j,1);
         D = LikParams1.kinetics(j,2);
         A = LikParams1.kinetics(j,3);
-        PredGenes = A/D  + (A - B/D)*exp(-TimesG*D); 
+        PredGenes = B/D  + (A - B/D)*exp(-TimesG*D); 
         % evaluate the new log likelihood 
         newLogLik = zeros(1,NumOfReplicas);
         for r=1:NumOfReplicas
@@ -360,7 +360,7 @@ for it = 1:(BurnInIters + Iters)
                B = LikParams1.kinetics(j,1);
                D = LikParams1.kinetics(j,2);
                A = LikParams1.kinetics(j,3);
-               PredGenes = A/D  + (A - B/D)*exp(-TimesG*D); 
+               PredGenes = B/D  + (A - B/D)*exp(-TimesG*D); 
                % evaluate the new log likelihood 
                newLogLik = zeros(1,NumOfReplicas);
                for r=1:NumOfReplicas

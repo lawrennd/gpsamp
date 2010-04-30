@@ -63,6 +63,7 @@ if strcmp(model.prior.W.constraint,'positive')
 end
 
 onlyPumaVar = 1; 
+onlyPumaVarTF = 1;
 if model.Likelihood.noiseModel.active(2) > 0
    onlyPumaVar = 0;
 end
@@ -640,10 +641,9 @@ for it = 1:(BurnInIters + Iters)
     % END SAMPLE THE NOISE MODEL IN THE LIKELIHOOD of THE GENES 
     % *
    
-   
     % * 
     % SAMPLE THE NOISE MODEL IN THE LIKELIHOOD OF THE !!TF!! GENES 
-    if onlyPumaVar == 0 
+    if onlyPumaVarTF == 0 
        %  only white noise (no PUMA variances)
        if model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1 
            %
@@ -1028,7 +1028,7 @@ if isfield(model.Likelihood,'GenesTF')
 end
 
 accRates.noiseM = (accRateNoiseM/Iters)*100;
-if isfield(model.Likelihood,'GenesTF')
+if isfield(model.Likelihood,'GenesTF') & (onlyPumaVarTF == 0) 
     accRates.noiseMTF = (accRateNoiseMTF/Iters)*100;
 end
 

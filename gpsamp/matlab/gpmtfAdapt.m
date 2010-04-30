@@ -243,6 +243,7 @@ PropDist.Kern = 0.5*ones(NumOfTFs, 2); % 2 possible parameters: kenrle variacne 
 
 
 onlyPumaVar = 1; 
+onlyPumaVarTF = 1; 
 if model.Likelihood.noiseModel.active(2) > 0  
    onlyPumaVar = 0;
 end
@@ -289,7 +290,9 @@ while 1
    %
    if isfield(model.Likelihood,'GenesTF')
        accRateTFKin = accRates.TFKin;
+       if onlyPumaVarTF == 0
        accRateNoiseMTF = accRates.noiseMTF;
+       end
    end
    
    if AdaptOps.disp == 1
@@ -320,11 +323,12 @@ while 1
    if onlyPumaVar == 0
          fprintf(1,'Acceptance rates for the noise parameters in the likelihood\n');
          disp(accRateNoiseM);
-         if isfield(model.Likelihood,'GenesTF')
+   end
+   if isfield(model.Likelihood,'GenesTF') & (onlyPumaVarTF == 0)
          fprintf(1,'Acceptance rates for the noise parameters in the TF-Genes likelihood\n');
          disp(accRateNoiseMTF);
-         end
    end   
+   
    
    fprintf(1,'Average likelihood value %15.8f',mean(samples.LogL));
    if isfield(model.Likelihood,'GenesTF')
@@ -547,7 +551,7 @@ while 1
        %
       end
       %
-      if isfield(model.Likelihood,'GenesTF')
+      if isfield(model.Likelihood,'GenesTF') & (onlyPumaVarTF == 0) 
       for j=1:NumOfTFs
          if accRateNoiseMTF(j) > 35
             % incease the covariance to reduce the acceptance rate
