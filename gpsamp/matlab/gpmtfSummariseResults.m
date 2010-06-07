@@ -174,7 +174,7 @@ if strcmp(method, 'margLogLik2')
     %LogPrior  
     %logPosteriorOfSelectedPoint
     %pause
-    LogMargL(k,c,f) = logsumexp(LogLik) - log(size(TFs,2))  +  LogPrior - logPosteriorOfSelectedPoint;
+    LogMargL(k,c,f) = logsumexp(LogLik, 2) - log(size(TFs,2))  +  LogPrior - logPosteriorOfSelectedPoint;
     %
   end
   end
