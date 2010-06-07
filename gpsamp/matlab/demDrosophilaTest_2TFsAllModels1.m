@@ -152,7 +152,7 @@ else % otherwise run the demo
     TimesG = 0:11;
 
     % All possible models os twi and mef2
-    comb = [1 1; 1 0; 0 1; 1 1];
+    comb = [0 0; 1 0; 0 1; 1 1];
     %
 
     models = {};
