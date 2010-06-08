@@ -1,5 +1,5 @@
-function gpmtfTestPlot(testGenes, method, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
-% function gpmtfTestPlot(testGenes, method, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
+function gpmtfTestPlot(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
+% function gpmtfTestPlot(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
 
 NumPlotRows = 4;
 NumPlotCols = 3;
@@ -28,7 +28,6 @@ dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
 
 warning off;
 TimesG = model{numModels}.Likelihood.TimesG; 
-model{numModels}.Likelihood
 TimesF = model{numModels}.Likelihood.TimesF;
 %if isfield(model{numModels}.Likelihood,'GenesTF')
 %    GenesTF = model{numModels}.Likelihood.GenesTF;
@@ -77,6 +76,9 @@ D = 30;
 %meanRbf = zeros(model.Likelihood.numTimes,1);
 %covRbf = zeros(model.Likelihood.numTimes, model.Likelihood.numTimes);  
 % plot predicted gene expressions 
+
+
+
 for m=1:numModels
 if model{m}.Likelihood.numTFs == 0  
    GGT = zeros(NumOfSamples, model{m}.Likelihood.numTimes, NumOfReplicas);      
@@ -148,7 +150,13 @@ end
       else
          TimesFF';
       end
+
+      % max/min Gene values with offest
+      maxG = max(Genes(1,:,r)) + 0.1*max(Genes(1,:,r));
+      minG = min(Genes(1,:,r)) - 0.1*min(Genes(1,:,r));
+      minG(minG<0)=0; 
       
+
       plot(TF, mu, 'b','lineWidth',r);
       hold on;
       fillColor = [0.7 0.7 0.7];
@@ -163,6 +171,7 @@ end
       if model{m}.Likelihood.noiseModel.active(1) == 1 & sum(model{m}.Likelihood.noiseModel.active(2:3)==0)
           errorbar(TimesG,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
       end
+      axis([min(TimesG) max(TimesG) minG maxG]);
  
       % plot rbf GP posterior
       %if model.Likelihood.noiseModel.active(3) == 1
@@ -184,9 +193,9 @@ end
       %   print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneExp' num2str(gg)]);
       %   print('-dpng', [dirrhtml fileName 'Replica' num2str(r) 'GeneExp' num2str(gg)]);
       %end
-      titlestring = ['model:', num2str(m)];
-      titlestring = [titlestring, ' replica:', num2str(r)];
-      titlestring = [titlestring, ' gene:' fbgn];
+      titlestring = ['m:', num2str(m)];
+      titlestring = [titlestring, ' r:', num2str(r)];
+      titlestring = [titlestring, ' g:' fbgn];
       title(titlestring,'fontsize', FONTSIZE);
   %
   end
@@ -344,9 +353,10 @@ hold on;
 errorbar([1:numModels]-0.14, modelW(:, j), modelW(:, j) - stdW_1(:, j), stdW_2(:, j) - modelW(:, j),'.'); 
 %errorbar([1:NumOfGenes], modelB(order), modelB(order)-stdBB1(order), stdBB2(order)-modelB(order),'.'); 
 %title(j,'fontsize', FONTSIZE);
-titlestring = 'Interaction weights: '; 
+titlestring = 'Inter. weights: '; 
+titlestring = [titlestring, ' TF '];
 titlestring = [titlestring, num2str(j)];
-titlestring = [titlestring, ' TF'];
+%titlestring = [titlestring, ' TF'];
 title(titlestring,'fontsize', FONTSIZE);
 end
 
@@ -356,7 +366,7 @@ subplot(NumRowsParams, NumColsParams, plotIndex);
 bar(modelW0', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
 errorbar([1:numModels]-0.14, modelW0, modelW0 - stdW0_1, stdW0_2 - modelW0,'.'); 
-title('Interaction biases','fontsize', FONTSIZE);
+title('Inter. biases','fontsize', FONTSIZE);
 
  
 % plot the variance of the added white noise
@@ -368,7 +378,7 @@ if isfield(testGenes{1}, 'sigma2')
   bar(modelSigma2', 0.7); colormap([0.9 0.9 0.9]);
   hold on;
   errorbar([1:numModels]-0.14, modelSigma2, modelSigma2-stdSigma2_1, stdSigma2_2-modelSigma2,'.'); 
-  title('Observation noise','fontsize', FONTSIZE);
+  title('Observ. noise','fontsize', FONTSIZE);
   
   %if nargin == 9
   %  %
