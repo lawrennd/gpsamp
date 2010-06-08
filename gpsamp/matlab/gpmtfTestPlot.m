@@ -1,5 +1,5 @@
-function gpmtfTestPlot(model, testGenes, TFs, Genes, GeneVars, fbgn, demdata, printResults, Grtruth)
-
+function gpmtfTestPlot(testGenes, method, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
+% function gpmtfTestPlot(testGenes, method, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
 
 NumPlotRows = 4;
 NumPlotCols = 3;
@@ -28,6 +28,7 @@ dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
 
 warning off;
 TimesG = model{numModels}.Likelihood.TimesG; 
+model{numModels}.Likelihood
 TimesF = model{numModels}.Likelihood.TimesF;
 %if isfield(model{numModels}.Likelihood,'GenesTF')
 %    GenesTF = model{numModels}.Likelihood.GenesTF;
@@ -142,11 +143,12 @@ end
       stds = sqrt(var(GG))';
       TF = TimesFF'; % TimesFF(1:2:end)';
       %figure;
-      if m == 1
+      if size(mu,1) == size(TimesG(:),1)
           TF = TimesG';
       else
          TimesFF';
       end
+      
       plot(TF, mu, 'b','lineWidth',r);
       hold on;
       fillColor = [0.7 0.7 0.7];
@@ -155,6 +157,8 @@ end
                + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
       plot(TF,mu,'b','lineWidth',3);
 
+
+      
       plot(TimesG, Genes(1,:,r),'rx','markersize', 6,'lineWidth', 2);
       if model{m}.Likelihood.noiseModel.active(1) == 1 & sum(model{m}.Likelihood.noiseModel.active(2:3)==0)
           errorbar(TimesG,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
