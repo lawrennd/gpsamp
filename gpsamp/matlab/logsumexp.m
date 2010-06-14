@@ -5,6 +5,5 @@ if nargin < 2,
 end
 
 m = max(x, [], dim);
-mm = repmat(m, size(x)./size(m));
 
-y = m + log(sum(exp(x - mm), dim));
+y = m + log(sum(exp(bsxfun(@minus, x, m)), dim));

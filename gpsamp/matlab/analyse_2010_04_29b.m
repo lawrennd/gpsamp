@@ -2,6 +2,18 @@
 results_a = sortResults(load('results/multitf5a_2010-04-22_summary2.mat'));
 results_b = sortResults(load('results/multitf5a_2010-04-22_summary.mat'));
 
+results_a2 = sortResults(load('results/multitf5a_null_2010-06-07_summary2.mat'));
+results_b2 = sortResults(load('results/multitf5a_null_2010-06-07_summary.mat'));
+
+results_a_orig = results_a;
+results_b_orig = results_b;
+
+results_a.marlls(:, 1) = results_a2.marlls;
+results_b.marlls(:, 1) = results_b2.marlls;
+
+%results_a = results_b;
+%results_a_orig = results_b_orig;
+
 resultinds = zeros(size(results_a.genes));
 for k=1:length(results_a.genes),
   J = drosFindGeneinds(drosexp, results_a.genes(k));
@@ -49,10 +61,14 @@ end
 % mefpost = drosComputePosterior(results_a.marlls(:, [1,3]));
 %[foo, J2_twi] = sort(twipost(:, 2), 'descend');
 %[foo, J2_mef] = sort(mefpost(:, 2), 'descend');
-[foo, multitfrank2.twi] = sort(logsumexp(results_b.marlls(:,[4, 2]),2) - ...
-		     logsumexp(results_b.marlls(:,[3, 1]),2), 'descend');
-[foo, multitfrank2.mef2] = sort(logsumexp(results_b.marlls(:,[4, 3]),2) - ...
-		     logsumexp(results_b.marlls(:,[2, 1]),2), 'descend');
+[foo, multitfrank2.twi] = sort(logsumexp(results_a_orig.marlls(:,[4, 2]),2) - ...
+		     logsumexp(results_a_orig.marlls(:,[3, 1]),2), 'descend');
+[foo, multitfrank2.mef2] = sort(logsumexp(results_a_orig.marlls(:,[4, 3]),2) - ...
+		     logsumexp(results_a_orig.marlls(:,[2, 1]),2), 'descend');
+% [foo, multitfrank2.twi] = sort(logsumexp(results_b.marlls(:,[4, 2]),2) - ...
+% 		     logsumexp(results_b.marlls(:,[3, 1]),2), 'descend');
+% [foo, multitfrank2.mef2] = sort(logsumexp(results_b.marlls(:,[4, 3]),2) - ...
+% 		     logsumexp(results_b.marlls(:,[2, 1]),2), 'descend');
 %[foo, J2_twi] = sort(results_a.marlls(:, 4) - results_a.marlls(:, 3), 'descend');
 %[foo, J2_mef] = sort(results_a.marlls(:, 4) - results_a.marlls(:, 2), 'descend');
 % [foo, J2_twi] = sort(logsumexp(results_a.marlls(:,[4, 2]),2) - ...

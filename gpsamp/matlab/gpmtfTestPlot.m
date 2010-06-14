@@ -5,6 +5,8 @@ NumPlotRows = 4;
 NumPlotCols = 3;
 FONTSIZE=8;
 
+PNGSIZE=[400 300];
+
 %% precompute the TFs
 %TFset = model{end}.Likelihood.TFset; 
 %numTFs = model{end}.Likelihood.numTFs; 
@@ -23,8 +25,8 @@ numModels = size(testGenes,2);
 NumRowsParams = 2;
 NumColsParams = 4;
 
-dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
-dirrhtml = '/usr/local/michalis/mlprojects/gpsamp/html/';
+dirr = '~/mlprojects/gpsamp/tex/diagrams/';
+dirrhtml = '~/mlprojects/gpsamp/html/';
 
 warning off;
 TimesG = model{numModels}.Likelihood.TimesG; 
@@ -203,8 +205,9 @@ end
 end
 
 if printResults
-    print('-depsc', [dirr fileName 'GeneExp' fbgn]);
-    print('-dpng', [dirrhtml fileName 'GeneExp' fbgn]);
+    %print('-depsc', [dirr fileName 'GeneExp' fbgn]);
+    set(gcf, 'PaperPosition', [0 0 PNGSIZE(1)/72 PNGSIZE(2)/72]);
+    print('-dpng', '-r72', [dirrhtml fileName 'GeneExp' fbgn]);
 end
 
 plotIndex = r;
@@ -392,6 +395,7 @@ end
 
 
 if printResults
-    print('-depsc', [dirr fileName 'Params' fbgn]);
-    print('-dpng', [dirrhtml fileName 'Params' fbgn]);
+    %print('-depsc', [dirr fileName 'Params' fbgn]);
+    set(gcf, 'PaperPosition', [0 0 PNGSIZE(1)/72 PNGSIZE(2)/72]);
+    print('-dpng', '-r72', [dirrhtml fileName 'Params' fbgn]);
 end
