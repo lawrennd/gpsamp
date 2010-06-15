@@ -183,7 +183,7 @@ for it = 1:(BurnInIters + Iters)
        %
        
        % Metropolis-Hastings to accept-reject the proposal
-       [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), newLogProp, oldLogProp);
+       [accept, uprob] = metropolisHastings(model.Likelihood.invT*sum(newLogLik(:)), model.Likelihood.invT*sum(oldLogLik(:)), newLogProp, oldLogProp);
            
        if (it > BurnInIters)
            acceptF = acceptF + accept; 
@@ -225,7 +225,7 @@ for it = 1:(BurnInIters + Iters)
                newLogLik(r,:) = remainRepsLikelihood(LikParams1,  predgen, r, 1:NumOfGenes);
            end                 
            % Metropolis-Hastings to accept-reject the proposal
-           [accept, uprob] = metropolisHastings(sum(newLogLik(:)),sum(oldLogLik(:)), newLogProp, oldLogProp);
+           [accept, uprob] = metropolisHastings(model.Likelihood.invT*sum(newLogLik(:)), model.Likelihood.invT*sum(oldLogLik(:)), newLogProp, oldLogProp);
           
            %
            if (it > BurnInIters)
@@ -286,8 +286,8 @@ for it = 1:(BurnInIters + Iters)
         Likkin = feval(TrspaceKin, KineticsNew);
         LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
         % Metropolis-Hastings to accept-reject the proposal
-        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
-        newP = sum(newLogLik(:))+ sum(LogPriorKinNew(:)); 
+        oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
+        newP = model.Likelihood.invT*sum(newLogLik(:)) + sum(LogPriorKinNew(:)); 
         [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
         if accept == 1
            LikParams.kinetics(j,:) = KineticsNew;
@@ -371,8 +371,8 @@ for it = 1:(BurnInIters + Iters)
         LogPriorWnew = feval(lnpriorW, LikW, model.prior.W);
         
         % Metropolis-Hastings to accept-reject the proposal
-        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2) + oldLogPriorW0(j);
-        newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)) + LogPriorWnew0; 
+        oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2) + oldLogPriorW0(j);
+        newP = model.Likelihood.invT*sum(newLogLik(:)) + sum(LogPriorWnew(:)) + LogPriorWnew0; 
          
         [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
         if accept == 1
@@ -458,8 +458,8 @@ for it = 1:(BurnInIters + Iters)
                LogPriorNewWHITE = feval(lnpriorNoiseWHITE, LikSigma2, model.prior.sigma2);
        
                % Metropolis-Hastings to accept-reject the proposal
-               oldP = sum(oldLogLik(:,j),1) + oldLogPriorNoiseWHITE(j);
-               newP = sum(newLogLik(:)) + LogPriorNewWHITE; 
+               oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + oldLogPriorNoiseWHITE(j);
+               newP = model.Likelihood.invT*sum(newLogLik(:)) + LogPriorNewWHITE; 
          
                % compute the proposal distribution forwrd and backwards terms
                trprior.sigma2 = PropDist.noiseModel(j,1); 
@@ -553,8 +553,8 @@ for it = 1:(BurnInIters + Iters)
                LogPriorNewRBFlength = feval(lnpriorNoiseRBFlength, LikLength, model.prior.lengthScale);
           
                % Metropolis-Hastings to accept-reject the proposal
-               oldP = sum(oldLogLik(:,j),1) + oldLogPriorNoiseRBFsigma2f(j) + oldLogPriorNoiseRBFlength(j);
-               newP = sum(newLogLik(:)) + LogPriorNewRBFsigma2f + LogPriorNewRBFlength;
+               oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + oldLogPriorNoiseRBFsigma2f(j) + oldLogPriorNoiseRBFlength(j);
+               newP = model.Likelihood.invT*sum(newLogLik(:)) + LogPriorNewRBFsigma2f + LogPriorNewRBFlength;
                
                % compute the proposal distribution forward and backwards terms
                trprior.sigma2 = PropDist.noiseModel(j,2:3); 
@@ -620,7 +620,6 @@ for it = 1:(BurnInIters + Iters)
         %
         cnt = cnt + 1;
         samples.TFindex(cnt) = TFindex;
-        %samples.predGenes(:,:,cnt) = PredictedGenes;
         samples.kinetics(:,cnt) = LikParams.kinetics;
         samples.W(:,cnt) = LikParams.W;
         samples.W0(:,cnt) = LikParams.W0;

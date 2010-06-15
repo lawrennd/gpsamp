@@ -293,8 +293,8 @@ for it = 1:(BurnInIters + Iters)
         Likkin = feval(TrspaceKin, KineticsNew);
         LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
         % Metropolis-Hastings to accept-reject the proposal
-        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
-        newP = sum(newLogLik(:))+ sum(LogPriorKinNew(:)); 
+        oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + sum(oldLogPriorKin(j,:),2);
+        newP = model.Likelihood.invT*sum(newLogLik(:))+ sum(LogPriorKinNew(:)); 
         
         [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
         if accept == 1
@@ -389,8 +389,8 @@ for it = 1:(BurnInIters + Iters)
                LikSigma2 = feval(TrspaceNoiseWHITE, newSigma2);
                LogPriorNewWHITE = feval(lnpriorNoiseWHITE, LikSigma2, model.prior.sigma2);
                % Metropolis-Hastings to accept-reject the proposal
-               oldP = sum(oldLogLik(:,j),1) + oldLogPriorNoiseWHITE(j);
-               newP = sum(newLogLik(:)) + LogPriorNewWHITE; 
+               oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1) + oldLogPriorNoiseWHITE(j);
+               newP = model.Likelihood.invT*sum(newLogLik(:)) + LogPriorNewWHITE; 
          
                % compute the proposal distribution forward and backwards terms
                trprior.sigma2 = PropDist.noiseModel(j,1); 

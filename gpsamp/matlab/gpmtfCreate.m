@@ -268,7 +268,14 @@ else
     return;
 end
  
-  
+
+% inverse temperature used in case you wish to apply thermodynamic
+% integration 
+model.Likelihood.invT = 1; 
+
+
+
+
 if ~isempty(GenesTF)
    % 
    model.Likelihood.GenesTF = GenesTF;
