@@ -401,8 +401,8 @@ for it = 1:(BurnInIters + Iters)
            sumSquerrors1 = -2*repmat(LikParams.noiseModel.sigma2, NumOfReplicas, 1).*sumSquerrors1;
            sumSquerrors = sum(sumSquerrors1,1);
                 
-           anew = model.prior.sigma2.a + 0.5*NumOfReplicas*SizG;
-           bnew = model.prior.sigma2.b + 0.5*sumSquerrors;
+           anew = model.prior.sigma2.a + 0.5*model.Likelihood.invT*NumOfReplicas*SizG;
+           bnew = model.prior.sigma2.b + 0.5*model.Likelihood.invT*sumSquerrors;
            if exist('xgamrnd')
            newinvSigma2 = xgamrnd(anew, 1./bnew);
            else

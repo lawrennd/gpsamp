@@ -1,11 +1,23 @@
-function results = gpmtfSummariseResults(testGenes, method, Genes, GeneVars, TFs, models)
+function results = gpmtfSummariseResults(testGenes, method, Genes, GeneVars, TFs, models, tGrid)
 
 if nargin < 2,
   method='zscore';
 end
 
-
-if strcmp(method, 'margLogLik2')
+if strcmp(method, 'thermodyn')
+  Dtn = tGrid(2:end)-tGrid(1:end-1);
+  for k=1:size(testGenes,1) 
+    fprintf('Running gene %d/%d...\n', k, size(testGenes, 1));
+    for c=1:size(testGenes,2)
+       tmpResults = zeros( size(tGrid) );   
+       for f=1:size(testGenes,3)
+          tmpResults(f) = mean(testGenes{k,c,f}.LogL);
+       end
+       results(k,c) = 0.5*sum(Dtn.*(tmpResults(1:end-1) + tmpResults(2:end)));
+    end
+  end
+  return;
+elseif strcmp(method, 'margLogLik2')
   % Chib's approximatino to the marginal likelihood  
   results = zeros( size(testGenes) );
   % compute all marginal likelihoods for all trained models
@@ -57,9 +69,7 @@ if strcmp(method, 'margLogLik2')
     end
     
     mu = mean(X,1);
-    %mu
     parmu = mu;
-    %maprmu
     jit = 1e-8;
     Sigma = cov(X) + jit*eye(size(X,2));
     [N D] = size(X);                              
@@ -67,7 +77,6 @@ if strcmp(method, 'margLogLik2')
                                   - 0.5*((parmu-mu)*(Sigma\(parmu-mu)'));
     
     % Chib's approximation to the marginal likelihood 
-    %
     % use values with likelhiood under the model and evaluate the Chib's 
     % method there 
     modelTest.Likelihood.Genes = Genes(k,:,:);
@@ -144,15 +153,15 @@ if strcmp(method, 'margLogLik2')
       end
     %  
     end
-    % evaluate the priors on the mu vectro
     
+    % evaluate the priors on the mu vector
     Likkin = feval(TrspaceKin, modelTest.Likelihood.kinetics);
     LogPriorKin = feval(lnpriorKin, Likkin, modelTest.prior.kinetics);
     
     % white GP noise model is used
     temp = feval(TrspaceNoiseWHITE, modelTest.Likelihood.noiseModel.sigma2);
     LogPriorNoiseWHITE = feval(lnpriorNoiseWHITE, temp, modelTest.prior.sigma2);
-    LogPrior = sum(LogPriorKin + LogPriorNoiseWHITE);
+    LogPrior = sum(LogPriorKin) + sum(LogPriorNoiseWHITE);
     
     if modelTest.Likelihood.numTFs > 0
     %    
@@ -162,18 +171,9 @@ if strcmp(method, 'margLogLik2')
        % evaluation of the prior for the interaction weights
        LikW = feval(TrspaceW, modelTest.Likelihood.W);
        LogPriorW = feval(lnpriorW, LikW, modelTest.prior.W);
-       LogPrior = LogPrior + sum(LogPriorW0 + LogPriorW);
+       LogPrior = LogPrior + sum(LogPriorW0) + sum(LogPriorW);
     %
     end
-    %mm
-    %logsumexp(LogLik)
-    %max(LogLik)
-    %modelTest.Likelihood.numTFs
-    %pause
-    %logsumexp(LogLik)
-    %LogPrior  
-    %logPosteriorOfSelectedPoint
-    %pause
     LogMargL(k,c,f) = logsumexp(LogLik, 2) - log(size(TFs,2))  +  LogPrior - logPosteriorOfSelectedPoint;
     %
   end
