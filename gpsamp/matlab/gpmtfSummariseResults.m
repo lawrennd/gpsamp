@@ -223,8 +223,29 @@ elseif strcmp(method, 'margLogLik1')
     Sigma = cov(X);
     [N D] = size(X);
     jit = 1e-10;
+    
+    if isfield(testGenes{k,c,f}, 'TFindex')
+       pisF = zeros(1, size(TFs,2));
+       for tt=1:size(TFs,2)
+          pisF(tt) = size(find(tt==testGenes{k,c,f}.TFindex),2);
+       end
+       pisF = pisF + jit; 
+       pisF = pisF/sum(pisF);
+    else
+       pisF = ones(1, size(TFs,2))/size(TFs,2);
+    end
+
+    %min(pisF)
+    %max(pisF)
+    %log(1/size(TFs,2)) 
+    %- sum(pisF.*log(pisF))
+    %pause
+    
     entropy = (0.5*D)*log(2*pi) + (0.5*D) + 0.5*log(det(Sigma + jit*eye(size(Sigma,1))));
-    LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + entropy;
+    LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + ...
+                      log(1/size(TFs,2)) + entropy - sum(pisF.*log(pisF));
+    %LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + entropy;
+                  
     %
   end
   end
