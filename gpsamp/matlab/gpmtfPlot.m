@@ -1,4 +1,4 @@
-function gpmtfPlot(model, samples, demdata, printResults)
+function gpmtfPlot(model, samples, demdata, TFname, printResults)
 %function gpmtfPlot(model, samples, demdata, printResults)
 %
 % Description: Creates plots to display the outcome of MCMC 
@@ -170,15 +170,15 @@ for r=1:NumOfReplicas
      titlestring = 'Profile: ';
      titlestring = [titlestring, num2str(r)]; 
      titlestring = [titlestring, ' replica, '];
-     titlestring = [titlestring, num2str(j)];
-     titlestring = [titlestring, ' TF'];
+     titlestring = [titlestring, TFname{j}];
+     %titlestring = [titlestring, ' TF'];
      title(titlestring,'fontsize', FONTSIZE);
      %
   end
   %
 end
 if printResults
-  print('-depsc', [dirr fileName 'Replica' num2str(r) 'TF' num2str(j)]);
+  print('-depsc', [dirr fileName 'Replica' num2str(r) 'TF' TFname(j)]);
 end 
 
 figure;
@@ -220,8 +220,8 @@ for r=1:NumOfReplicas
      titlestring = 'Expressions: ';
      titlestring = [titlestring, num2str(r)]; 
      titlestring = [titlestring, ' replica, '];
-     titlestring = [titlestring, num2str(j)];
-     titlestring = [titlestring, ' TF-gene'];
+     %titlestring = [titlestring, num2str(j)];
+     titlestring = [titlestring, TFname{j}];
      title(titlestring,'fontsize', FONTSIZE);
      %
   end
