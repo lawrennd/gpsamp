@@ -51,7 +51,7 @@ if flag == 0
     %
     TestGenes = Genes(1,:,:);
     TestGenesVar = GenesVar(1,:,:);
-    numTFs = sum(comb(end,:));
+    numTFs = size(samples.F{1},1);
     % model options
     options = gpmtfOptions(ones(1,12,3), numTFs);
     options.jointAct = 'sigmoid';
