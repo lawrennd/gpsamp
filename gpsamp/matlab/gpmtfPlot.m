@@ -117,8 +117,13 @@ NumOfTFs = model.Likelihood.numTFs;
 NumOfGenes = model.Likelihood.numGenes;
 order = 1:NumOfGenes;
 NumOfReplicas = model.Likelihood.numReplicas;
-NumOfSamples = size(samples.F,2);
-SizF = size(samples.F{1},2);
+NumOfSamples = size(samples.LogL,2);
+if isfield(samples, 'F')
+    SizF = size(samples.F{1},2);
+else
+    SizF = size(TimesF,2);
+end
+
 TimesF = TimesF(:); 
 figure;
 for r=1:NumOfReplicas
@@ -133,7 +138,12 @@ for r=1:NumOfReplicas
          if isfield(model.Likelihood,'GenesTF')         
             lik.kineticsTF = samples.kineticsTF(:,:,t);
          end
-         PredTF(t,:) = gpmtfComputeTF(lik, samples.F{t}(j,:,r), j);
+         if isfield(samples, 'F')
+           PredTF(t,:) = gpmtfComputeTF(lik, samples.F{t}(j,:,r), j);
+         else
+           % the baseline model is used  
+           PredTF(t,:) = gpmtfComputeTF(lik, model.F(j,:,r), j);  
+         end
      end
     
      %mu = mean(PredTF)';
@@ -141,7 +151,7 @@ for r=1:NumOfReplicas
      %stds2 = sqrt(var(PredTF))';
      %if strcmp(model.Likelihood.jointAct,'sigmoid')==1
      %FF = exp(FF);  
-     mu = median(PredTF)';
+     mu = median(PredTF,1)';
      stds1 = (prctile(PredTF,95,1)'-mu)/2;
      stds2 = (mu-prctile(PredTF,5,1)')/2;
      %end
@@ -157,8 +167,6 @@ for r=1:NumOfReplicas
      plot(TimesF,mu,'b','lineWidth',3);
      
      axis([TimesF(1) TimesF(end)+0.1 0 max(mu+2*stds1)+0.1]);
-     
-
     
      % plot the ground truth if exist
      if isfield(model,'groundtr') == 1
@@ -190,13 +198,17 @@ for r=1:NumOfReplicas
      % 
      GG = zeros(NumOfSamples, size(model.Likelihood.TimesF,2));    
      for t=1:NumOfSamples
-         PredGenesTF = singleactFunc(model.Likelihood.singleAct, samples.F{t}(j,:,r));
+         if isfield(samples, 'F')
+            PredGenesTF = singleactFunc(model.Likelihood.singleAct, samples.F{t}(j,:,r));
+         else
+            PredGenesTF = model.F(j,:,r);
+         end
          GG(t,:) = PredGenesTF;
      end
      
-     mu = mean(GG)';
+     mu = mean(GG,1)';
      %mu = mu(1:2:end);
-     stds = sqrt(var(GG))';
+     stds = sqrt(var(GG,0,1))';
      %stds = stds(1:2:end);
     
      TF = TimesF; % TimesFF(1:2:end)';
@@ -250,7 +262,11 @@ for j=1:NumOfGenes
          LikParams.W = samples.W(:,:,t);
          LikParams.W0 = samples.W0(:,t);
          %LikParams.TF = TFs{samples.TFindex(t)};
-         predgen = gpmtfComputeGeneODE(LikParams, samples.F{t}(:,:,r), r, j);
+         if isfield(samples, 'F')
+            predgen = gpmtfComputeGeneODE(LikParams, samples.F{t}(:,:,r), r, j);
+         else
+            predgen = gpmtfComputeGeneODE(LikParams, model.F(:,:,r), r, j);
+         end
          GG(t,:) = predgen;
          %predgen(model.Likelihood.comInds)
          %Genes(j,:,r)
@@ -258,10 +274,10 @@ for j=1:NumOfGenes
          %
      end
      
-     mu = mean(GG)';
+     mu = mean(GG,1)';
      %mu = mu(21:end);
      %mu = mu(1:2:end);
-     stds = sqrt(var(GG))';
+     stds = sqrt(var(GG,0,1))';
      %stds = stds(21:end);
      %stds = stds(1:2:end);
     
@@ -311,14 +327,14 @@ modelS = median(SS,1);
 modelD = median(DD,1);
 modelA = median(AA,1);
 
-stdBB1 = prctile(BB,5);
-stdDD1 = prctile(DD,5);
-stdSS1 = prctile(SS,5);
-stdBB2 = prctile(BB,95);
-stdDD2 = prctile(DD,95);
-stdSS2 = prctile(SS,95);
-stdAA1 = prctile(AA,5);
-stdAA2 = prctile(AA,95);
+stdBB1 = prctile(BB,5,1);
+stdDD1 = prctile(DD,5,1);
+stdSS1 = prctile(SS,5,1);
+stdBB2 = prctile(BB,95,1);
+stdDD2 = prctile(DD,95,1);
+stdSS2 = prctile(SS,95,1);
+stdAA1 = prctile(AA,5,1);
+stdAA2 = prctile(AA,95,1);
 
 
 
@@ -397,10 +413,10 @@ SS = squeeze(samples.kineticsTF(:,2,:))';
 modelS = median(SS,1);
 modelD = median(DD,1);
 
-stdDD1 = prctile(DD,5);
-stdSS1 = prctile(SS,5);
-stdDD2 = prctile(DD,95);
-stdSS2 = prctile(SS,95);
+stdDD1 = prctile(DD,5,1);
+stdSS1 = prctile(SS,5,1);
+stdDD2 = prctile(DD,95,1);
+stdSS2 = prctile(SS,95,1);
 
 figure;
 % plot degradation rates
@@ -441,8 +457,8 @@ end
 for j=1:NumOfTFs
 W1 = squeeze(samples.W(:,j,:))';
 modelW1 = mean(W1,1);
-stdW1_1 = sqrt(var(W1));
-stdW1_2 = sqrt(var(W1));
+stdW1_1 = sqrt(var(W1,0,1));
+stdW1_2 = sqrt(var(W1,0,1));
 % Plot first basal transcription rates.
 figure;
 if isfield(model,'groundtr') == 1
@@ -451,7 +467,7 @@ else
 bar(modelW1(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
 hold on;
-errorbar([1:NumOfGenes]-0.14, modelW1(order), modelW1(order)-stdW1_1(order), stdW1_2(order)-modelW1(order),'.'); 
+errorbar([1:NumOfGenes]-0.14, modelW1(order), 2*stdW1_1(order),'.'); 
 %errorbar([1:NumOfGenes], modelB(order), modelB(order)-stdBB1(order), stdBB2(order)-modelB(order),'.'); 
 %title(j,'fontsize', FONTSIZE);
 if printResults
@@ -465,8 +481,8 @@ end
 
 W0 = samples.W0';
 modelW0 = mean(W0,1);
-stdW0_1 = sqrt(var(W0));
-stdW0_2 = sqrt(var(W0));
+stdW0_1 = sqrt(var(W0,0,1));
+stdW0_2 = sqrt(var(W0,0,1));
 figure;
 % plot initial conditions
 if isfield(model,'groundtr') == 1
@@ -475,7 +491,7 @@ else
 bar(modelW0(order)', 0.7); colormap([0.9 0.9 0.9]);
 end
 hold on;
-errorbar([1:NumOfGenes]-0.14, modelW0(order), modelW0(order)-stdW0_1(order), stdW0_2(order)-modelW0(order),'.');
+errorbar([1:NumOfGenes]-0.14, modelW0(order), 2*stdW0_1(order),'.');
 %errorbar([1:NumOfGenes], modelA(order), modelA(order)-stdAA1(order), stdAA2(order)-modelA(order),'.');
 %title('W0','fontsize', FONTSIZE);
 if printResults
@@ -488,8 +504,8 @@ title('Interaction biases','fontsize', FONTSIZE);
 if abs(model.Likelihood.tauMax) > 0
 Taus = samples.Taus';
 modelTaus = mean(Taus,1);
-stdTaus_1 = prctile(Taus,5);%sqrt(var(Taus));
-stdTaus_2 = prctile(Taus,95);%sqrt(var(Taus));
+stdTaus_1 = prctile(Taus,5,1);%sqrt(var(Taus));
+stdTaus_2 = prctile(Taus,95,1);%sqrt(var(Taus));
 figure;
 % plot initial conditions
 if isfield(model,'groundtr') == 1

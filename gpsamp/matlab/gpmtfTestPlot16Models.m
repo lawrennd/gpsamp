@@ -25,8 +25,7 @@ TimesFF = TimesF(model{numModels}.Likelihood.startTime:end);
 ok = date;
 fileName = [demdata 'Test' 'MCMC' ok]; 
 
-NumOfTFs = size(TFs{1}, 1);
-
+NumOfTFs = size(TFs{1},1);
 
 NumOfGenes = model{1}.Likelihood.numGenes;
 order = 1:NumOfGenes;
@@ -51,7 +50,11 @@ for m=1:numModels
    for t=1:NumOfSamples
    %  
      LikParams = model{m}.Likelihood; 
-     LikParams.kinetics = testGenes{m}.kinetics(:,t)';
+     if prod(size(testGenes{m}.kinetics)) <= 4
+        LikParams.kinetics = testGenes{m}.kinetics(:)';
+     else  
+        LikParams.kinetics = testGenes{m}.kinetics(:,t)';
+     end
      if model{m}.Likelihood.numTFs == 0
      %    
         B = LikParams.kinetics(1);
@@ -60,10 +63,26 @@ for m=1:numModels
         GGT(t,:,:) = repmat(B/DD  + (A - B/DD)*exp(-TimesG*DD)', 1, NumOfReplicas);
      else
      % 
-        LikParams.W = testGenes{m}.W(:,t)';
+        if prod(size(testGenes{m}.W)) <= NumOfTFs
+           LikParams.W = testGenes{m}.W(:)';
+        else
+           LikParams.W = testGenes{m}.W(:,t)';
+        end
         LikParams.W0 = testGenes{m}.W0(t);
-        LikParams.TF = TFs{testGenes{m}.TFindex(t)}(model{m}.Likelihood.TFcomb==1,:, :); 
-    
+        if isfield(testGenes{m},'TFindex')   
+           LikParams.TF = TFs{testGenes{m}.TFindex(t)}(model{m}.Likelihood.TFcomb==1, :, :);
+        else
+           LikParams.TF = TFs{1}(model{m}.Likelihood.TFcomb==1, :, :);
+        end
+        %if model{m}.Likelihood.noiseModel.active(2) == 1
+        %  LikParams.noiseModel.sigma2 = testGenes{m}.sigma2;
+        %end
+        %LikParams.Genes = Genes;
+        %LikParams.noiseModel.pumaSigma2 = GeneVars;
+        %for r=1:NumOfReplicas
+        %    % call the function only with j gene expressions  
+        %    newLogLik(r,:) = gpmtfLogLikelihoodGene(LikParams, model{m}.F(:,:,r), r, 1);
+        %end
         for r=1:NumOfReplicas
         % 
            predgen = gpmtfComputeGeneODE(LikParams, zeros(NumOfTFs, SizF), r, 1);
@@ -83,12 +102,12 @@ for m=1:numModels
       subplot(nMod, nMod, m);  
     
       GG = GGT(:,:,r); 
-      mu = mean(GG)';
-      stds = sqrt(var(GG))';
+      mu = mean(GG,1)';
+      stds = sqrt(var(GG,0,1))';
       TF = TimesFF'; % TimesFF(1:2:end)';
       %figure;
       if size(mu,1) == size(TimesG(:),1)
-          TF = TimesG';
+         TF = TimesG';
       else
          TimesFF';
       end
@@ -102,7 +121,6 @@ for m=1:numModels
       plot(TF, mu, 'b','lineWidth',r);
       hold on;
       fillColor = [0.7 0.7 0.7];
-      %fillColor = [0.8 0.8 0.8];  % for the paper
       fill([TF; TF(end:-1:1)], [mu; mu(end:-1:1)]...
                + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
       plot(TF,mu,'b','lineWidth',3);
@@ -152,10 +170,16 @@ for m=1:numModels
 % 
     if model{m}.Likelihood.numTFs > 0
         ind = find(model{m}.Likelihood.TFcomb==1);
-        ok = testGenes{m}.W';
-        stdok_1 = sqrt(var(ok));
-        stdok_2 = sqrt(var(ok));
+        if prod(size(testGenes{m}.W)) <= NumOfTFs
+            ok = testGenes{m}.W(:)';
+        else 
+            ok = testGenes{m}.W';
+        end
+        stdok_1 = sqrt(var(ok,0,1));
+        stdok_2 = sqrt(var(ok,0,1));
+        
         modelW(m, ind) = mean(ok); 
+        
         stdW_1(m, ind) = stdok_1;
         stdW_2(m, ind) = stdok_2;
         
@@ -164,14 +188,24 @@ for m=1:numModels
         stdW0_2(m) = sqrt(var(testGenes{m}.W0)); 
         
     end 
-
-    BB = testGenes{m}.kinetics(1,:)';
-    DD = testGenes{m}.kinetics(2,:)';
+    
+    if min(size(testGenes{m}.kinetics)) == 1
+       BB = testGenes{m}.kinetics(1);
+       DD = testGenes{m}.kinetics(2);
+    else  
+       BB = testGenes{m}.kinetics(1,:)';
+       DD = testGenes{m}.kinetics(2,:)';
+    end
     modelB(m) = median(BB);
     modelD(m) = median(DD);
-    if model{m}.Likelihood.numTFs > 0 
-       SS = testGenes{m}.kinetics(3,:)';
-       AA = testGenes{m}.kinetics(4,:)';
+    if model{m}.Likelihood.numTFs > 0  
+       if min(size(testGenes{m}.kinetics)) == 1
+          SS = testGenes{m}.kinetics(3);
+          AA = testGenes{m}.kinetics(4);
+       else  
+          SS = testGenes{m}.kinetics(3,:)';
+          AA = testGenes{m}.kinetics(4,:)';
+       end
        modelS(m) = median(SS);
        stdSS1(m) = prctile(SS,5);
        stdSS2(m) = prctile(SS,95);
@@ -231,7 +265,7 @@ plotIndex = plotIndex+1;
 subplot(NumRowsParams, NumColsParams, plotIndex); 
 bar(modelW(:, j)', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
-errorbar([1:numModels]-0.14, modelW(:, j), modelW(:, j) - stdW_1(:, j), stdW_2(:, j) - modelW(:, j),'.'); 
+errorbar([1:numModels]-0.14, modelW(:, j), 2*stdW_1(:, j),'.'); 
 %errorbar([1:NumOfGenes], modelB(order), modelB(order)-stdBB1(order), stdBB2(order)-modelB(order),'.'); 
 %title(j,'fontsize', FONTSIZE);
 titlestring = 'Inter. weights: '; 
@@ -246,7 +280,7 @@ plotIndex = plotIndex+1;
 subplot(NumRowsParams, NumColsParams, plotIndex); 
 bar(modelW0', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
-errorbar([1:numModels]-0.14, modelW0, modelW0 - stdW0_1, stdW0_2 - modelW0,'.'); 
+errorbar([1:numModels]-0.14, modelW0, 2*stdW0_1,'.'); 
 title('Inter. biases','fontsize', FONTSIZE);
 
  

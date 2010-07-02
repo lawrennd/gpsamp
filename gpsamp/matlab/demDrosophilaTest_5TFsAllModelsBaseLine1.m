@@ -1,19 +1,19 @@
-% demDrosophilaTest_5TFsAllModels1 runs the multi-TF for screening
-% using all possible combinations of 3 out 5 TFs 
-function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsAllModels1(modulus, remainder, identifier, flag)
+% demDrosophilaTest_5TFsAllModelsBaseLine1 runs the baseline multi-TF for screening
+% using all possible combinations of 2 out 5 TFs 
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsAllModelsBaseLine1(modulus, remainder, identifier, flag)
 
 if nargin < 4,
   flag=1;
 end
 
-% All possible models
- comb = [1 0 0 0 0; 0 1 0 0 0; 0 0 0 1 0;
-         1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
-         0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
-         0 0 1 1 0;
-         0 0 0 1 1];
-        
-% if flag =0 , then just retutn the precomputations 
+% All possible models (allowing only 2 TFs at the same time))
+comb = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
+        1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+        0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+        0 0 1 1 0; 0 0 1 0 1;
+        0 0 0 1 1];
+                    
+% if flag =0 , then jsut retutn the precomputations 
 if flag == 0
 %    
     addpath ~/mlprojects/ndlutil/matlab
@@ -21,7 +21,7 @@ if flag == 0
     addpath ~/mlprojects/gpsamp/matlab/activFuncts
     addpath ~/mlprojects/gpsamp/matlab/toolbox
     load datasets/drosophila_data;
-    load drosTrainTotal;
+    load drosTrainBaseLine;
     load datasets/testset;
     noiseM = {'pumaWhite' 'white'};
 
@@ -39,7 +39,7 @@ if flag == 0
         Genes = drosexp.fitmean(indices, :);
         GenesVar = drosexp.fitvar(indices, :);
     end
-
+    
     sc = 10./max(Genes, [], 2);
     Genes = Genes.*repmat(sc, 1, size(Genes,2));
     Genes = reshape(Genes, numGenes, 12, 3);
@@ -50,10 +50,11 @@ if flag == 0
     %
     TestGenes = Genes(1,:,:);
     TestGenesVar = GenesVar(1,:,:);
-    numTFs = size(samples.F{1},1);
+    numTFs = size(samples.W,2); 
     % model options
     options = gpmtfOptions(ones(1,12,3), numTFs);
     options.jointAct = 'sigmoid';
+    options.singleAct = 'lin';
     %options.spikePriorW = 'yes';
     options.noiseModel = noiseM;
     options.constraints.spaceW = 'positive';
@@ -62,15 +63,29 @@ if flag == 0
     [options, TimesF] = gpmtfDiscretize(TimesG, options);
     modelTest = gpmtfCreate(ones(1,12,3), ones(1,12,3), [], [], TimesG, TimesF, options);
     % precompute the TFs
-    for cnt=1:size(samples.F,2)
+    
+    % piece-wise linear function for the TF mRNA computed from the observed mRNA 
+    F = zeros( size(samples.W, 2), size(modelTest.Likelihood.TimesF,2), size(Genes,3));
+    for R=1:size(Genes,3)
+    for j=2:size(modelTest.Likelihood.TimesG, 2)
+        b = modelTest.Likelihood.TimesG(j); 
+        a = modelTest.Likelihood.TimesG(j-1);
+        x = a:modelTest.Likelihood.step:b;
+        F(:,modelTest.Likelihood.comInds(j-1):modelTest.Likelihood.comInds(j), R) = repmat(GenesTF(:,j,R), 1, size(x,2)).*repmat( (x-a)/(b-a), size(F,1), 1)  + repmat( GenesTF(:,j-1,R), 1, size(x,2)).*repmat( (b-x)/(b-a), size(F,1), 1); 
+    end
+    end
+    
+    for cnt=1:size(samples.LogL,2)
         %
         modelTest.Likelihood.kineticsTF = samples.kineticsTF(:,:,cnt);
         for r=1:modelTest.Likelihood.numReplicas
-            TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, samples.F{cnt}(:,:,r), 1:numTFs);
+            TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, F(:,:,r), 1:numTFs);
         end
         TFs{cnt} = log(TFs{cnt} + 1e-100);
         %
     end
+    
+    %
     for c=1:size(comb,1)
         %
         TFset = find(comb(c,:));
@@ -78,6 +93,7 @@ if flag == 0
         % model options
         options = gpmtfOptions(ones(1,12,3), numTFs);
         options.jointAct = 'sigmoid';
+        options.singleAct = 'lin';
         %options.spikePriorW = 'yes';
         options.noiseModel = noiseM;
         options.constraints.spaceW = 'positive';
@@ -89,6 +105,7 @@ if flag == 0
         % CREATE the model
         modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
         modelTest.Likelihood.TFcomb = comb(c,:);
+        modelTest.F = F(TFset,:,:);
         models{c} = modelTest;
         %
     end   
@@ -104,9 +121,9 @@ else % otherwise run the demo
         identifier = datestr(now, 29);
     end
 
-    outdir = '~/mlprojects/gpsamp/matlab/results';
-    %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    %outdir = '~/mlprojects/gpsamp/matlab/results';
+    outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
+    outfile = sprintf('%s/multitf5a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
@@ -122,7 +139,7 @@ else % otherwise run the demo
     load datasets/drosophila_data;
     load datasets/trainScaleDros;
     load datasets/testset;
-    load drosTrainTotal;
+    load drosTrainBaseLine;
 
 
     if 0
@@ -154,9 +171,8 @@ else % otherwise run the demo
     mcmcoptions.train.StoreEvery = 10;
     mcmcoptions.train.T = 30000;
     mcmcoptions.train.Burnin = 1000;
-
     TimesG = 0:11;
-
+    
     models = {};
     testGene = {};
     if exist(outfile, 'file'),
@@ -180,6 +196,7 @@ else % otherwise run the demo
             % model options
             options = gpmtfOptions(ones(1,12,3), numTFs);
             options.jointAct = 'sigmoid';
+            options.singleAct = 'lin';
             %options.spikePriorW = 'yes';
             options.noiseModel = noiseM;
             options.constraints.spaceW = 'positive';
@@ -190,30 +207,33 @@ else % otherwise run the demo
 
             TFs = [];
             TFset = find(comb(c,:));
-            if numTFs > 0
-                % precompute the TFs
-                for cnt=1:size(samples.F,2)
-                    %
-                    modelTest.Likelihood.kineticsTF = samples.kineticsTF(TFset,:,cnt);
-                    for r=1:modelTest.Likelihood.numReplicas
-                        TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, samples.F{cnt}(TFset,:,r), 1:numTFs);
-                    end
-                    TFs{cnt} = log(TFs{cnt} + 1e-100);
-                    %
+            
+            % piece-wise linear function for the TF mRNA computed from the observed mRNA 
+            F = zeros( size( GenesTF, 1), size(modelTest.Likelihood.TimesF,2), size(Genes,3));
+            for R=1:size(Genes,3)
+               for j=2:size(modelTest.Likelihood.TimesG, 2)
+                  b = modelTest.Likelihood.TimesG(j); 
+                  a = modelTest.Likelihood.TimesG(j-1);
+                  x = a:modelTest.Likelihood.step:b;
+                  F(:,modelTest.Likelihood.comInds(j-1):modelTest.Likelihood.comInds(j), R) = repmat( GenesTF(:,j,R), 1, size(x,2)).*repmat( (x-a)/(b-a), size(F,1), 1)  + repmat( GenesTF(:,j-1,R), 1, size(x,2)).*repmat( (b-x)/(b-a), size(F,1), 1); 
+               end
+            end
+            
+            for cnt=1:size(samples.LogL,2)
+                %
+                modelTest.Likelihood.kineticsTF = samples.kineticsTF(TFset,:,cnt);
+                for r=1:modelTest.Likelihood.numReplicas
+                        TFs{cnt}(:,:,r) = gpmtfComputeTFODE(modelTest.Likelihood, F(TFset,:,r), 1:numTFs);
                 end
+                TFs{cnt} = log(TFs{cnt} + 1e-100);
                 %
             end
 
-            
             % CREATE the model
             modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-            if numTFs > 0
-                [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, mcmcoptions.adapt);
-                % training/sampling phase
-                [modelTest PropDist samplesTest accRates] = gpmtfTestGenesSample2(modelTest, TFs, PropDist, mcmcoptions.train);
-            else
-                [modelTest PropDist samplesTest accRates] = gpmtfOnlyDecayModel(modelTest, mcmcoptions);
-            end
+            modelTest.Likelihood.TF = TFs{1};
+            modelTest.F = F(TFset,:,:);
+            [modelTest PropDist samplesTest accRates] = gpmtfBaselineMultTFModelTest(modelTest, mcmcoptions);
             %
             testGene{n,c} = samplesTest;
             testaccRates{n,c} = accRates;
@@ -222,8 +242,8 @@ else % otherwise run the demo
             %
         end
         % Only save after each gene is completed 
-        %save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
-        safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        %safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
         %
     end

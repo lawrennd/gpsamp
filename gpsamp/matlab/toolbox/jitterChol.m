@@ -5,11 +5,14 @@ function [L er] = jitterChol(K)
 %              when the matrix is semipositive definite  
 %
 
-jitter = 1e-8;
+jitter = 1e-7;
 m = size(K,1); 
 [L er] = chol(K);
-if er > 0 % add jitter
+cnt = 0;
+while er > 0 % add jitter
    warning('Jitter added'); 
    K = K + jitter*mean(diag(K))*eye(m);
    [L er] = chol(K);
+   cnt = cnt +1;
+   cnt
 end

@@ -11,13 +11,18 @@ function [options, TimesF] = gpmtfDiscretize(TimesG, options)
 % points. This number of points must be a odd number 
 discr=10;
 
+
+
 if (discr*(size(TimesG,2)-1))+1 > 200 
    discr = floor(200/(size(TimesG,2)-1)) + 1; 
 end 
 if mod(discr*(size(TimesG,2)-1)+1,2) == 0
    discr = discr-1;
-end 
-step = ((max(TimesG) - min(TimesG))/(size(TimesG(:),1)-1))/discr;
+end
+
+%step = ((max(TimesG) - min(TimesG))/(size(TimesG(:),1)-1))/discr;
+step = min(TimesG(2:end) - TimesG(1:end-1))/discr;
+
 TimesF =[]; TimesF(1) = TimesG(1);
 for j=1:size(TimesG(:),1)-1
    TimesF = [TimesF, ((TimesG(j)+step):step:TimesG(j+1))];
