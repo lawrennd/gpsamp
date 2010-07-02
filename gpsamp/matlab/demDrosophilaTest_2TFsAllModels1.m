@@ -1,6 +1,6 @@
 % demDrosophilaTest_2TFsAllModels1 runs the multi-TF for screening
 % using all possible combinations of two TFs(twist and mef2) 
-function [Genes, GenesVar, TFs, models] = demDrosophilaTest_2TFsAllModels1(modulus, remainder, identifier, flag)
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_2TFsAllModels1(modulus, remainder, identifier, flag)
 
 if nargin < 4,
   flag=1;
@@ -120,7 +120,7 @@ else % otherwise run the demo
     load drosTrainTotal;
 
 
-    if 1
+    if 0
         load topranked10GenesMef2Twi;
         numGenes = 20;
         mygenes = drosexp.genes(G);

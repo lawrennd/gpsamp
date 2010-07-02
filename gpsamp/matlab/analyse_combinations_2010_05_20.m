@@ -18,14 +18,14 @@ cvals_b = results_b.marlls - mean(results_cb.marlls, 3);
 
 M = drosMakeValidationMatrix(chipdistances, results_a.genes, 2000);
 
-[foo, J_basic] = sort(results_a.marlls(:,4) - ...
-		      logsumexp(results_a.marlls(:,[3, 2, 1]),2), 'descend');
+[foo, J_basic] = sort(results_b.marlls(:,4) - ...
+		      logsumexp(results_b.marlls(:,[3, 2, 1]),2), 'descend');
 
-[foo, J_cv] = sort(cvals_a(:, 4) - max(cvals_a(:, 1:3), [], 2), 'descend');
-%[foo, J_cv2] = sort(cvals_a(:, 4) - logsumexp(cvals_a(:, 1:3), 2), 'descend');
-[foo, J_cv2] = sort(cvals_a(:, 4) ...
-		    - logsumexp(results_a.marlls(:, 1:3), 2) ...
-		    + mean(logsumexp(results_ca.marlls(:, 1:3, :), 2), 3), 'descend');
+[foo, J_cv] = sort(cvals_b(:, 4) - max(cvals_b(:, 1:3), [], 2), 'descend');
+%[foo, J_cv2] = sort(cvals_b(:, 4) - logsumexp(cvals_b(:, 1:3), 2), 'descend');
+[foo, J_cv2] = sort(cvals_b(:, 4) ...
+		    - logsumexp(results_b.marlls(:, 1:3), 2) ...
+		    + mean(logsumexp(results_cb.marlls(:, 1:3, :), 2), 3), 'descend');
 
 % pnasrankings = load('~/mlprojects/disimrank/matlab/results/rankings.mat');
 

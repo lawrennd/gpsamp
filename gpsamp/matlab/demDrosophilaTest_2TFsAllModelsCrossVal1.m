@@ -2,7 +2,7 @@
 % using all possible combinations of two TFs(twist and mef2)
 % It also used cros validation validatino by excluding each time 
 % point at a time
-function [Genes, GenesVar, TFs, models] = demDrosophilaTest_2TFsAllModelsCrossVal1(modulus, remainder, identifier, flag),
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_2TFsAllModelsCrossVal1(modulus, remainder, identifier, flag),
 
 addpath ~/mlprojects/ndlutil/matlab
 addpath ~/mlprojects/gpsamp/matlab

@@ -10,7 +10,7 @@ PNGSIZE=[400 300];
 
 
 numModels = size(testGenes,2);
-NumRowsParams = 2;
+NumRowsParams = 3;
 NumColsParams = 4;
 
 dirr = '~/mlprojects/gpsamp/tex/diagrams/';
@@ -25,7 +25,7 @@ TimesFF = TimesF(model{numModels}.Likelihood.startTime:end);
 ok = date;
 fileName = [demdata 'Test' 'MCMC' ok]; 
 
-NumOfTFs = model{numModels}.Likelihood.numTFs;
+NumOfTFs = size(TFs{1}, 1);
 
 
 NumOfGenes = model{1}.Likelihood.numGenes;
@@ -126,8 +126,10 @@ end
 
 if printResults
     %print('-depsc', [dirr fileName 'GeneExp' fbgn]);
-    set(gcf, 'PaperPosition', [0 0 PNGSIZE(1)/72 PNGSIZE(2)/72]);
-    print('-dpng', '-r72', [dirrhtml fileName 'GeneExp' fbgn]);
+    for r=1:3,
+      set(h(r), 'PaperPosition', [0 0 PNGSIZE(1)/72 PNGSIZE(2)/72]);
+      print(h(r), '-dpng', '-r72', [dirrhtml fileName 'GeneExp' fbgn 'Rep' num2str(r)]);
+    end
 end
 
 plotIndex = r;
