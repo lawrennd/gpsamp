@@ -18,7 +18,9 @@ NumReplicas = model.Likelihood.numReplicas;
 % number of transcription factors
 NumOfTFs = model.Likelihood.numTFs;
 SizKin = size(model.Likelihood.kinetics,2);
-SizF = size(model.Likelihood.TimesF,2);
+if model.Likelihood.numTFs > 0 
+   SizF = size(model.Likelihood.TimesF,2);
+end
 
 % initialize the transcription factors 
 %F = zeros(NumOfTFs, SizF, NumReplicas);
@@ -28,8 +30,11 @@ SizF = size(model.Likelihood.TimesF,2);
 % Initial proposal Gaussian distribution (with diagonal covariance matrices) 
 % for the kinetic parameters interection weights and the lengthscale of the GPs 
 PropDist.kin = 0.05*ones(NumOfGenes,SizKin);
-% interaction weigths and bias 
-PropDist.W = 0.05*ones(NumOfGenes,NumOfTFs+1);
+
+if model.Likelihood.numTFs > 0 
+   % interaction weigths and bias 
+  PropDist.W = 0.05*ones(NumOfGenes,NumOfTFs+1);
+end
 
 onlyPumaVar = 1; 
 if sum(model.Likelihood.noiseModel.active(2:3)) > 0  
@@ -50,8 +55,6 @@ qNoiseMbelow = 0.000001;   qNoiseMabove = 2;
 epsilon = 0.1;
 
 cnt = 0;
-%
-% do the adaption 
 minAccR = 18; 
 maxAccR = 38; 
 
@@ -59,8 +62,12 @@ nextbreak = 0;
 while 1
 %
 %  
-   [model PropDist samples accRates] = gpmtfBaselineMultTFModelSampleTest(model, PropDist, AdaptOps);
- 
+   if model.Likelihood.numTFs > 0 
+       [model PropDist samples accRates] = gpmtfBaselineMultTFModelSampleTest(model, PropDist, AdaptOps);
+   else
+       [model PropDist samples accRates] = gpmtfBaselineMultTFModelOnlyDecaySampleTest(model,  PropDist, AdaptOps);   
+   end
+   
    %samples
    %Likelihood =  model.Likelihood; 
    %for r=1:NumReplicas
@@ -74,9 +81,12 @@ while 1
    %sum(sum(oldLogLik))
    %pause
    
-   
    accRateKin = accRates.Kin;
-   accRateW = accRates.W;
+   if model.Likelihood.numTFs > 0 
+      accRateW = accRates.W;
+   else
+      accRateW = 25; 
+   end
    accRateNoiseM = accRates.noiseM;
    
    if AdaptOps.disp == 1
@@ -86,8 +96,10 @@ while 1
       fprintf(1,'Acceptance rates for kinetic parameters (per gene))\n');
       disp(accRateKin);
  
-      fprintf(1,'Acceptance rates for interaction weights (per gene)\n');
-      disp(accRateW);
+      if model.Likelihood.numTFs > 0 
+        fprintf(1,'Acceptance rates for interaction weights (per gene)\n');
+        disp(accRateW);
+      end
   
       if onlyPumaVar == 0
          fprintf(1,'Acceptance rates for the noise parameters in the likelihood\n');
@@ -140,6 +152,7 @@ while 1
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT KINETICS PROPOSAL %%%%%%%%%%%%%%%%
          
    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT WEIGHTS PROPOSAL %%%%%%%%%%%%%%%%
+   if model.Likelihood.numTFs > 0 
    % adapt the proposal over the interaction weights (desired acceptance rate: 15-35%)
    for j=1:NumOfGenes
       if accRateW(j) > 35
@@ -158,6 +171,7 @@ while 1
          %
       end
        %
+   end
    end
    %%%%%%%%%%%%%%%%%%%%%%% END of ADAPT WEIGHTS PROPOSAL %%%%%%%%%%%%%%%%
    
@@ -188,10 +202,272 @@ while 1
 %
 %
 end
-
 % run the sampler
-[model PropDist samples accRates] = gpmtfBaselineMultTFModelSampleTest(model,  PropDist, mcmcoptions.train); 
+if model.Likelihood.numTFs > 0 
+  [model PropDist samples accRates] = gpmtfBaselineMultTFModelSampleTest(model,  PropDist, mcmcoptions.train); 
+else
+  [model PropDist samples accRates] = gpmtfBaselineMultTFModelOnlyDecaySampleTest(model,  PropDist, mcmcoptions.train);   
+end
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [model PropDist samples accRates] = gpmtfBaselineMultTFModelOnlyDecaySampleTest(model, PropDist, trainOps)
+%
+%
+
+BurnInIters = trainOps.Burnin; 
+Iters = trainOps.T; 
+StoreEvery = trainOps.StoreEvery;
+
+Genes = model.Likelihood.Genes;
+TimesG = model.Likelihood.TimesG; 
+[NumOfGenes SizG NumOfReplicas] = size(Genes);
+
+
+onlyPumaVar = 1; 
+if sum(model.Likelihood.noiseModel.active(2:3)) > 0
+   onlyPumaVar = 0;
+end
+
+% take the initial likelihood-kinetics parameters (defined out of this function)
+LikParams = model.Likelihood;
+SizKin = size(LikParams.kinetics,2);
+
+% compute initial values for the log likelihood 
+oldLogLik = zeros(NumOfReplicas, NumOfGenes);
+for r=1:NumOfReplicas
+%
+   for j=1:NumOfGenes
+     %  
+     B = LikParams.kinetics(j,1);
+     D = LikParams.kinetics(j,2);
+     A = LikParams.kinetics(j,3);
+     PredGenes(j,:) = B/D  + (A - B/D)*exp(-TimesG*D);
+     %
+   end 
+   
+   % evaluate the likelihood  
+   sigmas = zeros(size(NumOfGenes,1), LikParams.numTimes);
+   if LikParams.noiseModel.active(1) == 1
+       sigmas = LikParams.noiseModel.pumaSigma2(:, : ,r);
+   end
+   if LikParams.noiseModel.active(2) == 1
+       sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(:)', 1, LikParams.numTimes ); 
+   end
+
+   if isfield(LikParams, 'crValMask')    
+       oldLogLik(r,:) = - 0.5*sum(log(2*pi*sigmas(:, LikParams.crValMask)),2)....
+                    - 0.5*sum(((LikParams.Genes(:, LikParams.crValMask,r)...
+                    - PredGenes(:,LikParams.crValMask)).^2)./sigmas(:,LikParams.crValMask),2);
+   else 
+       oldLogLik(r,:) = - 0.5*sum(log(2*pi*sigmas),2)....
+                    - 0.5*sum(((LikParams.Genes(:,:,r) - PredGenes).^2)./sigmas,2);
+   end
+%     
+end
+
+
+cnt = 0;
+acceptKin = zeros(1,NumOfGenes);
+if onlyPumaVar == 0 
+   accRateNoiseM = zeros(1, NumOfGenes); 
+end
+maxLogLik = -Inf;
+
+%
+for it = 1:(BurnInIters + Iters) 
+    %
+    
+    % *
+    % SAMPLE KINETIC PARAMETERS 
+    for j=1:NumOfGenes
+        KineticsNew = randn(1,SizKin).*sqrt(PropDist.kin(j,:)) + log(LikParams.kinetics(j,:));
+        KineticsNew(KineticsNew<-10) =-10; 
+        KineticsNew(KineticsNew>10) = 10;
+        KineticsNew = exp(KineticsNew); 
+        %
+        % set the initial condition to be zero
+        % if you know that it should be zero
+        if model.constraints.InitialConds(j) == 0
+        KineticsNew(4) = KineticsNew(1)/KineticsNew(2); 
+        end
+       
+        LikParams1 = LikParams;
+        LikParams1.kinetics(j,:)=KineticsNew; 
+        newLogLik = zeros(1,NumOfReplicas);
+        %
+        
+        B = LikParams1.kinetics(j,1);
+        D = LikParams1.kinetics(j,2);
+        A = LikParams1.kinetics(j,3);
+        PredGenes = B/D  + (A - B/D)*exp(-TimesG*D); 
+        % evaluate the new log likelihood 
+        newLogLik = zeros(1,NumOfReplicas);
+        for r=1:NumOfReplicas
+            % 
+            % evaluate the likelihood  
+            sigmas = zeros(size(NumOfGenes,1), LikParams.numTimes);
+            if LikParams.noiseModel.active(1) == 1
+               sigmas = LikParams.noiseModel.pumaSigma2(j, : , r);
+            end
+            if LikParams.noiseModel.active(2) == 1
+               sigmas = sigmas + repmat(LikParams.noiseModel.sigma2(j), 1, LikParams.numTimes ); 
+            end
+            
+            if isfield(LikParams, 'crValMask')    
+               newLogLik(r) = - 0.5*sum(log(2*pi*sigmas(LikParams.crValMask)),2)....
+                        - 0.5*sum(((LikParams.Genes(j, LikParams.crValMask, r)...
+                        - PredGenes(LikParams.crValMask)).^2)./sigmas(LikParams.crValMask),2);
+            else 
+               newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
+                         - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
+            end
+  
+            %              
+        end
+      
+        % Metropolis-Hastings to accept-reject the proposal
+        oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1);
+        newP = model.Likelihood.invT*sum(newLogLik(:)); 
+        
+        [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
+        if accept == 1
+           LikParams.kinetics(j,:) = KineticsNew;
+           oldLogLik(:,j) = newLogLik(:);
+        end
+        %
+        if (it > BurnInIters) 
+           acceptKin(j) = acceptKin(j) + accept;
+        end
+        %
+    end
+    % END SAMPLE KINETIC PARAMETERS 
+    % *
+     
+    % * 
+    % SAMPLE THE NOISE MODEL IN THE LIKELIHOOD
+    if onlyPumaVar == 0 
+           % sample new variances from truncated Gaussians
+           for j =1:NumOfGenes
+               %
+               newLogProp = 0;  % forward Hastings Q(sigma2_t+1 | sigma2_t)
+               oldLogProp = 0;  % backward Hastings Q(sigma2_t| sigma2_t+1) 
+               % sample from a truncated Gaussian proposal distribution
+               while 1
+                   newSigma2 = randn.*sqrt(PropDist.noiseModel(j,1)) + LikParams.noiseModel.sigma2(j);  
+                   if newSigma2 > 0
+                       break; 
+                   end
+               end 
+               %
+               
+               LikParams1 = LikParams; 
+               LikParams1.noiseModel.sigma2(j) = newSigma2;
+ 
+               B = LikParams1.kinetics(j,1);
+               D = LikParams1.kinetics(j,2);
+               A = LikParams1.kinetics(j,3);
+               PredGenes = B/D  + (A - B/D)*exp(-TimesG*D); 
+               % evaluate the new log likelihood 
+               newLogLik = zeros(1,NumOfReplicas);
+               for r=1:NumOfReplicas
+               % 
+                   % evaluate the likelihood  
+                   sigmas = zeros(size(NumOfGenes,1), LikParams.numTimes);
+                   if LikParams.noiseModel.active(1) == 1
+                      sigmas = LikParams1.noiseModel.pumaSigma2(j, : , r);
+                   end
+                   if LikParams.noiseModel.active(2) == 1
+                      sigmas = sigmas + repmat(newSigma2, 1, LikParams1.numTimes ); 
+                   end
+                   
+                   if isfield(LikParams, 'crValMask')    
+                      newLogLik(r) = - 0.5*sum(log(2*pi*sigmas(LikParams.crValMask)),2)....
+                            - 0.5*sum(((LikParams.Genes(j, LikParams.crValMask, r)...
+                            - PredGenes(LikParams.crValMask)).^2)./sigmas(LikParams.crValMask),2);
+                   else
+                      newLogLik(r) = - 0.5*sum(log(2*pi*sigmas),2)...
+                            - 0.5*sum(((LikParams.Genes(j,:,r) - PredGenes).^2)./sigmas,2);
+                   end  
+               %              
+               end
+            
+               % Metropolis-Hastings to accept-reject the proposal
+               oldP = model.Likelihood.invT*sum(oldLogLik(:,j),1);
+               newP = model.Likelihood.invT*sum(newLogLik(:)); 
+         
+               % compute the proposal distribution forward and backwards terms
+               trprior.sigma2 = PropDist.noiseModel(j,1); 
+               trprior.mu = LikParams.noiseModel.sigma2(j); 
+        
+               newLogProp = sum(lntruncNormalpdf(newSigma2, trprior)); 
+            
+               trprior.mu = newSigma2; 
+               oldLogProp  = sum(lntruncNormalpdf(LikParams.noiseModel.sigma2(j), trprior)); 
+               
+               [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
+               %
+               if accept == 1
+                  LikParams.noiseModel.sigma2(j) = newSigma2;
+                  oldLogLik(:,j) = newLogLik(:); 
+               end
+               %
+               if (it > BurnInIters) 
+                  accRateNoiseM(j) = accRateNoiseM(j) + accept;
+               end
+               %
+           end % for loop 
+           %
+       %
+    end % if statement
+    % END SAMPLE THE NOISE MODEL IN THE LIKELIHOOD
+    % *
+    
+    % *
+    % KEEP SAMPLES AFTER BURN IN
+    if (it > BurnInIters)  & (mod(it,StoreEvery) == 0)
+        %        
+        cnt = cnt + 1;
+        % store the parameters with the maximum likelihood value 
+        if sum(oldLogLik(:)) > maxLogLik  
+            samples.kinetics(:,:,1) = LikParams.kinetics;
+            if onlyPumaVar == 0
+              if model.Likelihood.noiseModel.active(2) == 1 
+                samples.sigma2 = LikParams.noiseModel.sigma2;
+              end
+            end
+            if onlyPumaVar == 0
+              samples.sigma2(:,1) = LikParams.noiseModel.sigma2';
+            end
+            maxLogLik = sum(oldLogLik(:));  
+            samples.LogL = maxLogLik;
+        end
+        %
+        %
+    end
+    % END KEEP SAMPLES AFTER BURN IN
+    % *
+    %        
+end
+
+% Before you return store the final state of the Markov chain to 
+% the model structure
+model.Likelihood.kinetics = LikParams.kinetics;
+if onlyPumaVar == 0
+   if model.Likelihood.noiseModel.active(2) == 1 
+      model.Likelihood.noiseModel.sigma2 = LikParams.noiseModel.sigma2;
+   end
+end
+
+accRates.Kin = (acceptKin/Iters)*100;
+if onlyPumaVar == 0 & ~(model.Likelihood.noiseModel.active(1) == 0 &  model.Likelihood.noiseModel.active(2) == 1) 
+    accRates.noiseM = (accRateNoiseM/Iters)*100;
+else
+    accRates.noiseM = 25;
+end
 
 
 

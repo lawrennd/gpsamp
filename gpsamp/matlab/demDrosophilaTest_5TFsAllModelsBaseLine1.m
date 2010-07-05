@@ -6,12 +6,16 @@ if nargin < 4,
   flag=1;
 end
 
+
 % All possible models (allowing only 2 TFs at the same time))
-comb = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
-        1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
-        0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
-        0 0 1 1 0; 0 0 1 0 1;
-        0 0 0 1 1];
+comb = [0 0 0 0 0];
+
+% All possible models (allowing only 2 TFs at the same time))
+%comb = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
+%        1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+%        0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+%        0 0 1 1 0; 0 0 1 0 1;
+%        0 0 0 1 1];
                     
 % if flag =0 , then jsut retutn the precomputations 
 if flag == 0
@@ -104,8 +108,10 @@ if flag == 0
 
         % CREATE the model
         modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-        modelTest.Likelihood.TFcomb = comb(c,:);
-        modelTest.F = F(TFset,:,:);
+        modelTest.Likelihood.TFcomb = comb(c,:); 
+        if numTFs > 0
+           modelTest.F = F(TFset,:,:);
+        end
         models{c} = modelTest;
         %
     end   
@@ -208,6 +214,7 @@ else % otherwise run the demo
             TFs = [];
             TFset = find(comb(c,:));
             
+            if  numTFs > 0 
             % piece-wise linear function for the TF mRNA computed from the observed mRNA 
             F = zeros( size( GenesTF, 1), size(modelTest.Likelihood.TimesF,2), size(Genes,3));
             for R=1:size(Genes,3)
@@ -228,13 +235,17 @@ else % otherwise run the demo
                 TFs{cnt} = log(TFs{cnt} + 1e-100);
                 %
             end
+            end
 
             % CREATE the model
             modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
-            modelTest.Likelihood.TF = TFs{1};
-            modelTest.F = F(TFset,:,:);
+            if numTFs > 0 
+               modelTest.Likelihood.TF = TFs{1};
+               modelTest.F = F(TFset,:,:);
+            end
             [modelTest PropDist samplesTest accRates] = gpmtfBaselineMultTFModelTest(modelTest, mcmcoptions);
             %
+            
             testGene{n,c} = samplesTest;
             testaccRates{n,c} = accRates;
             modelTest.Likelihood.TFcomb = comb(c,:);

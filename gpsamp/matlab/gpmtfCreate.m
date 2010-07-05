@@ -164,6 +164,7 @@ if model.Likelihood.numTFs == 0
    % if 0, then the ODE initial cond for the jth gene is 0 at time t=0
    % if 1, then the ODE initial cond is free to take any value at time t=0
    model.constraints.InitialConds = options.constraints.initialConds;  
+   model.Likelihood.invT = 1; 
    return;
 %
 end
