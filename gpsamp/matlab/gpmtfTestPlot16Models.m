@@ -4,12 +4,11 @@ function gpmtfTestPlot16Models(testGenes, Genes, GeneVars, TFs, model, fbgn, dem
 NumPlotRows = 4;
 NumPlotCols = 3;
 FONTSIZE=8;
-nMod = 4; 
-
 PNGSIZE=[400 300];
 
 
 numModels = size(testGenes,2);
+nMod = ceil(sqrt(numModels));
 NumRowsParams = 3;
 NumColsParams = 4;
 

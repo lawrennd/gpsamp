@@ -183,10 +183,16 @@ PropDist.Kern = 0.5*ones(NumOfTFs, 2); % 2 possible parameters: kenrle variacne 
 
 
 onlyPumaVar = 1; 
-onlyPumaVarTF = 1; 
 if model.Likelihood.noiseModel.active(2) > 0  
-   onlyPumaVar = 0;
+   onlyPumaVar = 0; 
 end
+
+% if there are puma variances for the TF genes, then use only those
+onlyPumaVarTF = 1;
+if model.Likelihood.noiseModel.active(1) == 0 & model.Likelihood.noiseModel.active(2) > 0
+     onlyPumaVarTF = 0;
+end
+
 
 if onlyPumaVar == 0 
    % white nosie variance per gene possibly added to the PUMA variances
@@ -297,8 +303,7 @@ while 1
       %    
           model.auxLikVar(j,:,r) = model.auxLikVar(j,:,r) + (epsilon*((accRateF(j,r)/100 - opt)/opt))*model.auxLikVar(j,:,r);
           
-          [min(model.auxLikVar(j,:,r)) max(model.auxLikVar(j,:,r))] 
-          
+          %[min(model.auxLikVar(j,:,r)) max(model.auxLikVar(j,:,r))] 
           %L = chol(model.K + diag(model.auxLikVar));  
           %tmp = L\eye(n);
           %invK = tmp*tmp';

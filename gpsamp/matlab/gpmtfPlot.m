@@ -173,6 +173,7 @@ for r=1:NumOfReplicas
      FFgt = model.groundtr.TF(j,:,r);
      %FFgt = feval(model.Likelihood.TFsingleAct,model.GroundTruth.F(j,:,r));
      plot(TimesF,FFgt,'r','lineWidth',3);
+     pause
      end
      
      titlestring = 'Profile: ';

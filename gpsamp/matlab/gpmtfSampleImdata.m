@@ -63,14 +63,16 @@ if strcmp(model.prior.W.constraint,'positive')
 end
 
 onlyPumaVar = 1; 
-onlyPumaVarTF = 1;
 if model.Likelihood.noiseModel.active(2) > 0
    onlyPumaVar = 0;
 end
 
-% Construct the Comp binary matrix when you learn the 
-% structure with Gibbs sampling --> not included in this version
-netLearn = 0; 
+% if there are puma variances for the TF genes, then use only those 
+onlyPumaVarTF = 1;
+if model.Likelihood.noiseModel.active(1) == 0 & model.Likelihood.noiseModel.active(2) > 0
+     onlyPumaVarTF = 0;
+end
+   
 
 LikParams = model.Likelihood;
 
