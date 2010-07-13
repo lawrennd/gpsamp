@@ -127,9 +127,9 @@ else % otherwise run the demo
         identifier = datestr(now, 29);
     end
 
-    %outdir = '~/mlprojects/gpsamp/matlab/results';
-    outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf5a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outdir = '~/mlprojects/gpsamp/matlab/results';
+    %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
+    outfile = sprintf('%s/multitf5a_baseline2_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
@@ -253,8 +253,8 @@ else % otherwise run the demo
             %
         end
         % Only save after each gene is completed 
-        save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
-        %safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        %save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
         %
     end

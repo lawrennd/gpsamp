@@ -1,20 +1,22 @@
 % demDrosophilaTest_5TFsAllModels1 runs the multi-TF for screening
 % using all possible combinations of 3 out 5 TFs 
-function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsReallyAllModels1(modulus, remainder, identifier, flag)
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsRemainingModels1(modulus, remainder, identifier, flag)
 
 if nargin < 4,
   flag=1;
 end
 
 % All possible models
-comb = [0 0 0 0 0;
-	1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 1 0; 0 0 0 0 1;
-	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
-	0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
-	0 0 1 1 0; 0 0 1 0 1;
-	0 0 0 1 1];
+comb = [1 1 1 0 0; 1 1 0 1 0; 1 1 0 0 1;
+	1 0 1 1 0; 1 0 1 0 1;
+	1 0 0 1 1;
+	0 1 1 1 0; 0 1 1 0 1;
+	0 1 0 1 1;
+	0 0 1 1 1;
+	1 1 1 1 0; 1 1 1 0 1; 1 1 0 1 1; 1 0 1 1 1; 0 1 1 1 1;
+	1 1 1 1 1];
 
-% if flag =0 , then jsut retutn the precomputations 
+% if flag =0 , then just retutn the precomputations 
 if flag == 0
 %    
     addpath ~/mlprojects/ndlutil/matlab
@@ -47,7 +49,7 @@ if flag == 0
     GenesVar = GenesVar.*repmat(sc.^2, 1, size(GenesVar,2));
     GenesVar = reshape(GenesVar,numGenes, 12, 3);
     TimesG = 0:11;
-
+    
     %
     TestGenes = Genes(1,:,:);
     TestGenesVar = GenesVar(1,:,:);
@@ -107,7 +109,7 @@ else % otherwise run the demo
 
     outdir = '~/mlprojects/gpsamp/matlab/results';
     %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outfile = sprintf('%s/multitf6b_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;

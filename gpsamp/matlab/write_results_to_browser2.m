@@ -38,10 +38,11 @@ isinsitu(hasinsitu) = any(drosinsitu.data(I_insitu(I_insitu ~= 0), :), 2);
 
 DATAHEADINGS = {'FBgn', 'ischip', 'hasinsitu', 'isinsitu'};
 SCOREHEADINGS = {'marll', 'posterior_single', 'posterior_many', 'baseline'};
+J_chip = [4, 2, 5, 1, 3];
 
 for k=1:length(labels),
   ischip = zeros(size(hasinsitu));
-  ischip(I_chip ~= 0) = all(chipdistances.data(I_chip(I_chip ~= 0), find(comb(k+1, :))) < 2000, 2);
+  ischip(I_chip ~= 0) = all(chipdistances.data(I_chip(I_chip ~= 0), J_chip(find(comb(k+1, :)))) < 2000, 2);
   scores = zeros(length(ischip), 4);
   scores(:, 1) = results_b.marlls(:, k+1);
   scores(:, 2) = results_b.marlls(:, k+1) - ...
@@ -62,7 +63,7 @@ for k=1:length(labels),
   fprintf(fid, '%s ', SCOREHEADINGS{:});
   fprintf(fid, '\n');
   for l=1:length(hasinsitu),
-    fprintf(fid, '%s %d %d %d', results_a.genes{l}, ischip(l), hasinsitu(l), isinsitu(l));
+    fprintf(fid, '%s %d %d %d', results_b.genes{l}, ischip(l), hasinsitu(l), isinsitu(l));
     fprintf(fid, ' %f', scores(l, :));
     fprintf(fid, '\n');
   end

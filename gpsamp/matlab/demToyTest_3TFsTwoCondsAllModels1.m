@@ -20,10 +20,10 @@ if flag == 0
     addpath ~/mlprojects/gpsamp/matlab/activFuncts
     addpath ~/mlprojects/gpsamp/matlab/toolbox
     load datasets/toy4TFs28_June_10.mat;
-    load demtoy_dataTwoConds108-Jul-2010.mat
+    load demtoy_dataTwoConds109-Jul-2010.mat
     
     noiseM = {'white'};
-    testsetIndices = 31:1030;
+    testsetIndices = (30+remainder):modulus:1030;
     Genes = Genes(testsetIndices, :, :); 
     GenesVar = GenesVar(testsetIndices, :, :);     
     numGenes = size(Genes,1);
@@ -103,10 +103,10 @@ else % otherwise run the demo
     %load ~/mlprojects/gpsamp/matlab/datasets/testset;
     %load ~/mlprojects/gpsamp/matlab/drosTrainTotal;
     load datasets/toy4TFs28_June_10.mat;
-    load demtoy_dataTwoConds108-Jul-2010.mat
+    load demtoy_dataTwoConds109-Jul-2010.mat
     
     noiseM = {'white'};
-    testsetIndices = 31:1030;
+    testsetIndices = (30+remainder):modulus:1030;
     Genes = Genes(testsetIndices, :, :); 
     GenesVar = GenesVar(testsetIndices, :, :);     
     numGenes = size(Genes,1);

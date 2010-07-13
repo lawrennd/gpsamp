@@ -17,7 +17,11 @@ for k=1:N,
   marlls{k} = gpmtfSummariseResults(r.testGene, 'margLogLik1', Genes, GenesVar, TFs, models);
 end
 
-results.genes = cat(1, genes{:});
+if iscell(genes{1}),
+  results.genes = cat(1, genes{:});
+else
+  results.genes = cat(2, genes{:});
+end
 results.marlls = cat(1, marlls{:});
 
 save([filename '_summary.mat'], '-struct', 'results');

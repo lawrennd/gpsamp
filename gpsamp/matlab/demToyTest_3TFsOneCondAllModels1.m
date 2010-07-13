@@ -22,7 +22,7 @@ if flag == 0
     load datasets/toy4TFs28_June_10.mat;
     load demtoy_dataOneCond108-Jul-2010.mat
     noiseM = {'white'};
-    testsetIndices = 31:1030;
+    testsetIndices = (30+remainder):modulus:1030;
     Genes = Genes(testsetIndices, :, 1); 
     GenesVar = GenesVar(testsetIndices, :, 1);     
     numGenes = size(Genes,1);
@@ -104,7 +104,7 @@ else % otherwise run the demo
     load datasets/toy4TFs28_June_10.mat;
     load demtoy_dataOneCond108-Jul-2010.mat
     noiseM = {'white'};
-    testsetIndices = 31:1030;
+    testsetIndices = (30+remainder):modulus:1030;
     Genes = Genes(testsetIndices, :, 1); 
     GenesVar = GenesVar(testsetIndices, :, 1);     
     numGenes = size(Genes,1);

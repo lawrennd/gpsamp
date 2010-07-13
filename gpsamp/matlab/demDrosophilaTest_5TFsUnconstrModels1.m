@@ -1,6 +1,6 @@
 % demDrosophilaTest_5TFsAllModels1 runs the multi-TF for screening
 % using all possible combinations of 3 out 5 TFs 
-function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsReallyAllModels1(modulus, remainder, identifier, flag)
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsUnconstrModels1(modulus, remainder, identifier, flag)
 
 if nargin < 4,
   flag=1;
@@ -12,7 +12,15 @@ comb = [0 0 0 0 0;
 	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
 	0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
 	0 0 1 1 0; 0 0 1 0 1;
-	0 0 0 1 1];
+	0 0 0 1 1;
+	1 1 1 0 0; 1 1 0 1 0; 1 1 0 0 1;
+	1 0 1 1 0; 1 0 1 0 1;
+	1 0 0 1 1;
+	0 1 1 1 0; 0 1 1 0 1;
+	0 1 0 1 1;
+	0 0 1 1 1;
+	1 1 1 1 0; 1 1 1 0 1; 1 1 0 1 1; 1 0 1 1 1; 0 1 1 1 1;
+	1 1 1 1 1];
 
 % if flag =0 , then jsut retutn the precomputations 
 if flag == 0
@@ -57,7 +65,7 @@ if flag == 0
     options.jointAct = 'sigmoid';
     %options.spikePriorW = 'yes';
     options.noiseModel = noiseM;
-    options.constraints.spaceW = 'positive';
+    %options.constraints.spaceW = 'positive';
     options.tauMax = 0; % no delays
     % define the dense discretized grid in the time axis for the TF latent functions
     [options, TimesF] = gpmtfDiscretize(TimesG, options);
@@ -81,7 +89,7 @@ if flag == 0
         options.jointAct = 'sigmoid';
         %options.spikePriorW = 'yes';
         options.noiseModel = noiseM;
-        options.constraints.spaceW = 'positive';
+        %options.constraints.spaceW = 'positive';
         options.tauMax = 0; % no delays
         % define the dense discretized grid in the time axis for the TF latent functions
         [options, TimesF] = gpmtfDiscretize(TimesG, options);
@@ -107,7 +115,7 @@ else % otherwise run the demo
 
     outdir = '~/mlprojects/gpsamp/matlab/results';
     %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outfile = sprintf('%s/multitf7a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
@@ -183,7 +191,7 @@ else % otherwise run the demo
             options.jointAct = 'sigmoid';
             %options.spikePriorW = 'yes';
             options.noiseModel = noiseM;
-            options.constraints.spaceW = 'positive';
+            %options.constraints.spaceW = 'positive';
             options.tauMax = 0; % no delays
             % define the dense discretized grid in the time axis for the TF latent functions
             [options, TimesF] = gpmtfDiscretize(TimesG, options);
