@@ -222,7 +222,7 @@ elseif strcmp(method, 'margLogLik1')
     mu = mean(X,1);
     Sigma = cov(X);
     [N D] = size(X);
-    jit = 1e-10;
+    jit = 1e-8*mean(diag(Sigma));
     
     if isfield(testGenes{k,c,f}, 'TFindex')
        pisF = zeros(1, size(TFs,2));
@@ -241,7 +241,10 @@ elseif strcmp(method, 'margLogLik1')
     %- sum(pisF.*log(pisF))
     %pause
     
+  
     entropy = (0.5*D)*log(2*pi) + (0.5*D) + 0.5*log(det(Sigma + jit*eye(size(Sigma,1))));
+    %[D, entropy, -sum(pisF.*log(pisF))] 
+    %pause 
     LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + ...
                       log(1/size(TFs,2)) + entropy - sum(pisF.*log(pisF));
     %LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + entropy;
