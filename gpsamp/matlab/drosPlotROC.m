@@ -12,6 +12,9 @@ else
 end
 
 plot(fp, tp, varargin{:});
+xlabel('False positive rate')
+ylabel('True positive rate')
+axis square
 
 if max(fp, tp) < 1,
   tp = [tp, 1];

@@ -53,11 +53,11 @@ J_joint = {};
 J_joint0 = {};
 J_indep = {};
 for k=1:length(combinds),
+  tfs = find(comb(combinds(k), :));
   [foo, J_joint{k}] = sort(results_b.marlls(:,combinds(k)) - ...
 			   logsumexp(results_b.marlls(:,setdiff(1:size(results_b.marlls, 2), combinds(k))),2), 'descend');
   [foo, J_joint0{k}] = sort(results_b.marlls(:,combinds(k)) - ...
-			   results_b.marlls(:,1), 'descend');
-  tfs = find(comb(combinds(k), :));
+			    logsumexp(results_b.marlls(:,[1, I(tfI==tfs(1)), I(tfI==tfs(2))]), 2), 'descend');
   
   [foo, J_indep{k}] = sort(results_b.marlls(:,I(tfI==tfs(1))) + ...
 			   results_b.marlls(:,I(tfI==tfs(2))) - ...
