@@ -1,20 +1,18 @@
-function gpmtfPlot(model, samples, demdata, TFname, printResults)
-%function gpmtfPlot(model, samples, demdata, printResults)
+function gpmtfPlot(model, samples, demdata, TFname, printResults, dirr)
+%function gpmtfPlot(model, samples, demdata, TFname, printResults, ddir)
 %
-% Description: Creates plots to display the outcome of MCMC 
+% Description: Creates plots to display the outcome of MCMC in the traning phase 
 %
 % Inputs: 
 %      -- model: Contains the structure of the GP model 
-%      -- samples: A structure that conatsint he samples
-%      -- Genes: Expression of the genes 
-%      -- TimesG: Times when expression measuremtns are available 
-%      -- TimesF: Time discretization of the TF (TimesF >> TimesG) 
+%      -- samples: A structure that contains the samples
 %      -- demdata: a string that characterizes the experiments, e.g. 'p53' 
-%      -- printResults: if 0 the ptols will not be preinted to files 
-%                       if 1 the ptols will be printed in the directory resutls/ 
-%      -- GeneVars: if you know the Gene varariances (from PUMA)  give them here       
+%      -- printResults: if 0 then plots will not be printed to files 
+%                       if 1 the plots will be printed to the directory
+%                       dirr
+%      -- dirr: directory where the plots  are going to be printed 
 %
-% Notes:
+% Things to check:
 %       1. The confidence intervals are 95% (usually obtained with percentiles) 
 %       2. In the current version the error bars of the TF profiles do not
 %       contain likelihoood noise variances. If GeneVars are given then those
@@ -22,6 +20,20 @@ function gpmtfPlot(model, samples, demdata, TFname, printResults)
 %
 
 %%%%%%  user defined parameters
+FONTSIZE=8;
+% how gene per plot
+ManyGenes = 5;
+% separate plots or grouped 
+SepPlot = 1;
+% allow different colours fot the TF profiles 
+%colSet = {'b','r','g'}; 
+colSet = {'b','b','b', 'b','b'}; 
+%scTFAxis = [0 1.2];
+scTFAxis = [];
+% write replicas or conditions 
+rep = 'rep';
+%rep = 'cond'; 
+
 %demdata = 'demEcoli';
 %order = [1 5 3 4 2];
 %order = 1:NumOfGenes;
@@ -33,12 +45,10 @@ function gpmtfPlot(model, samples, demdata, TFname, printResults)
                          % computed by some package e.g. PUMA
 %%%%%%  End of user defined parameters
 
-FONTSIZE=8;
 
-%if strcmp(model.Likelihood.TFjointAct,'sigmoid') 
-%   model.Likelihood.TFsingleAct = 'exp';
-%end
-dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
+if nargin < 6
+ dirr = '/usr/local/michalis/mlprojects/gpsamp/tex/diagrams/';
+end
 
 Genes = model.Likelihood.Genes;
 
@@ -146,48 +156,59 @@ for r=1:NumOfReplicas
          end
      end
     
-     %mu = mean(PredTF)';
-     %stds1 = sqrt(var(PredTF))';
-     %stds2 = sqrt(var(PredTF))';
-     %if strcmp(model.Likelihood.jointAct,'sigmoid')==1
-     %FF = exp(FF);  
      mu = median(PredTF,1)';
      stds1 = (prctile(PredTF,95,1)'-mu)/2;
      stds2 = (mu-prctile(PredTF,5,1)')/2;
-     %end
-     
-     %figure
-     subplot(NumOfTFs, NumOfReplicas, r + (j-1)*NumOfReplicas);
-     plot(TimesF,mu,'b','lineWidth',3);
+    
+     if SepPlot==0      
+         subplot(NumOfReplicas, NumOfTFs, (r-1)*NumOfTFs + j);
+     elseif (r*j) > 1
+         figure;
+     end
+     plot(TimesF,mu, colSet{j}, 'lineWidth',3);
      hold on;
      fillColor = [0.7 0.7 0.7];
      %fillColor = [0.8 0.8 0.8];  % for the paper
      fill([TimesF; TimesF(end:-1:1)], [mu; mu(end:-1:1)]...
             + 2*[stds1; -stds2(end:-1:1)], fillColor,'EdgeColor',fillColor);
-     plot(TimesF,mu,'b','lineWidth',3);
+     plot(TimesF,mu,colSet{j},'lineWidth',3);
      
-     axis([TimesF(1) TimesF(end)+0.1 0 max(mu+2*stds1)+0.1]);
-    
+     if isempty(scTFAxis) 
+        axis([TimesF(1) TimesF(end)+0.1 0 max(mu+2*stds1)+0.1]);
+     else
+        axis([TimesF(1) TimesF(end)+0.1 scTFAxis(1) scTFAxis(2)]);
+     end
      % plot the ground truth if exist
      if isfield(model,'groundtr') == 1
-     FFgt = model.groundtr.TF(j,:,r);
-     %FFgt = feval(model.Likelihood.TFsingleAct,model.GroundTruth.F(j,:,r));
-     plot(TimesF,FFgt,'r','lineWidth',3);
+        FFgt = model.groundtr.TF(j,:,r);
+        %FFgt = feval(model.Likelihood.TFsingleAct,model.GroundTruth.F(j,:,r));
+        plot(TimesF,FFgt,'r','lineWidth',3);
      end
      
-     titlestring = 'Profile: ';
-     titlestring = [titlestring, num2str(r)]; 
-     titlestring = [titlestring, ' replica, '];
+     
+     if printResults & SepPlot==1
+         print('-depsc', [dirr fileName 'TFproteins_Rep' num2str(r) 'TF' num2str(j)]);
+     end
+     
+     titlestring = 'TF protein: ';
      titlestring = [titlestring, TFname{j}];
+     if NumOfReplicas > 1
+        titlestring = [titlestring, ', ', rep, ' ', num2str(r)];
+     end
      %titlestring = [titlestring, ' TF'];
      title(titlestring,'fontsize', FONTSIZE);
      %
   end
   %
 end
-if printResults
-  print('-depsc', [dirr fileName 'Replica' num2str(r) 'TF' TFname(j)]);
+
+%if printResults
+%  print('-depsc', [dirr fileName 'Replica' num2str(r) 'TF' TFname(j)]);
+%end 
+if printResults & SepPlot==0
+  print('-depsc', [dirr fileName 'TFproteins']);
 end 
+
 
 figure;
 % predicted TF-Gene expressions 
@@ -207,13 +228,11 @@ for r=1:NumOfReplicas
      end
      
      mu = mean(GG,1)';
-     %mu = mu(1:2:end);
      stds = sqrt(var(GG,0,1))';
-     %stds = stds(1:2:end);
     
-     TF = TimesF; % TimesFF(1:2:end)';
-     %figure
-     subplot(NumOfTFs, NumOfReplicas, r + (j-1)*NumOfReplicas);
+     TF = TimesF; 
+     subplot(NumOfReplicas, NumOfTFs, (r-1)*NumOfTFs + j);
+     %subplot(NumOfTFs, NumOfReplicas, r + (j-1)*NumOfReplicas);
      plot(TF,mu,'b','lineWidth',r);
      hold on;
      fillColor = [0.7 0.7 0.7];
@@ -229,18 +248,22 @@ for r=1:NumOfReplicas
      
      axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1  0.95*min([GenesTF(j,:,r), mu' - stds'])  1.05*max([GenesTF(j,:,r), mu' - stds'])]);
      
-     titlestring = 'Expressions: ';
-     titlestring = [titlestring, num2str(r)]; 
-     titlestring = [titlestring, ' replica, '];
-     %titlestring = [titlestring, num2str(j)];
+     titlestring = 'TF mRNA: ';
      titlestring = [titlestring, TFname{j}];
+     if NumOfReplicas > 1
+        titlestring = [titlestring, ', ' rep, ' ', num2str(r)];
+     end
      title(titlestring,'fontsize', FONTSIZE);
      %
   end
   %
 end    
+
+%if printResults
+%  print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneTFExp' num2str(j)]);
+%end
 if printResults
-  print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneTFExp' num2str(j)]);
+  print('-depsc', [dirr fileName  'TFmRNAs']);
 end
 end
 
@@ -248,7 +271,7 @@ end
 % plot predicted gene expressions 
 for j=1:NumOfGenes
   %  
-  if mod(j,5) == 1,
+  if mod(j,ManyGenes) == 1,
     figure;
   end
   for r=1:NumOfReplicas
@@ -261,34 +284,21 @@ for j=1:NumOfGenes
          LikParams.kineticsTF = samples.kineticsTF(:,:,t);
          LikParams.W = samples.W(:,:,t);
          LikParams.W0 = samples.W0(:,t);
-         %LikParams.TF = TFs{samples.TFindex(t)};
          if isfield(samples, 'F')
             predgen = gpmtfComputeGeneODE(LikParams, samples.F{t}(:,:,r), r, j);
          else
             predgen = gpmtfComputeGeneODE(LikParams, model.F(:,:,r), r, j);
          end
          GG(t,:) = predgen;
-         %predgen(model.Likelihood.comInds)
-         %Genes(j,:,r)
-         %pause
          %
      end
      
      mu = mean(GG,1)';
-     %mu = mu(21:end);
-     %mu = mu(1:2:end);
      stds = sqrt(var(GG,0,1))';
-     %stds = stds(21:end);
-     %stds = stds(1:2:end);
     
-     TF = TimesFF'; % TimesFF(1:2:end)';
-     %stds(stds>5)=5;
-     %stds
-     %mu(mu>9)=9;
-     %mu(mu<0)=0;
-     %pause
-     %figure
-     subplot(5, NumOfReplicas, r + mod(j-1, 5)*NumOfReplicas);
+     TF = TimesFF'; 
+     subplot(NumOfReplicas, ManyGenes, (r-1)*ManyGenes + 1 + mod(j-1, ManyGenes));
+     %subplot(5, NumOfReplicas, r + mod(j-1, 5)*NumOfReplicas);
      plot(TF,mu,'b','lineWidth',r);
      hold on;
      fillColor = [0.7 0.7 0.7];
@@ -303,14 +313,19 @@ for j=1:NumOfGenes
      end
      axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1  0.95*min([Genes(j,:,r), mu' - stds'])  1.05*max([Genes(j,:,r), mu' - stds'])  ]);
      
-     if printResults && r==NumOfReplicas && (mod(j,5)==0 || j==NumOfGenes),
-      print('-depsc', [dirr fileName 'Replica' num2str(r) 'GeneExp' num2str(j)]);
+     if printResults && r==NumOfReplicas && (mod(j,ManyGenes)==0 || j==NumOfGenes),
+        if NumOfReplicas > 1
+           print('-depsc', [dirr fileName 'Replica' num2str(r) 'GENEmRNA' num2str(j)]);
+        else
+           print('-depsc', [dirr fileName 'GENEmRNA' num2str(j)]); 
+        end
      end
-     titlestring = 'Expressions: ';
-     titlestring = [titlestring, num2str(r)]; 
-     titlestring = [titlestring, ' replica, '];
-     titlestring = [titlestring, num2str(j)];
-     titlestring = [titlestring, ' gene'];
+
+     titlestring = 'mRNA: '; 
+     titlestring = [titlestring, 'gene ' num2str(j)];
+     if NumOfReplicas > 1
+        titlestring = [titlestring, ', ' rep, ' ', num2str(r)];
+     end
      title(titlestring,'fontsize', FONTSIZE);
      %
   end
@@ -433,22 +448,6 @@ title('TF-Genes Decays','fontsize', FONTSIZE);
 if printResults
       print('-depsc', [dirr fileName 'TFGeneDecay']);
 end
-
-% Plot the sensitivities.
-% figure;
-% if isfield(model,'groundtr') == 1
-% bar([modelS(orderTF); model.groundtr.kineticsTF(:,2)']', 0.7); colormap([0.9 0.9 0.9; 0 0 0]);
-% else
-% bar(modelS(orderTF)', 0.7); colormap([0.9 0.9 0.9]);
-% end
-% hold on;
-% errorbar([1:NumOfTFs]-0.14, modelS(orderTF), modelS(orderTF)-stdSS1(orderTF), stdSS2(orderTF)-modelS(orderTF),'.');
-% %errorbar([1:NumOfGenes], modelS(order), modelS(order)-stdSS1(order), stdSS2(order)-modelS(order),'.');
-% title('TF-Genes Sensitivities','fontsize', FONTSIZE);
-
-% if printResults
-%       print('-depsc', [dirr fileName 'TFGeneSensitivity']);
-% end
 %
 end
 
