@@ -10,7 +10,7 @@ T2 = [100, 200, 400, 800, 1600, 3200];
 
 % USER-specified:: Directory where you store figures
 ddir = 'figures/';
-printPlot = 1; % 0 means not printing
+printPlot = 0; % 0 means not printing
 
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
@@ -226,6 +226,62 @@ ylabel('Enrichment (%)')
 drosStarBars(h, pvals1');
 % 1 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL 
+% END    ---------------------------------------------------------------
+
+% 1B PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
+% START  ---------------------------------------------------------------
+
+% Find the genes with positive in situ annotations
+[C, IA, IB] = intersect(drosinsitu.genes(any(drosinsitu.data, 2)), results_b.genes);
+
+scores = {}; I={}; sscores={}; J={};
+r1 = zeros(length(posteriors), length(T1));
+pvals1 = r1;
+for k=1:length(posteriors)   
+  if k <=2, % 32 models 
+    mycomb = combConstr;
+  elseif  (k>2 & k<=4), % 16 models 
+    mycomb = comb16;
+  else
+    mycomb = baselinecomb;
+  end
+  [scores{k}, I{k}] = max(posteriors{k}, [], 2);
+  [sscores{k}, J{k}] = sort(scores{k}, 'descend');
+  for l=1:length(T1),
+    acc = 0; acc2 = 0;
+    count = 0;
+    for m=1:T1(l),
+      if I{k}(J{k}(m)) ~= 1 && any(IB == J{k}(m)),
+	      acc = acc + all( M(J{k}(m), mycomb( I{k}(J{k}(m)), :)==1), 2); 
+          %acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
+	      count = count + 1;
+      end
+    end
+    r1(k, l) = acc / count;
+    %r2(k, l) = acc2 / count;
+    pvals1(k, l) = 1 - binocdf(acc - 1, count, prioraccs31(prioraccinds(k)));
+  end
+end
+h1b = figure;
+% plot bars
+h = bar(100*r1');
+set(gca, 'XTickLabel', T1);
+hold on
+v = axis;
+v(3:4) = [0 50];
+axis(v);
+plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b');
+plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
+hold off
+%legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior', 'Location', 'EastOutside')
+legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior')
+axis(v)
+xlabel('# of top genes')
+ylabel('Enrichment (%)')
+drosStarBars(h, pvals1');
+% 1B PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
 % END    ---------------------------------------------------------------
 
 % Computation of marginal posterior probabilities over single links 
