@@ -11,6 +11,8 @@ T = [20, 50, 100, 150, 200];
 ddir = 'figures/';
 printPlot = 1; % 0 means not printing
 
+only32 = 0;
+
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
 combConstr = [0 0 0 0 0; 0 0 1 0 0; 0 0 0 0 1; 0 0 1 0 1;
@@ -245,14 +247,25 @@ h1 = figure;
 for k=1:numTFs,
   figure(h1);
   subplot(2, 5, k);
-  drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
+  if only32 == 0
+    drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
+  else
+    drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}}, M(:, k), T);  
+  end   
   title(sprintf('%s', drosTF.names{k}));
 end
 subplot(2, 5, 8);
+if only32 == 0
 bar(rand(4));
 axis([-10 -9 -10 -9]);
 axis off;
 legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'Baseline');
+else
+bar(rand(3));
+axis([-10 -9 -10 -9]);
+axis off;
+legend('Posterior-32', 'Posterior-2', 'Baseline');  
+end
 % 1 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF SINGLE  LINKS
 % END    ---------------------------------------------------------------
@@ -269,16 +282,27 @@ for k=1:numTFs
   figure(h2);
   subplot(3, 5, cnt);
   %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
+  if only32 == 0
   drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
+  else
+  drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);   
+  end
   title(sprintf('%s + %s', drosTF.names{k}, drosTF.names{g}));
   end
 end
 figure(h2);
 subplot(3, 5, cnt+4);
+if only32 == 0
 bar(rand(5));
 axis([-10 -9 -10 -9]);
 axis off;
 legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'Baseline');
+else
+bar(rand(4));
+axis([-10 -9 -10 -9]);
+axis off;
+legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'Baseline');   
+end
 % 2 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF PAIR-TF-LINKS
 % END    ---------------------------------------------------------------
@@ -295,8 +319,6 @@ for k=1:numTFs
   cnt = cnt + 1;    
   figure(h3);
   subplot(3, 5, cnt);
-  %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
-  %drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt},  J_Triplebase{cnt}}, prod(M(:, [k g]), 2), T);
   drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
   title(sprintf('%s + %s + %s', drosTF.names{k}, drosTF.names{g}, drosTF.names{f}));
   end
@@ -304,7 +326,7 @@ for k=1:numTFs
 end
 figure(h3);
 subplot(3, 5, cnt+4);
-bar(rand(5));
+bar(rand(3));
 axis([-10 -9 -10 -9]);
 axis off;
 legend('Posterior-32', 'Posterior-8', 'Posterior from single-TF models');
@@ -320,8 +342,8 @@ if flag ~= 1
 end
 dd = date;
 if printPlot 
-   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'PairOfTFs_', property dd '.eps']);
-   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'SingleTFs_', property dd '.eps']); 
-   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'TripleTFs_', property dd '.eps']); 
+   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'PairOfTFs_only32_', num2str(only32) property '.eps']);
+   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'SingleTFs_only32_', num2str(only32) property '.eps']); 
+   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'TripleTFs_only32_', num2str(only32) property '.eps']); 
 end
 

@@ -287,7 +287,6 @@ legend('Posterior-8', 'Posterior-4',  'Posterior from single-TF models');
 % END    ---------------------------------------------------------------
 
 
-dd = date;
 if printPlot
    % plot the ground truth TF
    %for j=1:3
@@ -311,14 +310,14 @@ if printPlot
       print('-depsc', [ddir 'groudTruthTFs_' 'Rep' num2str(r)]);
    end
     
-   print(h1, '-depsc2', [ddir 'toy_link_roc' dd '.eps']);
-   print(h2, '-depsc2', [ddir 'toy_map_accuracy' dd '.eps']);
+   print(h1, '-depsc2', [ddir 'toy_link_roc' '.eps']);
+   print(h2, '-depsc2', [ddir 'toy_map_accuracy' '.eps']);
    % plot the seprate roc for each TF 
    for l=1:3
-       print(hh(l), '-depsc2', [ddir 'toy_link_roc_TF' num2str(l) dd '.eps']);
+       print(hh(l), '-depsc2', [ddir 'toy_link_roc_TF' num2str(l) '.eps']);
    end
-   print(h3, '-depsc2', [ddir 'toy_singleLinks_bars' dd '.eps']);
-   print(h4, '-depsc2', [ddir 'toy_pairsOfTFs_bars' dd '.eps']);
+   print(h3, '-depsc2', [ddir 'toy_singleLinks_bars' '.eps']);
+   print(h4, '-depsc2', [ddir 'toy_pairsOfTFs_bars' '.eps']);
 
    % print also plots from the training phase
    load datasets/toy4TFs28_June_10.mat;

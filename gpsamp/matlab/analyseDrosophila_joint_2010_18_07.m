@@ -10,7 +10,15 @@ T2 = [100, 200, 400, 800, 1600, 3200];
 
 % USER-specified:: Directory where you store figures
 ddir = 'figures/';
-printPlot = 0; % 0 means not printing
+printPlot = 1; % 0 means not printing
+
+% plot MAP models
+plotMAP = [1 0 0 0 1]; 
+%plotMAP = [1 1 1 1 1]; 
+% for the rest plots 
+plotRest = [1 0 0 0 1 0 1]; 
+%plotRest = [1 1 1 1 1 1 1]; 
+
 
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
@@ -113,7 +121,7 @@ numGenes = size(M,1);
 prior32 = zeros(1, size(combConstr, 1));
 for k=1:size(combConstr, 1),
   indOne = find(combConstr(k, :)==1);
-  prior(k)=0;
+  %prior(k)=0;
   for j=1:numGenes
       if ~isnan(prod(M(j,:))) 
       if all(M(j, indOne),2)  & sum(M(j, setdiff(1:numTFs, indOne)),2)==0
@@ -133,13 +141,14 @@ prior31 = prior32(2:end)/sum(prior32(2:end));
 
 % Bayes correct classification rate based on a classifier that  uses
 % a unifrom prior (as classification rule)
-prioraccs31(1) = 1/size(prior31,2); 
+%prioraccs31(1) = 1/size(prior31,2); 
 % Bayes correct classification rate based on a classifier that uses 
 % the empirical prior
 %prioraccs32(2) = sum(prior32(2:end).*prior32(2:end),2)/sum(prior32(2:end)); 
-prioraccs31(2) = sum(prior31.*prior31,2); 
+%prioraccs31(2) = sum(prior31.*prior31,2); 
 
 
+    
 % indices of all 32 models 
 ind32 = 1:size(results_b.marlls, 2); 
 % indices that correspond to 16 models (at most 2 TFs) 
@@ -175,6 +184,32 @@ prioraccinds = [1, 2, 1, 2, 1, 2, 1];
 posteriors{end+1} = baseline_a.marlls - repmat(baseline_a.marlls(:, 1), ...
 					   [1, size(baseline_a.marlls, 2)]);
 
+
+          
+% compute global ranking perforamcne using random prediction. Compute
+accRand = 0;
+countRand = 0;
+accPrior = 0;
+countPrior = 0;
+for l=1:30000
+    % random ranking and prediction 
+    perm = randperm(6177); 
+    % random network
+    Mrand = round(rand(1,5));
+    Mprior = combConstr(sample_discrete(prior32),:);
+    if sum(Mrand(1,:),2) > 0 
+	   accRand = accRand + all( M(perm(1), Mrand==1), 2);
+	   countRand = countRand + 1;
+    end
+    if sum(Mprior(1,:),2) > 0 
+	   accPrior = accPrior + all( M(perm(1), Mprior==1), 2);
+	   countPrior = countPrior + 1;
+    end
+end
+prioraccs31(1) =  accRand/countRand;
+prioraccs31(2) =  accPrior/countPrior;
+
+                   
                    
 % 1 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL 
@@ -209,21 +244,21 @@ for k=1:length(posteriors)
 end
 h1 = figure;
 % plot bars
-h = bar(100*r1');
+h = bar(100*r1(plotMAP==1,:)');
 set(gca, 'XTickLabel', T1);
 hold on
 v = axis;
-v(3:4) = [0 50];
+v(3:4) = [0 70];
 axis(v);
 plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
 hold off
-%legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior', 'Location', 'EastOutside')
-legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior')
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
+legend(legends([plotMAP, 1 1]==1));
 axis(v)
 xlabel('# of top genes')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals1');
+drosStarBars(h, pvals1(plotMAP==1,:)');
 % 1 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL 
 % END    ---------------------------------------------------------------
@@ -265,24 +300,25 @@ for k=1:length(posteriors)
 end
 h1b = figure;
 % plot bars
-h = bar(100*r1');
+h = bar(100*r1(plotMAP==1,:)');
 set(gca, 'XTickLabel', T1);
 hold on
 v = axis;
-v(3:4) = [0 50];
+v(3:4) = [0 70];
 axis(v);
 plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
 hold off
-%legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior', 'Location', 'EastOutside')
-legend('MAP-32 + uniform prior', 'MAP-32 + prior', 'MAP-16 + uniform prior', 'MAP-16 + prior', 'Baseline', 'Uniform random', 'Random from prior')
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
+legend(legends([plotMAP, 1 1]==1));
 axis(v)
 xlabel('# of top genes')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals1');
+drosStarBars(h, pvals1(plotMAP==1,:)');
 % 1B PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
 % END    ---------------------------------------------------------------
+
 
 % Computation of marginal posterior probabilities over single links 
 for k=1:numTFs
@@ -403,7 +439,7 @@ for k=1:length(linkMargPosteriors),
 end
 % plots bars 
 h2 = figure;
-h = bar(100*r2);
+h = bar(100*r2(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
@@ -412,10 +448,10 @@ axis(v)
 plot(v(1:2), 100*prioraccsSingleTF(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccsSingleTF(2)*[1 1], 'g');
 hold off
-legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
        'Posterior-2', 'Posterior-2 + prior',...
-       'Baseline', 'Uniform random', 'Random from prior');
-
+       'Baseline', 'Uniform prior', 'ChiP prior'};
+legend(legends([plotRest, 1, 1]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
 %       'Posterior-2', 'Posterior-2 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
@@ -423,7 +459,7 @@ legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + p
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals2);
+drosStarBars(h, pvals2(:, plotRest==1));
 % 2 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON PRESENCE OF SINGLE LINKS
 % END    ---------------------------------------------------------------
@@ -561,7 +597,7 @@ for k=1:length(linkPairPosteriors),
 end
 % plots bars 
 h3 = figure;
-h = bar(100*r3);
+h = bar(100*r3(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
@@ -570,15 +606,16 @@ axis(v)
 plot(v(1:2), 100*prioraccsPairTF(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccsPairTF(2)*[1 1], 'g');
 hold off
-legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
-       'Baseline', 'Uniform random', 'Random from prior');
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior'};
+legend(legends([plotRest, 1, 1]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
 %       'Location', 'EastOutside');
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals3);
+drosStarBars(h, pvals3(:, plotRest==1));
 % 3 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE PRESENCE OF A PAIR OF  LINKS
 % END    ---------------------------------------------------------------
@@ -706,7 +743,7 @@ for k=1:length(linkNegativeMargPosteriors),
 end
 % plots bars 
 h4 = figure;
-h = bar(100*r4);
+h = bar(100*r4(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
@@ -715,13 +752,14 @@ axis(v)
 plot(v(1:2), 100*prioraccsSingleAbsentTF(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
 hold off
-legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
-       'Baseline', 'Uniform random', 'Random from prior', ...
-       'Location', 'EastOutside');
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior', ...
+       'Location', 'EastOutside'};
+legend(legends([plotRest, 1, 1]==1));  
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals4);
+drosStarBars(h, pvals4(:, plotRest==1));
 % 4 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
 % END    ---------------------------------------------------------------
@@ -861,7 +899,7 @@ for k=1:length(linkNegativePairPosteriors),
 end
 % plots bars 
 h5 = figure;
-h = bar(100*r5);
+h = bar(100*r5(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
@@ -870,13 +908,14 @@ axis(v)
 plot(v(1:2), 100*prioraccsPairAbsentTF(1)*[1 1], 'b');
 plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
 hold off
-legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
-       'Baseline', 'Uniform random', 'Random from prior', ...
-       'Location', 'EastOutside');
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior', ...
+       'Location', 'EastOutside'};
+legend(legends([plotRest, 1, 1]==1));  
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals5);
+drosStarBars(h, pvals5(:, plotRest==1));
 % 5 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
 % END    ---------------------------------------------------------------
@@ -888,11 +927,11 @@ property = 'Constrained';
 if flag ~= 1
     property = 'Unconstrained'; 
 end
-dd = date;
 if printPlot 
-   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP_', property dd '.eps']);
-   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks_', property dd '.eps']); 
-   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks_', property dd '.eps']);
-   print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks_', property dd '.eps']);
-   print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks_', property dd '.eps']);
+   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(sum(plotMAP)) '_', property '.eps']);
+   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(sum(plotMAP)) '_', property '.eps']);
+   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
+   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks' num2str(sum(plotRest)) '_', property '.eps']);
 end
