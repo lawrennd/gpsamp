@@ -249,7 +249,7 @@ h1 = figure;
 set(gca, 'FontSize', fontSize);
 for k=1:numTFs,
   figure(h1);
-  subplot(2, 5, k);
+  subplot(2, 3, k);
   set(gca, 'FontSize', fontSize);
   if only32 == 0
     drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
@@ -258,7 +258,7 @@ for k=1:numTFs,
   end   
   title(sprintf('%s', drosTF.names{k}));
 end
-subplot(2, 5, 8);
+subplot(2, 3, 6);
 set(gca, 'FontSize', fontSize);
 if only32 == 0
 bar(rand(4));
@@ -290,7 +290,7 @@ for k=1:numTFs
   for g=(k+1):numTFs
   cnt = cnt + 1;    
   figure(h2);
-  subplot(3, 5, cnt);
+  subplot(4, 3, cnt);
   set(gca, 'FontSize', fontSize);
   %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
   if only32 == 0
@@ -302,7 +302,7 @@ for k=1:numTFs
   end
 end
 figure(h2);
-subplot(3, 5, cnt+4);
+subplot(4, 3, 12);
 set(gca, 'FontSize', fontSize);
 if only32 == 0
 bar(rand(5));
