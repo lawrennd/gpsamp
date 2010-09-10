@@ -19,7 +19,7 @@ plotMAP = [1 0 0 0 1];
 plotRest = [1 0 0 0 1 0 1]; 
 %plotRest = [1 1 1 1 1 1 1]; 
 
-incPrior = 0;
+incPrior = 1;
 figSize = [7 5];
 fontSize = 8;
 
@@ -344,14 +344,16 @@ v = axis;
 v(3:4) = [0 100];
 axis(v);
 plot(v(1:2), 100*focused_prioraccs31(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b--');
+%plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b--');
 if incPrior,
   plot(v(1:2), 100*focused_prioraccs31(2)*[1 1], 'g');
-  plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g--');
+  %plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g--');
 end
 hold off
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused ChIP prior', 'Global ChIP prior', 'Location', 'EastOutside'};
-legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
+%legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused ChIP prior', 'Global ChIP prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused ChIP prior', 'Location', 'EastOutside'};
+%legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
+legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
 xlabel('# of global top genes')
 ylabel('Enrichment (%)')

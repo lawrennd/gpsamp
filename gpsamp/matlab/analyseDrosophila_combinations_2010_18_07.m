@@ -4,6 +4,8 @@
 % !! Warning: Baseline models was run only for the constrained case !!
 flag = 1; % "1" for  constrained; "anything else" for unconstrained 
 
+tfnames = {'tin', 'bin', 'twi', 'bap', 'Mef2'};
+
 % USER-specified: Sizes of the ranking sets 
 T = [20, 50, 100, 150, 200];
 
@@ -256,7 +258,7 @@ for k=1:numTFs,
   else
     drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}}, M(:, k), T);  
   end   
-  title(sprintf('%s', drosTF.names{k}));
+  title(sprintf('%s', tfnames{k}));
 end
 subplot(2, 3, 6);
 set(gca, 'FontSize', fontSize);
@@ -298,7 +300,7 @@ for k=1:numTFs
   else
   drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);   
   end
-  title(sprintf('%s + %s', drosTF.names{k}, drosTF.names{g}));
+  title(sprintf('%s + %s', tfnames{k}, tfnames{g}));
   end
 end
 figure(h2);
@@ -338,7 +340,7 @@ for k=1:numTFs
   subplot(3, 5, cnt);
   set(gca, 'FontSize', fontSize);
   drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
-  title(sprintf('%s + %s + %s', drosTF.names{k}, drosTF.names{g}, drosTF.names{f}));
+  title(sprintf('%s + %s + %s', tfnames{k}, tfnames{g}, tfnames{f}));
   end
   end
 end
