@@ -11,7 +11,9 @@ T = [20, 50, 100, 150, 200];
 ddir = 'figures/';
 printPlot = 1; % 0 means not printing
 
-only32 = 0;
+only32 = 1;
+
+fontSize = 8;
 
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
@@ -244,9 +246,11 @@ end
 % K TOP LISTS OF POSITIVE PREDICTION OF SINGLE  LINKS
 % START  ---------------------------------------------------------------
 h1 = figure; 
+set(gca, 'FontSize', fontSize);
 for k=1:numTFs,
   figure(h1);
   subplot(2, 5, k);
+  set(gca, 'FontSize', fontSize);
   if only32 == 0
     drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
   else
@@ -255,17 +259,22 @@ for k=1:numTFs,
   title(sprintf('%s', drosTF.names{k}));
 end
 subplot(2, 5, 8);
+set(gca, 'FontSize', fontSize);
 if only32 == 0
 bar(rand(4));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'Baseline');
+legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'Baseline', 'Random');
 else
 bar(rand(3));
+hold on
+plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-2', 'Baseline');  
+legend('Posterior-32', 'Posterior-2', 'Baseline', 'Random');  
 end
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, 18 9])
 % 1 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF SINGLE  LINKS
 % END    ---------------------------------------------------------------
@@ -275,12 +284,14 @@ end
 % K TOP LISTS OF POSITIVE PREDICTION OF PAIR-TF-LINKS
 % START  ---------------------------------------------------------------
 h2 = figure; 
+set(gca, 'FontSize', fontSize);
 cnt = 0;
 for k=1:numTFs
   for g=(k+1):numTFs
   cnt = cnt + 1;    
   figure(h2);
   subplot(3, 5, cnt);
+  set(gca, 'FontSize', fontSize);
   %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
   if only32 == 0
   drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
@@ -292,17 +303,22 @@ for k=1:numTFs
 end
 figure(h2);
 subplot(3, 5, cnt+4);
+set(gca, 'FontSize', fontSize);
 if only32 == 0
 bar(rand(5));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'Baseline');
+legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');
 else
 bar(rand(4));
+hold on
+plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'Baseline');   
+legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');   
 end
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, 18 12])
 % 2 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF PAIR-TF-LINKS
 % END    ---------------------------------------------------------------
@@ -312,6 +328,7 @@ end
 % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
 % START  ---------------------------------------------------------------
 h3 = figure; 
+set(gca, 'FontSize', fontSize);
 cnt = 0;
 for k=1:numTFs
   for g=(k+1):numTFs
@@ -319,6 +336,7 @@ for k=1:numTFs
   cnt = cnt + 1;    
   figure(h3);
   subplot(3, 5, cnt);
+  set(gca, 'FontSize', fontSize);
   drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
   title(sprintf('%s + %s + %s', drosTF.names{k}, drosTF.names{g}, drosTF.names{f}));
   end
@@ -326,10 +344,13 @@ for k=1:numTFs
 end
 figure(h3);
 subplot(3, 5, cnt+4);
+set(gca, 'FontSize', fontSize);
 bar(rand(3));
 axis([-10 -9 -10 -9]);
 axis off;
 legend('Posterior-32', 'Posterior-8', 'Posterior from single-TF models');
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, 15, 15])
 % 3 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
 % START  ---------------------------------------------------------------

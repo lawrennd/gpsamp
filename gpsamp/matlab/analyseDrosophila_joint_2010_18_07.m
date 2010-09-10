@@ -19,6 +19,10 @@ plotMAP = [1 0 0 0 1];
 plotRest = [1 0 0 0 1 0 1]; 
 %plotRest = [1 1 1 1 1 1 1]; 
 
+incPrior = 0;
+figSize = [7 5];
+fontSize = 8;
+
 
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
@@ -187,6 +191,7 @@ posteriors{end+1} = baseline_a.marlls - repmat(baseline_a.marlls(:, 1), ...
 
           
 % compute global ranking perforamcne using random prediction. Compute
+
 accRand = 0;
 countRand = 0;
 accPrior = 0;
@@ -208,6 +213,31 @@ for l=1:30000
 end
 prioraccs31(1) =  accRand/countRand;
 prioraccs31(2) =  accPrior/countPrior;
+
+% compute focussed ranking performance using random prediction. Compute
+[C, IA, IB] = intersect(drosinsitu.genes(any(drosinsitu.data, 2)), results_b.genes);
+accRand = 0;
+countRand = 0;
+accPrior = 0;
+countPrior = 0;
+N = length(C);
+for l=1:30000
+    % random ranking and prediction 
+    perm = randperm(N);
+    % random network
+    Mrand = round(rand(1,5));
+    Mprior = combConstr(sample_discrete(prior32),:);
+    if sum(Mrand(1,:),2) > 0 
+	   accRand = accRand + all( M(IB(perm(1)), Mrand==1), 2);
+	   countRand = countRand + 1;
+    end
+    if sum(Mprior(1,:),2) > 0 
+	   accPrior = accPrior + all( M(IB(perm(1)), Mprior==1), 2);
+	   countPrior = countPrior + 1;
+    end
+end
+focused_prioraccs31(1) =  accRand/countRand;
+focused_prioraccs31(2) =  accPrior/countPrior;
 
                    
                    
@@ -243,22 +273,28 @@ for k=1:length(posteriors)
   end
 end
 h1 = figure;
+set(gca, 'FontSize', fontSize);
 % plot bars
 h = bar(100*r1(plotMAP==1,:)');
 set(gca, 'XTickLabel', T1);
 hold on
 v = axis;
-v(3:4) = [0 70];
+v(3:4) = [0 100];
 axis(v);
 plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
+if incPrior,
+  plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
+end
 hold off
 legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
-legend(legends([plotMAP, 1 1]==1));
+legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
-xlabel('# of top genes')
+xlabel('# of global top genes')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals1(plotMAP==1,:)');
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 1 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL 
 % END    ---------------------------------------------------------------
@@ -295,26 +331,34 @@ for k=1:length(posteriors)
     end
     r1(k, l) = acc / count;
     %r2(k, l) = acc2 / count;
-    pvals1(k, l) = 1 - binocdf(acc - 1, count, prioraccs31(prioraccinds(k)));
+    pvals1(k, l) = 1 - binocdf(acc - 1, count, focused_prioraccs31(prioraccinds(k)));
   end
 end
 h1b = figure;
+set(gca, 'FontSize', fontSize);
 % plot bars
 h = bar(100*r1(plotMAP==1,:)');
 set(gca, 'XTickLabel', T1);
 hold on
 v = axis;
-v(3:4) = [0 70];
+v(3:4) = [0 100];
 axis(v);
-plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
+plot(v(1:2), 100*focused_prioraccs31(1)*[1 1], 'b');
+plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b--');
+if incPrior,
+  plot(v(1:2), 100*focused_prioraccs31(2)*[1 1], 'g');
+  plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g--');
+end
 hold off
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
-legend(legends([plotMAP, 1 1]==1));
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused ChIP prior', 'Global ChIP prior', 'Location', 'EastOutside'};
+legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
 axis(v)
-xlabel('# of top genes')
+xlabel('# of global top genes')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals1(plotMAP==1,:)');
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 1B PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
 % END    ---------------------------------------------------------------
@@ -439,19 +483,22 @@ for k=1:length(linkMargPosteriors),
 end
 % plots bars 
 h2 = figure;
+set(gca, 'FontSize', fontSize);
 h = bar(100*r2(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
-v(3:4) = [0 60];
+v(3:4) = [0 100];
 axis(v)
 plot(v(1:2), 100*prioraccsSingleTF(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccsSingleTF(2)*[1 1], 'g');
+if incPrior,
+  plot(v(1:2), 100*prioraccsSingleTF(2)*[1 1], 'g');
+end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
        'Posterior-2', 'Posterior-2 + prior',...
        'Baseline', 'Uniform prior', 'ChiP prior'};
-legend(legends([plotRest, 1, 1]==1));  
+legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
 %       'Posterior-2', 'Posterior-2 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
@@ -460,6 +507,9 @@ axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals2(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 2 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON PRESENCE OF SINGLE LINKS
 % END    ---------------------------------------------------------------
@@ -597,18 +647,21 @@ for k=1:length(linkPairPosteriors),
 end
 % plots bars 
 h3 = figure;
+set(gca, 'FontSize', fontSize);
 h = bar(100*r3(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
-v(3:4) = [0 60];
+v(3:4) = [0 100];
 axis(v)
 plot(v(1:2), 100*prioraccsPairTF(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccsPairTF(2)*[1 1], 'g');
+if incPrior,
+  plot(v(1:2), 100*prioraccsPairTF(2)*[1 1], 'g');
+end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
        'Baseline', 'Uniform prior', 'ChiP prior'};
-legend(legends([plotRest, 1, 1]==1));  
+legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
 %       'Location', 'EastOutside');
@@ -616,6 +669,9 @@ axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals3(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 3 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE PRESENCE OF A PAIR OF  LINKS
 % END    ---------------------------------------------------------------
@@ -743,6 +799,7 @@ for k=1:length(linkNegativeMargPosteriors),
 end
 % plots bars 
 h4 = figure;
+set(gca, 'FontSize', fontSize);
 h = bar(100*r4(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
@@ -750,16 +807,21 @@ v = axis;
 v(3:4) = [0 100];
 axis(v)
 plot(v(1:2), 100*prioraccsSingleAbsentTF(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
+if incPrior,
+  plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
+end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
        'Baseline', 'Uniform prior', 'ChiP prior', ...
        'Location', 'EastOutside'};
-legend(legends([plotRest, 1, 1]==1));  
+legend(legends([plotRest, 1, incPrior]==1));  
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals4(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 4 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
 % END    ---------------------------------------------------------------
@@ -899,6 +961,7 @@ for k=1:length(linkNegativePairPosteriors),
 end
 % plots bars 
 h5 = figure;
+set(gca, 'FontSize', fontSize);
 h = bar(100*r5(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
@@ -906,16 +969,21 @@ v = axis;
 v(3:4) = [0 100];
 axis(v)
 plot(v(1:2), 100*prioraccsPairAbsentTF(1)*[1 1], 'b');
-plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
+if incPrior,
+  plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
+end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
        'Baseline', 'Uniform prior', 'ChiP prior', ...
        'Location', 'EastOutside'};
-legend(legends([plotRest, 1, 1]==1));  
+legend(legends([plotRest, 1, incPrior]==1));  
 axis(v)
 xlabel('# of top predictions')
 ylabel('Enrichment (%)')
 drosStarBars(h, pvals5(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
 % 5 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
 % END    ---------------------------------------------------------------
