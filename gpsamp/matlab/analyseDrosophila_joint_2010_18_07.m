@@ -21,7 +21,7 @@ plotRest = [1 0 0 0 1 0 1];
 
 incPrior = 1;
 figSize = [7 5];
-fontSize = 8;
+fontSize = 7;
 
 
 % models (as stored  in the results variables; see below) 
@@ -286,7 +286,7 @@ if incPrior,
   plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
 end
 hold off
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
 xlabel('# of global top genes')
@@ -350,8 +350,8 @@ if incPrior,
   %plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g--');
 end
 hold off
-%legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused ChIP prior', 'Global ChIP prior', 'Location', 'EastOutside'};
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused ChIP prior', 'Location', 'EastOutside'};
+%legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused Empirical prior', 'Global Empirical prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused Empirical prior', 'Location', 'EastOutside'};
 %legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
@@ -499,7 +499,7 @@ end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
        'Posterior-2', 'Posterior-2 + prior',...
-       'Baseline', 'Uniform prior', 'ChiP prior'};
+       'Baseline', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
 %       'Posterior-2', 'Posterior-2 + prior',...
@@ -662,7 +662,7 @@ if incPrior,
 end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
-       'Baseline', 'Uniform prior', 'ChiP prior'};
+       'Baseline', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
@@ -680,315 +680,315 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%       BELOW  ARE PLOTS FOR PREDICTING ABSENCE OF LINKS                                 %                 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %       BELOW  ARE PLOTS FOR PREDICTING ABSENCE OF LINKS                                 %                 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% Computation of marginal posterior probabilities over single links of being
-% inactive
-for k=1:numTFs
-%
-  % posterior of the TF-link being *inactive* using the 32 models
-  indSingle = find(combConstr(:,k)==0);
-  linkNegativeMargPosteriors{1}(:,k) = logsumexp(results_b.marlls(:, indSingle), 2) - ...
-                          logsumexp(results_b.marlls(:, setdiff(ind32, indSingle)), 2);
+% % Computation of marginal posterior probabilities over single links of being
+% % inactive
+% for k=1:numTFs
+% %
+%   % posterior of the TF-link being *inactive* using the 32 models
+%   indSingle = find(combConstr(:,k)==0);
+%   linkNegativeMargPosteriors{1}(:,k) = logsumexp(results_b.marlls(:, indSingle), 2) - ...
+%                           logsumexp(results_b.marlls(:, setdiff(ind32, indSingle)), 2);
         
-  % posterior of the TF-link being *inactive* using the 32 models plus prior  
-  linkNegativeMargPosteriors{2}(:,k) = logsumexp(withprior(:, indSingle), 2) - ...
-                        logsumexp(withprior(:, setdiff(ind32, indSingle)), 2); 
+%   % posterior of the TF-link being *inactive* using the 32 models plus prior  
+%   linkNegativeMargPosteriors{2}(:,k) = logsumexp(withprior(:, indSingle), 2) - ...
+%                         logsumexp(withprior(:, setdiff(ind32, indSingle)), 2); 
                       
-  % posterior of the TF-link being *inactive* using the 16 models   
-  linkNegativeMargPosteriors{3}(:,k) = logsumexp(results_b.marlls(:, comb16(:, k)==0), 2) - ...
-                          logsumexp(results_b.marlls(:, comb16(:, k)==1), 2);
+%   % posterior of the TF-link being *inactive* using the 16 models   
+%   linkNegativeMargPosteriors{3}(:,k) = logsumexp(results_b.marlls(:, comb16(:, k)==0), 2) - ...
+%                           logsumexp(results_b.marlls(:, comb16(:, k)==1), 2);
                
-  % posterior of the TF-link being *inactive* using the 16 models plus prior  
-  linkNegativeMargPosteriors{4}(:,k) = logsumexp(withprior(:, comb16(:, k)==0), 2) - ...
-                        logsumexp(withprior(:, comb16(:, k)==1), 2);
+%   % posterior of the TF-link being *inactive* using the 16 models plus prior  
+%   linkNegativeMargPosteriors{4}(:,k) = logsumexp(withprior(:, comb16(:, k)==0), 2) - ...
+%                         logsumexp(withprior(:, comb16(:, k)==1), 2);
  
-  % find the *single* index inside comb where only "k" is *active* 
-  indIndiv = find(combConstr(:,k)==1 & sum(combConstr,2)==1 );     
+%   % find the *single* index inside comb where only "k" is *active* 
+%   indIndiv = find(combConstr(:,k)==1 & sum(combConstr,2)==1 );     
   
-  % posterior of the TF-link being *inactive* using the 2 models              
-  linkNegativeMargPosteriors{5}(:,k) = results_b.marlls(:, ind0) - results_b.marlls(:, indIndiv);
+%   % posterior of the TF-link being *inactive* using the 2 models              
+%   linkNegativeMargPosteriors{5}(:,k) = results_b.marlls(:, ind0) - results_b.marlls(:, indIndiv);
   
-  % posterior of the TF-link being *inactive* using the 2 models plus prior             
-  linkNegativeMargPosteriors{6}(:,k) = withprior(:, ind0)  - withprior(:, indIndiv);
+%   % posterior of the TF-link being *inactive* using the 2 models plus prior             
+%   linkNegativeMargPosteriors{6}(:,k) = withprior(:, ind0)  - withprior(:, indIndiv);
   
-  % posterior of the TF-link being *inactive* using maximum likelihood model             
-  linkNegativeMargPosteriors{7}(:,k) = baseline_a.marlls(:, 1) - baseline_a.marlls(:, k+1);
-%  
-end
+%   % posterior of the TF-link being *inactive* using maximum likelihood model             
+%   linkNegativeMargPosteriors{7}(:,k) = baseline_a.marlls(:, 1) - baseline_a.marlls(:, k+1);
+% %  
+% end
 
 
-% 4 PLOT ---------------------------------------------------------------
-% GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
-% STARTS    ------------------------------------------------------------
-%
-% separate prior for eacn link being active 
-%priorSingleAbsentTF = 1 - priorSingleTF;
-%prioraccsSingleAbsentTF(1) = mean(priorSingleAbsentTF);
-%prioraccsSingleAbsentTF(2) = sum(priorSingleAbsentTF .* priorSingleAbsentTF) / sum(priorSingleAbsentTF).^2;
-for k=1:numTFs
-    indSingle = find(combConstr(:,k)==0);
-    priorSingleAbsentTF(k) = sum(prior32(indSingle));
-end
+% % 4 PLOT ---------------------------------------------------------------
+% % GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
+% % STARTS    ------------------------------------------------------------
+% %
+% % separate prior for eacn link being active 
+% %priorSingleAbsentTF = 1 - priorSingleTF;
+% %prioraccsSingleAbsentTF(1) = mean(priorSingleAbsentTF);
+% %prioraccsSingleAbsentTF(2) = sum(priorSingleAbsentTF .* priorSingleAbsentTF) / sum(priorSingleAbsentTF).^2;
+% for k=1:numTFs
+%     indSingle = find(combConstr(:,k)==0);
+%     priorSingleAbsentTF(k) = sum(prior32(indSingle));
+% end
 
-% Bayes correct classification rate based on a classifier that  uses
-% a unifrom prior (as classification rule)
-prioraccsSingleAbsentTF(1) = mean(priorSingleAbsentTF);
-% Bayes correct classification rate based on a classifier that uses 
-% the empirical prior
-prioraccsSingleAbsentTF(2) = sum(priorSingleAbsentTF.*priorSingleAbsentTF) / sum(priorSingleAbsentTF);
-
-
-r4 = zeros(length(T2), length(linkNegativeMargPosteriors));
-pvals4 = r4;
-for k=1:length(linkNegativeMargPosteriors), 
-    BestLink = [];
-    BestPost = []; 
-    % for loop over the number of genes 
-    % that computes the best single-TF-absent-link for each gene
-    for n=1:size(linkNegativeMargPosteriors{k},1)
-       [foo, BL] = sort(linkNegativeMargPosteriors{k}(n,:), 'descend');
-       BestLink(n) = BL(1); 
-       BestPost(n) = foo(1);
-    end
-    [foo, I] = sort(BestPost, 'descend');
-    for l=1:length(T2),
-       r4(l,k) = 0;  
-       nanCnt =0;
-       for j=1:T2(l)
-          gene = I(j);   
-          TF = BestLink(I(j));
-          MM = M(gene, TF);
-          if ~isnan(MM)
-             r4(l,k) = r4(l,k) + 1-MM;
-          else
-             nanCnt = nanCnt + 1;
-          end
-       end
-       pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
-			          T2(l)-nanCnt, ...
-			          priorSingleAbsentTF (baselines2(k)));
-       r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
-    end
-    %[foo, I] = sort(linkNegativeMargPosteriors{k}(:), 'descend');
-    %for l=1:length(T2),
-    %   r4(l,k) = 0;  
-    %   nanCnt =0;
-    %   for j=1:T2(l)
-    %      gene = mod(I(j), numGenes);
-    %      gene(gene==0)=numGenes;          
-    %      TF = floor(I(j)/numGenes) + 1;
-    %      TF(TF==6)=5; 
-    %      MM = M(gene, TF);
-    %      if ~isnan(MM)
-    %         r4(l,k) = r4(l,k) + 1-MM;
-    %      else
-    %         nanCnt = nanCnt + 1;
-    %      end
-    %   end
-    %   %pvals3(l, k) = 1 - binocdf(nansum(M(I(1:T2(l)))) - 1, ...
-	%   %		          sum(~isnan(M(I(1:T2(l))))), ...
-	%   %		          prioraccs2(baselines2(k)));
-    %   pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
-	%		          T2(l)-nanCnt, ...
-	%		          priorSingleAbsentTF (baselines2(k)));
-    %   r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
-    %end
-%
-end
-% plots bars 
-h4 = figure;
-set(gca, 'FontSize', fontSize);
-h = bar(100*r4(:, plotRest==1));
-set(gca, 'XTickLabel', T2);
-hold on
-v = axis;
-v(3:4) = [0 100];
-axis(v)
-plot(v(1:2), 100*prioraccsSingleAbsentTF(1)*[1 1], 'b');
-if incPrior,
-  plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
-end
-hold off
-legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
-       'Baseline', 'Uniform prior', 'ChiP prior', ...
-       'Location', 'EastOutside'};
-legend(legends([plotRest, 1, incPrior]==1));  
-axis(v)
-xlabel('# of top predictions')
-ylabel('Enrichment (%)')
-drosStarBars(h, pvals4(:, plotRest==1));
-set(gca, 'FontSize', fontSize);
-set(gcf, 'PaperUnits', 'centimeters')
-set(gcf, 'PaperPosition', [0, 0, figSize])
-% 4 PLOT ---------------------------------------------------------------
-% GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
-% END    ---------------------------------------------------------------
+% % Bayes correct classification rate based on a classifier that  uses
+% % a unifrom prior (as classification rule)
+% prioraccsSingleAbsentTF(1) = mean(priorSingleAbsentTF);
+% % Bayes correct classification rate based on a classifier that uses 
+% % the empirical prior
+% prioraccsSingleAbsentTF(2) = sum(priorSingleAbsentTF.*priorSingleAbsentTF) / sum(priorSingleAbsentTF);
 
 
-% Computation of marginal posterior probability over pairs of links 
-% being both inactive (non-regulators)
-linkNegativePairPosteriors = {};
-cnt = 0;
-for k=1:numTFs
-  for g=(k+1):numTFs
-  %   
-  cnt = cnt + 1;
+% r4 = zeros(length(T2), length(linkNegativeMargPosteriors));
+% pvals4 = r4;
+% for k=1:length(linkNegativeMargPosteriors), 
+%     BestLink = [];
+%     BestPost = []; 
+%     % for loop over the number of genes 
+%     % that computes the best single-TF-absent-link for each gene
+%     for n=1:size(linkNegativeMargPosteriors{k},1)
+%        [foo, BL] = sort(linkNegativeMargPosteriors{k}(n,:), 'descend');
+%        BestLink(n) = BL(1); 
+%        BestPost(n) = foo(1);
+%     end
+%     [foo, I] = sort(BestPost, 'descend');
+%     for l=1:length(T2),
+%        r4(l,k) = 0;  
+%        nanCnt =0;
+%        for j=1:T2(l)
+%           gene = I(j);   
+%           TF = BestLink(I(j));
+%           MM = M(gene, TF);
+%           if ~isnan(MM)
+%              r4(l,k) = r4(l,k) + 1-MM;
+%           else
+%              nanCnt = nanCnt + 1;
+%           end
+%        end
+%        pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
+% 			          T2(l)-nanCnt, ...
+% 			          priorSingleAbsentTF (baselines2(k)));
+%        r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
+%     end
+%     %[foo, I] = sort(linkNegativeMargPosteriors{k}(:), 'descend');
+%     %for l=1:length(T2),
+%     %   r4(l,k) = 0;  
+%     %   nanCnt =0;
+%     %   for j=1:T2(l)
+%     %      gene = mod(I(j), numGenes);
+%     %      gene(gene==0)=numGenes;          
+%     %      TF = floor(I(j)/numGenes) + 1;
+%     %      TF(TF==6)=5; 
+%     %      MM = M(gene, TF);
+%     %      if ~isnan(MM)
+%     %         r4(l,k) = r4(l,k) + 1-MM;
+%     %      else
+%     %         nanCnt = nanCnt + 1;
+%     %      end
+%     %   end
+%     %   %pvals3(l, k) = 1 - binocdf(nansum(M(I(1:T2(l)))) - 1, ...
+% 	%   %		          sum(~isnan(M(I(1:T2(l))))), ...
+% 	%   %		          prioraccs2(baselines2(k)));
+%     %   pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
+% 	%		          T2(l)-nanCnt, ...
+% 	%		          priorSingleAbsentTF (baselines2(k)));
+%     %   r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
+%     %end
+% %
+% end
+% % plots bars 
+% h4 = figure;
+% set(gca, 'FontSize', fontSize);
+% h = bar(100*r4(:, plotRest==1));
+% set(gca, 'XTickLabel', T2);
+% hold on
+% v = axis;
+% v(3:4) = [0 100];
+% axis(v)
+% plot(v(1:2), 100*prioraccsSingleAbsentTF(1)*[1 1], 'b');
+% if incPrior,
+%   plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
+% end
+% hold off
+% legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
+%        'Baseline', 'Uniform prior', 'Empirical prior', ...
+%        'Location', 'EastOutside'};
+% legend(legends([plotRest, 1, incPrior]==1));  
+% axis(v)
+% xlabel('# of top predictions')
+% ylabel('Enrichment (%)')
+% drosStarBars(h, pvals4(:, plotRest==1));
+% set(gca, 'FontSize', fontSize);
+% set(gcf, 'PaperUnits', 'centimeters')
+% set(gcf, 'PaperPosition', [0, 0, figSize])
+% % 4 PLOT ---------------------------------------------------------------
+% % GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
+% % END    ---------------------------------------------------------------
+
+
+% % Computation of marginal posterior probability over pairs of links 
+% % being both inactive (non-regulators)
+% linkNegativePairPosteriors = {};
+% cnt = 0;
+% for k=1:numTFs
+%   for g=(k+1):numTFs
+%   %   
+%   cnt = cnt + 1;
   
-  pairs(cnt,:) = [k g];
-  % find all the indices inside comb where the TFs "k" and "g" are *inactive* 
-  indPair = find(combConstr(:,k)==0 & combConstr(:,g)==0);
+%   pairs(cnt,:) = [k g];
+%   % find all the indices inside comb where the TFs "k" and "g" are *inactive* 
+%   indPair = find(combConstr(:,k)==0 & combConstr(:,g)==0);
    
-  % posterior probability of the TF-pair being *inactive* under the 32 hypotheses case
-  linkNegativePairPosteriors{1}(:, cnt) = logsumexp(results_b.marlls(:,  indPair), 2) - ...
-			                      logsumexp(results_b.marlls(:, setdiff(ind32, indPair)), 2);
+%   % posterior probability of the TF-pair being *inactive* under the 32 hypotheses case
+%   linkNegativePairPosteriors{1}(:, cnt) = logsumexp(results_b.marlls(:,  indPair), 2) - ...
+% 			                      logsumexp(results_b.marlls(:, setdiff(ind32, indPair)), 2);
     
-  % posterior probability of the TF-pair being *inactive*  under the 32 hypotheses case
-  linkNegativePairPosteriors{2}(:, cnt) = logsumexp(withprior(:,  indPair), 2) - ...
-			                      logsumexp(withprior(:, setdiff(ind32, indPair)), 2);
+%   % posterior probability of the TF-pair being *inactive*  under the 32 hypotheses case
+%   linkNegativePairPosteriors{2}(:, cnt) = logsumexp(withprior(:,  indPair), 2) - ...
+% 			                      logsumexp(withprior(:, setdiff(ind32, indPair)), 2);
                                   
-  % find the indices inside comb (restricted to 16 hypotheses) where 
-  % the TFs "k" and "g" are *inactive* 
-  indPairSingle = find(combConstr(:,k)==0 & combConstr(:,g)==0 & sum(combConstr,2)<=2 );
+%   % find the indices inside comb (restricted to 16 hypotheses) where 
+%   % the TFs "k" and "g" are *inactive* 
+%   indPairSingle = find(combConstr(:,k)==0 & combConstr(:,g)==0 & sum(combConstr,2)<=2 );
  
-  % posterior probability of the TF-pair  being *inactive*  under the 16 hypotheses case
-  linkNegativePairPosteriors{3}(:, cnt) = logsumexp(results_b.marlls(:,  indPairSingle), 2) - ...
-			              logsumexp(results_b.marlls(:, setdiff(ind16, indPairSingle)), 2);                   
+%   % posterior probability of the TF-pair  being *inactive*  under the 16 hypotheses case
+%   linkNegativePairPosteriors{3}(:, cnt) = logsumexp(results_b.marlls(:,  indPairSingle), 2) - ...
+% 			              logsumexp(results_b.marlls(:, setdiff(ind16, indPairSingle)), 2);                   
                       
-  % posterior probability of the TF-pair  being *inactive*  under the 16 hypotheses case
-  linkNegativePairPosteriors{4}(:, cnt) = logsumexp(withprior(:,  indPairSingle), 2) - ...
-			              logsumexp(withprior(:, setdiff(ind16, indPairSingle)), 2);
+%   % posterior probability of the TF-pair  being *inactive*  under the 16 hypotheses case
+%   linkNegativePairPosteriors{4}(:, cnt) = logsumexp(withprior(:,  indPairSingle), 2) - ...
+% 			              logsumexp(withprior(:, setdiff(ind16, indPairSingle)), 2);
   
-  % find the indices inside comb restricted to 4 models 
-  %(0 0; k 0; 0 g; k g )
-  ind4 = find(  sum(combConstr(:, setdiff(1:numTFs, [k g]) ), 2)==0  );
+%   % find the indices inside comb restricted to 4 models 
+%   %(0 0; k 0; 0 g; k g )
+%   ind4 = find(  sum(combConstr(:, setdiff(1:numTFs, [k g]) ), 2)==0  );
   
-  % posterior probability of the TF-pair being *inactive* under the 4 hypotheses case
-  linkNegativePairPosteriors{5}(:, cnt) = results_b.marlls(:, ind0) - ...
-  			             logsumexp(results_b.marlls(:, setdiff(ind4, ind0)), 2);
+%   % posterior probability of the TF-pair being *inactive* under the 4 hypotheses case
+%   linkNegativePairPosteriors{5}(:, cnt) = results_b.marlls(:, ind0) - ...
+%   			             logsumexp(results_b.marlls(:, setdiff(ind4, ind0)), 2);
           
-  % posterior probability of the TF-pair being *inactive* under the 4 hypotheses case
-  linkNegativePairPosteriors{6}(:, cnt) = withprior(:, ind0) - ...
-  			             logsumexp(withprior(:, setdiff(ind4, ind0)), 2);
+%   % posterior probability of the TF-pair being *inactive* under the 4 hypotheses case
+%   linkNegativePairPosteriors{6}(:, cnt) = withprior(:, ind0) - ...
+%   			             logsumexp(withprior(:, setdiff(ind4, ind0)), 2);
                      
-  % baseline maximum likelihood model [[k=0.g=0, rest=1] minus the zero model)
-  indPSinglebase = find(baselinecomb(:,k)==0 & baselinecomb(:,g)==0 & sum(baselinecomb,2)==1 ); 
-  linkNegativePairPosteriors{7}(:, cnt) = logsumexp(baseline_a.marlls(:, indPSinglebase), 2) - baseline_a.marlls(:, 1);  
-  %             
-  end
-end
+%   % baseline maximum likelihood model [[k=0.g=0, rest=1] minus the zero model)
+%   indPSinglebase = find(baselinecomb(:,k)==0 & baselinecomb(:,g)==0 & sum(baselinecomb,2)==1 ); 
+%   linkNegativePairPosteriors{7}(:, cnt) = logsumexp(baseline_a.marlls(:, indPSinglebase), 2) - baseline_a.marlls(:, 1);  
+%   %             
+%   end
+% end
 
 
 
-% 5 PLOT ---------------------------------------------------------------
-% GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
-% STARTS ---------------------------------------------------------------
-cnt = 0;
-for k=1:numTFs
-  for g=(k+1):numTFs
-      cnt = cnt + 1;
-      indAbsentPair = find(combConstr(:,k)==0 & combConstr(:,g)==0);
-      priorPairAbsentTF(cnt) = sum(prior32(indAbsentPair));
-  end
-end
+% % 5 PLOT ---------------------------------------------------------------
+% % GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
+% % STARTS ---------------------------------------------------------------
+% cnt = 0;
+% for k=1:numTFs
+%   for g=(k+1):numTFs
+%       cnt = cnt + 1;
+%       indAbsentPair = find(combConstr(:,k)==0 & combConstr(:,g)==0);
+%       priorPairAbsentTF(cnt) = sum(prior32(indAbsentPair));
+%   end
+% end
 
-% Bayes correct classification rate based on a classifier that  uses
-% a unifrom prior (as classification rule)
-prioraccsPairAbsentTF(1) = mean(priorPairAbsentTF);
-% Bayes correct classification rate based on a classifier that uses 
-% the empirical prior
-prioraccsPairAbsentTF(2) = sum(priorPairAbsentTF.*priorPairAbsentTF) / sum(priorPairAbsentTF);
+% % Bayes correct classification rate based on a classifier that  uses
+% % a unifrom prior (as classification rule)
+% prioraccsPairAbsentTF(1) = mean(priorPairAbsentTF);
+% % Bayes correct classification rate based on a classifier that uses 
+% % the empirical prior
+% prioraccsPairAbsentTF(2) = sum(priorPairAbsentTF.*priorPairAbsentTF) / sum(priorPairAbsentTF);
 
-% Antti's way (not clear waht Bayes correct rate is that)
-%prioraccsPairAbsentTF(1) = mean(priorPairAbsentTF);
-%prioraccsPairAbsentTF(2) = sum(priorPairAbsentTF .* priorPairAbsentTF) / sum(priorPairAbsentTF).^2;
+% % Antti's way (not clear waht Bayes correct rate is that)
+% %prioraccsPairAbsentTF(1) = mean(priorPairAbsentTF);
+% %prioraccsPairAbsentTF(2) = sum(priorPairAbsentTF .* priorPairAbsentTF) / sum(priorPairAbsentTF).^2;
 
-r5 = zeros(length(T2), length(linkNegativePairPosteriors));
-pvals5 = r5;
-for k=1:length(linkNegativePairPosteriors),
-    BestLink = [];
-    BestPost = []; 
-    % for loop over the number of genes 
-    % that computes the besrt pair-TF-absent-link for each gene
-    for n=1:size(linkNegativePairPosteriors{k},1)
-       [foo, BL] = sort(linkNegativePairPosteriors{k}(n,:), 'descend');
-       BestLink(n) = BL(1); 
-       BestPost(n) = foo(1);
-    end
-    [foo, I] = sort(BestPost, 'descend');
-    for l=1:length(T2),
-       r5(l,k) = 0;  
-       nanCnt =0;
-       for j=1:T2(l)
-          gene = I(j);   
-          TFpair = BestLink(I(j)); 
-          MM =  prod(1 - M(gene, pairs(TFpair,:)));
-          if ~isnan(MM)
-             r5(l,k) = r5(l,k) + MM;
-          else
-             nanCnt = nanCnt + 1;
-          end          
-       end
-       pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
-			          T2(l)-nanCnt, ...
-			          prioraccsPairAbsentTF(baselines2(1)));                  
-       r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
-    end
-    %[foo, I] = sort(linkNegativePairPosteriors{k}(:), 'descend');
-    %for l=1:length(T2),
-    %   r5(l,k) = 0;  
-    %   nanCnt = 0;
-    %   for j=1:T2(l)
-    %      gene = mod(I(j), numGenes);
-    %      gene(gene==0)=numGenes;          
-    %      TFpair = floor(I(j)/numGenes) + 1;
-    %      TFpair(TFpair==11)=10;
-    % 
-    %      MM =  prod(1 - M(gene, pairs(TFpair,:)));
-    %      if ~isnan(MM)
-    %         r5(l,k) = r5(l,k) + MM;
-    %      else
-    %         nanCnt = nanCnt + 1;
-    %      end
-    %   end
-    %   pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
-	%		          T2(l)-nanCnt, ...
-    %		        prioraccsPairAbsentTF(baselines2(1)));                  
-    %  r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
-    %end
-%
-end
-% plots bars 
-h5 = figure;
-set(gca, 'FontSize', fontSize);
-h = bar(100*r5(:, plotRest==1));
-set(gca, 'XTickLabel', T2);
-hold on
-v = axis;
-v(3:4) = [0 100];
-axis(v)
-plot(v(1:2), 100*prioraccsPairAbsentTF(1)*[1 1], 'b');
-if incPrior,
-  plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
-end
-hold off
-legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
-       'Baseline', 'Uniform prior', 'ChiP prior', ...
-       'Location', 'EastOutside'};
-legend(legends([plotRest, 1, incPrior]==1));  
-axis(v)
-xlabel('# of top predictions')
-ylabel('Enrichment (%)')
-drosStarBars(h, pvals5(:, plotRest==1));
-set(gca, 'FontSize', fontSize);
-set(gcf, 'PaperUnits', 'centimeters')
-set(gcf, 'PaperPosition', [0, 0, figSize])
-% 5 PLOT ---------------------------------------------------------------
-% GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
-% END    ---------------------------------------------------------------
+% r5 = zeros(length(T2), length(linkNegativePairPosteriors));
+% pvals5 = r5;
+% for k=1:length(linkNegativePairPosteriors),
+%     BestLink = [];
+%     BestPost = []; 
+%     % for loop over the number of genes 
+%     % that computes the besrt pair-TF-absent-link for each gene
+%     for n=1:size(linkNegativePairPosteriors{k},1)
+%        [foo, BL] = sort(linkNegativePairPosteriors{k}(n,:), 'descend');
+%        BestLink(n) = BL(1); 
+%        BestPost(n) = foo(1);
+%     end
+%     [foo, I] = sort(BestPost, 'descend');
+%     for l=1:length(T2),
+%        r5(l,k) = 0;  
+%        nanCnt =0;
+%        for j=1:T2(l)
+%           gene = I(j);   
+%           TFpair = BestLink(I(j)); 
+%           MM =  prod(1 - M(gene, pairs(TFpair,:)));
+%           if ~isnan(MM)
+%              r5(l,k) = r5(l,k) + MM;
+%           else
+%              nanCnt = nanCnt + 1;
+%           end          
+%        end
+%        pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
+% 			          T2(l)-nanCnt, ...
+% 			          prioraccsPairAbsentTF(baselines2(1)));                  
+%        r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
+%     end
+%     %[foo, I] = sort(linkNegativePairPosteriors{k}(:), 'descend');
+%     %for l=1:length(T2),
+%     %   r5(l,k) = 0;  
+%     %   nanCnt = 0;
+%     %   for j=1:T2(l)
+%     %      gene = mod(I(j), numGenes);
+%     %      gene(gene==0)=numGenes;          
+%     %      TFpair = floor(I(j)/numGenes) + 1;
+%     %      TFpair(TFpair==11)=10;
+%     % 
+%     %      MM =  prod(1 - M(gene, pairs(TFpair,:)));
+%     %      if ~isnan(MM)
+%     %         r5(l,k) = r5(l,k) + MM;
+%     %      else
+%     %         nanCnt = nanCnt + 1;
+%     %      end
+%     %   end
+%     %   pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
+% 	%		          T2(l)-nanCnt, ...
+%     %		        prioraccsPairAbsentTF(baselines2(1)));                  
+%     %  r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
+%     %end
+% %
+% end
+% % plots bars 
+% h5 = figure;
+% set(gca, 'FontSize', fontSize);
+% h = bar(100*r5(:, plotRest==1));
+% set(gca, 'XTickLabel', T2);
+% hold on
+% v = axis;
+% v(3:4) = [0 100];
+% axis(v)
+% plot(v(1:2), 100*prioraccsPairAbsentTF(1)*[1 1], 'b');
+% if incPrior,
+%   plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
+% end
+% hold off
+% legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
+%        'Baseline', 'Uniform prior', 'Empirical prior', ...
+%        'Location', 'EastOutside'};
+% legend(legends([plotRest, 1, incPrior]==1));  
+% axis(v)
+% xlabel('# of top predictions')
+% ylabel('Enrichment (%)')
+% drosStarBars(h, pvals5(:, plotRest==1));
+% set(gca, 'FontSize', fontSize);
+% set(gcf, 'PaperUnits', 'centimeters')
+% set(gcf, 'PaperPosition', [0, 0, figSize])
+% % 5 PLOT ---------------------------------------------------------------
+% % GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
+% % END    ---------------------------------------------------------------
 
 
 
@@ -1002,6 +1002,6 @@ if printPlot
    print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(sum(plotMAP)) '_', property '.eps']);
    print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
    print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '.eps']);
-   print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);
-   print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   %print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   %print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks' num2str(sum(plotRest)) '_', property '.eps']);
 end

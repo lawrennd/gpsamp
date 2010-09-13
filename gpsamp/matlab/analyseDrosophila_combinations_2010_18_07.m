@@ -15,7 +15,7 @@ printPlot = 1; % 0 means not printing
 
 only32 = 1;
 
-fontSize = 8;
+fontSize = 7;
 
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
@@ -326,36 +326,36 @@ set(gcf, 'PaperPosition', [0, 0, 18 12])
 % END    ---------------------------------------------------------------
 
 
-% 3 PLOT ---------------------------------------------------------------
-% K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
-% START  ---------------------------------------------------------------
-h3 = figure; 
-set(gca, 'FontSize', fontSize);
-cnt = 0;
-for k=1:numTFs
-  for g=(k+1):numTFs
-  for f=(g+1):numTFs  
-  cnt = cnt + 1;    
-  figure(h3);
-  subplot(3, 5, cnt);
-  set(gca, 'FontSize', fontSize);
-  drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
-  title(sprintf('%s + %s + %s', tfnames{k}, tfnames{g}, tfnames{f}));
-  end
-  end
-end
-figure(h3);
-subplot(3, 5, cnt+4);
-set(gca, 'FontSize', fontSize);
-bar(rand(3));
-axis([-10 -9 -10 -9]);
-axis off;
-legend('Posterior-32', 'Posterior-8', 'Posterior from single-TF models');
-set(gcf, 'PaperUnits', 'centimeters')
-set(gcf, 'PaperPosition', [0, 0, 15, 15])
-% 3 PLOT ---------------------------------------------------------------
-% K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
-% START  ---------------------------------------------------------------
+% % 3 PLOT ---------------------------------------------------------------
+% % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
+% % START  ---------------------------------------------------------------
+% h3 = figure; 
+% set(gca, 'FontSize', fontSize);
+% cnt = 0;
+% for k=1:numTFs
+%   for g=(k+1):numTFs
+%   for f=(g+1):numTFs  
+%   cnt = cnt + 1;    
+%   figure(h3);
+%   subplot(3, 5, cnt);
+%   set(gca, 'FontSize', fontSize);
+%   drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
+%   title(sprintf('%s + %s + %s', tfnames{k}, tfnames{g}, tfnames{f}));
+%   end
+%   end
+% end
+% figure(h3);
+% subplot(3, 5, cnt+4);
+% set(gca, 'FontSize', fontSize);
+% bar(rand(3));
+% axis([-10 -9 -10 -9]);
+% axis off;
+% legend('Posterior-32', 'Posterior-8', 'Posterior from single-TF models');
+% set(gcf, 'PaperUnits', 'centimeters')
+% set(gcf, 'PaperPosition', [0, 0, 15, 15])
+% % 3 PLOT ---------------------------------------------------------------
+% % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
+% % START  ---------------------------------------------------------------
 
 
 % print Plots
@@ -367,6 +367,6 @@ dd = date;
 if printPlot 
    print(h2, '-depsc2', [ddir 'drosophilaBars_' 'PairOfTFs_only32_', num2str(only32) property '.eps']);
    print(h1, '-depsc2', [ddir 'drosophilaBars_' 'SingleTFs_only32_', num2str(only32) property '.eps']); 
-   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'TripleTFs_only32_', num2str(only32) property '.eps']); 
+   %print(h3, '-depsc2', [ddir 'drosophilaBars_' 'TripleTFs_only32_', num2str(only32) property '.eps']); 
 end
 
