@@ -1,5 +1,5 @@
-% demDrosophilaTest_5TFsAllModels1 runs the multi-TF for screening
-% using all possible combinations of 3 out 5 TFs 
+% demDrosophilaTest_5TFsReallyAllModels1 runs the multi-TF for screening
+% using all possible combinations of 5 TFs 
 function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_5TFsReallyAllModels1(modulus, remainder, identifier, flag)
 
 if nargin < 4,
@@ -12,9 +12,17 @@ comb = [0 0 0 0 0;
 	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
 	0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
 	0 0 1 1 0; 0 0 1 0 1;
-	0 0 0 1 1];
+	0 0 0 1 1;
+	1 1 1 0 0; 1 1 0 1 0; 1 1 0 0 1;
+	1 0 1 1 0; 1 0 1 0 1;
+	1 0 0 1 1;
+	0 1 1 1 0; 0 1 1 0 1;
+	0 1 0 1 1;
+	0 0 1 1 1;
+	1 1 1 1 0; 1 1 1 0 1; 1 1 0 1 1; 1 0 1 1 1; 0 1 1 1 1;
+	1 1 1 1 1];
 
-% if flag =0 , then jsut retutn the precomputations 
+% if flag =0 , then just return the precomputations 
 if flag == 0
 %    
     addpath ~/mlprojects/ndlutil/matlab
@@ -35,6 +43,9 @@ if flag == 0
     else
         testindices = remainder:modulus:length(testset.indices);
         indices = testset.indices(testindices);
+        %indices = [2282 10486];
+        %indices = 2282;
+        %indices = 10486;
         numGenes = length(indices);
         mygenes = drosexp.genes(indices);
         Genes = drosexp.fitmean(indices, :);
@@ -57,7 +68,7 @@ if flag == 0
     options.jointAct = 'sigmoid';
     %options.spikePriorW = 'yes';
     options.noiseModel = noiseM;
-    options.constraints.spaceW = 'positive';
+    %options.constraints.spaceW = 'positive';
     options.tauMax = 0; % no delays
     % define the dense discretized grid in the time axis for the TF latent functions
     [options, TimesF] = gpmtfDiscretize(TimesG, options);
@@ -125,7 +136,6 @@ else % otherwise run the demo
     load datasets/testset;
     load drosTrainTotal;
 
-
     if 0
         load topranked10GenesMef2Twi;
         numGenes = 20;
@@ -135,6 +145,8 @@ else % otherwise run the demo
     else
         testindices = remainder:modulus:length(testset.indices);
         indices = testset.indices(testindices);
+        %indices = [2282 10486];
+        %indices = 2282;
         numGenes = length(indices);
         mygenes = drosexp.genes(indices);
         Genes = drosexp.fitmean(indices, :);
@@ -147,13 +159,12 @@ else % otherwise run the demo
     GenesVar = GenesVar.*repmat(sc.^2, 1, size(GenesVar,2));
     GenesVar = reshape(GenesVar,numGenes, 12, 3);
 
-
     mcmcoptions = mcmcOptions('controlPnts');
-    mcmcoptions.adapt.T = 40;
-    mcmcoptions.adapt.Burnin = 40;
+    mcmcoptions.adapt.T = 80;
+    mcmcoptions.adapt.Burnin = 1;
     mcmcoptions.adapt.disp = 0;
-    mcmcoptions.train.StoreEvery = 10;
-    mcmcoptions.train.T = 30000;
+    mcmcoptions.train.StoreEvery = 12;
+    mcmcoptions.train.T = 36000;
     mcmcoptions.train.Burnin = 1000;
 
     TimesG = 0:11;
@@ -204,9 +215,11 @@ else % otherwise run the demo
                 end
                 %
             end
-
             
             % CREATE the model
+            % Fix seeds
+            randn('seed', 1e6);
+            rand('seed', 1e6);
             modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
             if numTFs > 0
                 [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, mcmcoptions.adapt);

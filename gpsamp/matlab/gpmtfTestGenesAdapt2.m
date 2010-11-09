@@ -134,9 +134,9 @@ end
 
 % useful ranges needed in the adaption of the 
 % variances of theese proposal distribution 
-qKinBelow = 0.000001; qKinAbove = 2;
-qWbelow = 0.000001;   qWabove = 2;
-qNoiseMbelow = 0.000001;   qNoiseMabove = 2;
+qKinBelow = 0.0000001; qKinAbove = 2;
+qWbelow = 0.0000001;   qWabove = 2;
+qNoiseMbelow = 0.0000001;   qNoiseMabove = 2;
 epsilon = 0.1;
 
 cnt = 0;
@@ -145,7 +145,7 @@ cnt = 0;
 minAccR = 18; 
 maxAccR = 38; 
 
-nextbreak = 0; 
+nextbreak = -1; 
 while 1
 %
 %  
@@ -184,14 +184,14 @@ while 1
           disp('END OF ADAPTION: acceptance rates OK');
           break;
       else
-          nextbreak = 1;
+          nextbreak = nextbreak + 1;
       end
    end
     
    cnt = cnt + 1;
    % do not allow more than 150 iterations when you adapt the proposal distribution
-   if cnt == 150   
-       disp('END OF ADAPTION: acceptance rates OK');
+   if cnt == 250   
+       disp('END OF ADAPTION: acceptance rates NOT OK');
        break;
        %  
    end
