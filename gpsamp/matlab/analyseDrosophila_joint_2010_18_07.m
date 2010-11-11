@@ -19,7 +19,8 @@ plotMAP = [1 0 0 0 1];
 plotRest = [1 0 0 0 1 0 1]; 
 %plotRest = [1 1 1 1 1 1 1]; 
 
-incPrior = 1;
+% USER-specified: whether to include empirical prior line
+incPrior = 0;
 figSize = [7 5];
 fontSize = 7;
 
@@ -351,7 +352,7 @@ if incPrior,
 end
 hold off
 %legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused Empirical prior', 'Global Empirical prior', 'Location', 'EastOutside'};
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused Empirical prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
 %legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
