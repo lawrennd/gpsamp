@@ -72,15 +72,23 @@ onlyPumaVarTF = 1;
 if model.Likelihood.noiseModel.active(1) == 0 & model.Likelihood.noiseModel.active(2) > 0
      onlyPumaVarTF = 0;
 end
-   
+ 
+% chekcing the code
+%load drosTrainTotal.mat;
+%model.Likelihood.W = samples.Weights(:,:,1);
+%model.Likelihood.W0 = samples.Weights0(:,1);
+%model.Likelihood.kinetics = samples.kinetics(:,:,1);
+%model.Likelihood.kineticsTF(:,1:2) = samples.kineticsTF(:,:,1);
+%model.F = samples.F{1}; 
+%model.Likelihood.noiseModel.sigma2 = 0*model.Likelihood.noiseModel.sigma2
 
 LikParams = model.Likelihood;
-
 
 % the latent function values are also special parameters that appear in both 
 % the likelihood and the GP prior
 F = model.F; 
 %F = model.groundtr.F;
+
 
 n = SizF;
 
@@ -121,20 +129,42 @@ else
    %
 end
 %
+
+%sum(oldLogLikTF(:))
+%sum(oldLogLik(:))
+%pause
+
 % evaluation of the log prior for the kinetic parameters
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
 TrspaceKin = model.prior.kinetics.priorSpace; 
 Likkin = feval(TrspaceKin, LikParams.kinetics);
 oldLogPriorKin = feval(lnpriorKin, Likkin, model.prior.kinetics);
 if isfield(model.Likelihood,'GenesTF')
-  LikkinTF = feval(TrspaceKin, LikParams.kineticsTF); 
-  oldLogPriorKinTF = feval(lnpriorKin, LikkinTF, model.prior.kinetics);
-end      
+  oldLogPriorKinTF = zeros(NumOfTFs, size(model.Likelihood.kineticsTF,2));
+  for j=1:NumOfTFs 
+     if model.constraints.TFinitCond(j) == 0
+       LikkinTF = feval(TrspaceKin, LikParams.kineticsTF(j,1:2));
+       oldLogPriorKinTF(j,1:2) = feval(lnpriorKin, LikkinTF, model.prior.kinetics);
+     else
+       LikkinTF = feval(TrspaceKin, LikParams.kineticsTF(j,:));
+       oldLogPriorKinTF(j,:) = feval(lnpriorKin, LikkinTF, model.prior.kinetics);
+     end
+  end 
+end
+
+
+% evaluation of the prior for the interaction bias
+lnpriorW0 = ['ln',model.prior.W0.type,'pdf'];
+TrspaceW0 = model.prior.W0.priorSpace; 
+LikW0 = feval(TrspaceW0, LikParams.W0);
+oldLogPriorW0 = feval(lnpriorW0, LikW0, model.prior.W0);
+
 % evaluation of the prior for the interaction weights
 lnpriorW = ['ln',model.prior.W.type,'pdf'];
 TrspaceW = model.prior.W.priorSpace; 
-LikW = feval(TrspaceW, [LikParams.W, LikParams.W0]);
+LikW = feval(TrspaceW, LikParams.W);
 oldLogPriorW = feval(lnpriorW, LikW, model.prior.W);
+
 % log prior of the lengthscale lengthscale 
 lnpriorLengSc = ['ln',model.prior.lengthScale.type,'pdf'];
 for j=1:NumOfTFs
@@ -231,7 +261,7 @@ for it = 1:(BurnInIters + Iters)
          % visualization 
          if (it<=BurnInIters) & trainOps.disp & (mod(it,50) == 0)
          %    
-             visualization(model, F(j,:,r), Fnew, Z(j,:,r), j);
+             visualization(model, F(j,:,r), Fnew, Z(j,:,r), j, r);
          %    
          end
          %
@@ -259,14 +289,24 @@ for it = 1:(BurnInIters + Iters)
     if 1
     if isfield(model.Likelihood,'GenesTF')
     for j=1:NumOfTFs
-        TFKineticsNew = randn(1,SizTFKin).*sqrt(PropDist.TFkin(j,:)) + log(LikParams.kineticsTF(j,:));
-        TFKineticsNew(TFKineticsNew<-10) =-10; 
-        TFKineticsNew(TFKineticsNew>10) = 10;
-        TFKineticsNew = exp(TFKineticsNew); 
-        %
-        if model.constraints.geneTFsensitivity(j) == 0
-        TFKineticsNew(2) = 1; 
+        if model.constraints.TFinitCond(j) == 0 
+           TFKineticsNew = randn(1,SizTFKin-1).*sqrt(PropDist.TFkin(j,1:2)) + log(LikParams.kineticsTF(j,1:2));
+           TFKineticsNew(TFKineticsNew<-10) =-10; 
+           TFKineticsNew(TFKineticsNew>10) = 10;
+           TFKineticsNew = exp(TFKineticsNew); 
+           TFKineticsNew(3) = 0;
+        else
+           TFKineticsNew = randn(1,SizTFKin).*sqrt(PropDist.TFkin(j,:)) + log(LikParams.kineticsTF(j,:));
+           TFKineticsNew(TFKineticsNew<-10) =-10; 
+           TFKineticsNew(TFKineticsNew>10) = 10;
+           TFKineticsNew = exp(TFKineticsNew); 
         end
+        %
+        
+        if model.constraints.geneTFsensitivity(j) == 0
+           TFKineticsNew(2) = 1; 
+        end
+        
         
         LikParams1 = LikParams;
         LikParams1.kineticsTF(j,:)=TFKineticsNew; 
@@ -289,8 +329,15 @@ for it = 1:(BurnInIters + Iters)
            %
         end
         %        
-        Likkin = feval(TrspaceKin, TFKineticsNew);
-        LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
+        if model.constraints.TFinitCond(j) == 0 
+           Likkin = feval(TrspaceKin, TFKineticsNew(1:2));
+           LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
+           LogPriorKinNew(3) = 0;
+        else
+           Likkin = feval(TrspaceKin, TFKineticsNew);
+           LogPriorKinNew = feval(lnpriorKin, Likkin, model.prior.kinetics);
+        end
+        
         
         % Metropolis-Hastings to accept-reject the proposal
         newP = sum(newLogLik(:)) + sum(LogPriorKinNew(:));
@@ -376,13 +423,40 @@ for it = 1:(BurnInIters + Iters)
     for j=1:NumOfGenes
         % 
         %  
+        newLogProp = 0;  % forward Hastings Q(w_t+1 | w_t)
+        oldLogProp = 0;  % backward Hastings Q(w_t| w_t+1)  
         if posw == 1
-            Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + log([LikParams.W(j,:), LikParams.W0(j)]);     
-            Wnew = exp(Wnew);
+            %
+            % sample from a truncated Gaussian using rejection
+            % sampling 
+            while 1
+                trW = randn(1,NumOfTFs).*sqrt(PropDist.W(j,1:NumOfTFs)) + LikParams.W(j,:);  
+                if min(trW) > 0
+                    break; 
+                end
+            end 
+            Wnew(1:NumOfTFs) = trW;
+            % sample also the bias which is allowed to be negative
+            Wnew0 = randn.*sqrt(PropDist.W(j,NumOfTFs+1)) +  LikParams.W0(j);
+            Wnew = [trW, Wnew0]; 
+            
+            trprior.sigma2 = PropDist.W(j,1:NumOfTFs); 
+            trprior.mu = LikParams.W(j,:); 
+        
+            newLogProp = sum(lntruncNormalpdf(trW, trprior)); 
+            
+            trprior.mu = trW; 
+            oldLogProp  = sum(lntruncNormalpdf(LikParams.W(j,:), trprior)); 
+            
+            %
         else
             Wnew = randn(1,NumOfTFs+1).*sqrt(PropDist.W(j,:)) + [LikParams.W(j,:), LikParams.W0(j)];     
         end
         Wnew(1:NumOfTFs) = Wnew(1:NumOfTFs).*model.constraints.W(j,:);
+        
+        if model.constraints.W0(j) == 0
+           Wnew(NumOfTFs + 1) = 0;
+        end
        
         LikParams1 = LikParams;
         LikParams1.W(j,:) = Wnew(1:NumOfTFs);
@@ -403,18 +477,25 @@ for it = 1:(BurnInIters + Iters)
            end 
         end
         
-        LikW = feval(TrspaceW, Wnew+eps);
+        % evaluation of the prior for the interaction bias 
+        LikW0 = feval(TrspaceW0, Wnew(end));
+        LogPriorWnew0 = feval(lnpriorW0, LikW0, model.prior.W0);
+        % >>>  interaction weights
+        LikW = feval(TrspaceW, Wnew(1:NumOfTFs));
         LogPriorWnew = feval(lnpriorW, LikW, model.prior.W);
+        
         % Metropolis-Hastings to accept-reject the proposal
-        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2);
-        newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)); 
+        oldP = sum(oldLogLik(:,j),1) + sum(oldLogPriorW(j,:),2) + oldLogPriorW0(j);
+        newP = sum(newLogLik(:)) + sum(LogPriorWnew(:)) + LogPriorWnew0; 
+       
         %
-        [accept, uprob] = metropolisHastings(newP, oldP, 0, 0);
+        [accept, uprob] = metropolisHastings(newP, oldP, newLogProp, oldLogProp);
         if accept == 1
            LikParams.W(j,:) = Wnew(1:NumOfTFs);
            LikParams.W0(j) = Wnew(end);
            oldLogLik(:,j) = newLogLik(:); 
            oldLogPriorW(j,:) = LogPriorWnew;
+           oldLogPriorW0(j) = LogPriorWnew0;
         end
         %
         if (it > BurnInIters) 
@@ -714,15 +795,17 @@ for it = 1:(BurnInIters + Iters)
         % sample from a truncated Gaussian proposal distribution
         if isfield(model.Likelihood,'GenesTF')
             while 1
-              newKern = randn(1, 2).*sqrt(PropDist.Kern(j, 1:2)) + [model.GP{j}.sigma2f, model.GP{j}.lengthScale];  
+              newKern = randn(1, 2).*sqrt(PropDist.Kern(j, 1:2)) + [model.GP{j}.sigma2f, model.GP{j}.lengthScale]; 
               if min(newKern) > 0
               %    
                  if strcmp(model.prior.lengthScale.type, 'uniform')
                     if newKern(2) >= model.prior.lengthScale.constraint(1)  & newKern(2) <= model.prior.lengthScale.constraint(2) 
                        break;
                     end
-                 else
-                    break;  
+                 elseif strcmp(model.prior.lengthScale.type, 'invGamma')
+                    if newKern(2) >= model.prior.lengthScale.constraint(1) 
+                       break;
+                    end
                  end
               %   
               end
@@ -916,7 +999,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%% visualization %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
-function  visualization(model, F, Fnew, Z, j)
+function  visualization(model, F, Fnew, Z, j, r)
 %
 %
   trform = 'lin';
@@ -933,6 +1016,11 @@ function  visualization(model, F, Fnew, Z, j)
   pause(0.3);   
   set(gca,'FontSize',16);
   plot(model.Likelihood.TimesF, feval(model.Likelihood.singleAct, Fnew), '--b', 'lineWidth', 4); 
+  plot(model.Likelihood.TimesG, model.Likelihood.GenesTF(j,:,r),'rx','markersize', 14','lineWidth', 2);
+  if model.Likelihood.noiseModel.active(1) == 1
+  errorbar(model.Likelihood.TimesG,  model.Likelihood.GenesTF(j,:,r), 2*sqrt(model.Likelihood.noiseModel.pumaSigma2_TF(j,:,r)), 'rx','lineWidth', 1.5);
+  end
+  axis tight;
   title(j)
   hold off;
   

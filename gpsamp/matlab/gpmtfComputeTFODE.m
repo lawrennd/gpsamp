@@ -29,7 +29,8 @@ for m=1:Ntfs
     j = TFindex(m);
     % 
     D = LikParams.kineticsTF(j,1);
-    S = LikParams.kineticsTF(j,2);    
+    S = LikParams.kineticsTF(j,2); 
+    A = LikParams.kineticsTF(j,3);       
     
     % Trapezoid rule of numerical integration
     ffx = exp(D*uu).*fx(m,:);
@@ -47,6 +48,6 @@ for m=1:Ntfs
     %IntVals(1:end-1) = IntVals(1:end-1)-(Delta/3)*ffx(1:end-1);
     
     expD = exp(-uu*D);
-    PredTFs(m,:) = S*(expD.*IntVals);
+    PredTFs(m,:) = A*expD + S*(expD.*IntVals);
     %
 end

@@ -76,6 +76,7 @@ elseif numTFs == 1
         %
         options.constraints.X = ones(NumOfGenes,1);
         options.constraints.replicas = 'free'; % 'free' or 'coupled'
+        options.lengthScalePrior = 'uniform';
         %
 else
         %
@@ -140,5 +141,6 @@ else
         % constrained to be zero. 
         options.constraints.X = ones(NumOfGenes,numTFs);
         options.constraints.replicas = 'free'; % 'free' or 'coupled'
+        options.lengthScalePrior = 'uniform';
         %
 end

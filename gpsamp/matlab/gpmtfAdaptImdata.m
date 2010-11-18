@@ -114,17 +114,27 @@ if model.constraints.Ft0(j)==0
        if strcmp(model.Likelihood.singleAct,'lin') & strcmp(model.Likelihood.jointAct,'sigmoid') == 0
            model.u = zeros(NumOfTFs,NumReplicas);  
        else
-           model.u = -5*ones(NumOfTFs,NumReplicas);
+           if strcmp(model.Likelihood.singleAct,'truncPositiveLinear')       
+              model.u = exp(-10)*ones(NumOfTFs,NumReplicas);  
+           else
+              model.u = -5*ones(NumOfTFs,NumReplicas);
+           end
        end
    end        
 end
 end
 
-
-
 model.auxLikVar = ones(size(F));
+if  strcmp(model.Likelihood.singleAct,'truncPositiveLinear')   | strcmp(model.Likelihood.singleAct,'lin')
+for j=1:NumOfTFs
+for r=1:NumReplicas
+  model.auxLikVar(j,:,r) = var(model.Likelihood.GenesTF(j,:,r))*ones(1,size(F,2));
+end
+end
+end
 
-% initiliaze the imaginary data
+  
+% initialiaze the imaginary data
 model.Z = F + sqrt(model.auxLikVar).*randn(size(F)); 
 
 % if the initial condition of the differential equations is zero, then set accordingly the
@@ -202,7 +212,7 @@ end
 
 % additional proposal distribution for the TF kinetic parameters
 if isfield(model.Likelihood,'GenesTF')  
-  PropDist.TFkin = 0.5*ones(NumOfTFs,2);
+  PropDist.TFkin = 0.5*ones(NumOfTFs, size(model.Likelihood.kineticsTF,2));
   if onlyPumaVar == 0
      PropDist.noiseModelTF = 0.5*ones(1, NumOfTFs); 
   end
@@ -220,6 +230,52 @@ epsilon = 0.1;
 cnt = 0;
 opt = 0.25;
 
+%fbgns = [];
+%for i=1:92,
+%   fbgns(i) = 'i'; 
+%end
+%drosTF.names = {'e' 'f' 'g' 'd' 'a'};
+
+% F = model.F; 
+% % initilize the GP function more properly 
+% if isfield(model.Likelihood,'GenesTF')      
+%    for r=1:model.Likelihood.numReplicas
+%       oldLogLikTF(r,:) = gpmtfLogLikelihoodGeneTF(model.Likelihood, F(:,:,r), r, 1:NumOfTFs);
+%    end
+%    for it=1:200
+%    for j=1:model.Likelihood.numTFs
+%    for r=1:model.Likelihood.numReplicas
+%          Z = F(j,:,r) + sqrt(model.auxLikVar(j,:,r)).*randn(1,n);          
+%          % STEP 2: M-H step
+%          if model.constraints.Ft0(j)==0  
+%            cmu = model.mu(:,j)' + (Z - model.mu(:,j)')*model.invKsigmaK{r}(:,:,j);
+%          else
+%            cmu = Z*model.invKsigmaK{r}(:,:,j); 
+%          end
+%          Fnew = gaussianFastSample(1, cmu, model.auxPostL{r}(:,:,j));
+%          FFnew = F(:,:,r);
+%          FFnew(j,:) = Fnew;   
+%          newLogLikTF = gpmtfLogLikelihoodGeneTF(model.Likelihood, FFnew, r, j);
+%          newL = newLogLikTF;
+%          oldL = oldLogLikTF(r,j);
+%          [accept, uprob] = metropolisHastings(newL, oldL, 0, 0);   
+%          % visualization 
+%          if mod(it,50) == 0    
+%              visualization(model, F(j,:,r), Fnew, Z, j);
+%          end   
+%          if accept == 1
+%             F(j,:,r) = Fnew;    
+%             oldLogLikTF(r,j) = newLogLikTF;
+%          end
+%     end % num Replicas loop
+%     end % num TFs loop
+%    end
+%    % END SAMPLE THE TFs USING IMAGINARY DATA
+%    model.F = F; 
+%    sum(oldLogLikTF(:))
+% end    
+
+
 %
 % do the adaption 
 while 1
@@ -227,6 +283,14 @@ while 1
 %  
    %tic;
    [model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, AdaptOps);
+  
+   model.Likelihood.kineticsTF
+   samples.lengthScale(:,end)
+   %PropDist.TFkin
+   %gpmtfPlot(model, samples, 'dros', drosTF.names, fbgns, 0, 'antti/')
+   %pause
+   %close all;
+   
    %toc;
    accRateF = accRates.F;
    accRateKin = accRates.Kin;
@@ -315,7 +379,7 @@ while 1
       end
       end
    end
-   
+  
    
    %%%%%%%%%%%%%%%%%%%%%%% START of ADAPT KINETICS PROPOSAL %%%%%%%%%%%%%%%%
    % adapt the proposal over the kinetic parameters (desired acceptance rate: 15-35%)
@@ -459,3 +523,32 @@ while 1
 %
 %
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% visualization %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+function  visualization(model, F, Fnew, Z, j)
+%
+%
+  trform = 'lin';
+  subplot(1,2,1);
+  FF = feval(model.Likelihood.singleAct,F);
+  FFnew = feval(model.Likelihood.singleAct,Fnew);
+
+  plot(model.Likelihood.TimesF, feval(trform,FF),'g','lineWidth',4);
+  hold on;
+  if isfield(model,'groundtr') == 1
+    GrFtmp = feval(model.Likelihood.singleAct,model.groundtr.F(j,:));
+    plot(model.Likelihood.TimesF, feval(trform,GrFtmp),'k','lineWidth',4);
+  end
+  pause(0.3);   
+  set(gca,'FontSize',16);
+  plot(model.Likelihood.TimesF, feval(model.Likelihood.singleAct, Fnew), '--b', 'lineWidth', 4); 
+  title(j)
+  hold off;
+  
+  subplot(1,2,2);
+  plot(model.Likelihood.TimesF, Z, '+k', 'lineWidth', 2);
+  pause(0.5);
+  hold off;
+  

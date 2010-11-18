@@ -275,7 +275,9 @@ end
 model.Likelihood.invT = 1; 
 
 
-
+% Initial the transaltion ODES
+model.Likelihood.kineticsTF(:,3) = zeros(1, model.Likelihood.numTFs)+eps; 
+model.constraints.TFinitCond = zeros(1, model.Likelihood.numTFs); 
 
 if ~isempty(GenesTF)
    % 
@@ -287,8 +289,10 @@ if ~isempty(GenesTF)
    else
        warning('PUMA variances for the TF-Genes are not provided')    
    end    
-   if model.Likelihood.noiseModel.active(2) == 1 
-       model.Likelihood.noiseModel.sigma2_TF = 0.05*ones(1, options.numTFs); 
+   if model.Likelihood.noiseModel.active(2) == 1 & model.Likelihood.noiseModel.active(1) == 0 
+       model.Likelihood.noiseModel.sigma2_TF = 0.05*ones(1, options.numTFs);
+   elseif model.Likelihood.noiseModel.active(2) == 1 & model.Likelihood.noiseModel.active(1) == 1 
+       model.Likelihood.noiseModel.sigma2_TF = zeros(1, options.numTFs);
    end
    %
 end
@@ -483,7 +487,7 @@ model.prior.sigma2f.b = 0.01;
 
 
 % prior for the lengthscales
-lengScPrior = 'uniform';
+lengScPrior = options.lengthScalePrior;
 model.prior.lengthScale.assignedTo = 'lenghtScale (i.e. ell^2) of the rbf kernel';
 if strcmp(lengScPrior, 'uniform')
    minlength = min(TimesG(2:end) - TimesG(1:end-1));
@@ -491,15 +495,23 @@ if strcmp(lengScPrior, 'uniform')
    model.prior.lengthScale.type = 'uniform';
    model.prior.lengthScale.constraint = [minlength^2 maxlength^2];
    model.prior.lengthScale.priorSpace = 'lin';
+   for j=1:model.Likelihood.numTFs
+       model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
+   end
 else
    model.prior.lengthScale.assignedTo = 'lenghtScale (i.e. ell^2) of the rbf kernel';
    model.prior.lengthScale.type = 'invGamma';
    model.prior.lengthScale.constraint = 'positive';
    model.prior.lengthScale.priorSpace = 'lin';
-   ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
+   minlength = min(TimesG(2:end) - TimesG(1:end-1));
+   model.prior.lengthScale.constraint = [minlength^2 Inf];
+   for j=1:model.Likelihood.numTFs
+       model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
+   end
+   %ok = 1.5*(max(TimesG(:))-min(TimesG(:)))/8;%(size(TimesG,2)-1);
    % parameters of the prior
-   mu = ok^2;
-   var = 6; 
+   %mu = ok^2;
+   %var = 6; 
    %define gamma prior to have this mean and variance
    model.prior.lengthScale.a = 0.01; % (mu + 2*var)/var;
    model.prior.lengthScale.b = 0.01; % mu*(model.prior.lengthScale.a - 1);
