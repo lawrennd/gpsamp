@@ -29,7 +29,6 @@ dirr = '~/mlprojects/gpsamp/tex/diagrams/';
 dirrhtml = '~/mlprojects/gpsamp/html/';
 
 warning off;
-numModels
 TimesG = model{numModels}.Likelihood.TimesG; 
 TimesF = model{numModels}.Likelihood.TimesF;
 %if isfield(model{numModels}.Likelihood,'GenesTF')

@@ -239,13 +239,8 @@ elseif strcmp(method, 'margLogLik1')
     %max(pisF)
     %log(1/size(TFs,2)) 
     %- sum(pisF.*log(pisF))
-    %pause
-    
-  
+    %pause 
     entropy = (0.5*D)*log(2*pi) + (0.5*D) + 0.5*log(det(Sigma + jit*eye(size(Sigma,1))));
-    entropy
-    Sigma
-    pause
     %[D, entropy, -sum(pisF.*log(pisF))] 
     %pause 
     LogMargL(k,c,f) = mean(testGenes{k,c,f}.LogL) + mean(testGenes{k,c,f}.LogPrior) + ...
