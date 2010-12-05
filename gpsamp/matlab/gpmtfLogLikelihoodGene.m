@@ -68,15 +68,24 @@ else
    end
     
    if isfield(LikParams, 'crValMask')    
-     loglikval = - 0.5*sum(log(2*pi*sigmas(:, LikParams.crValMask)),2)....
-               - 0.5*sum(((LikParams.Genes(Gindex, LikParams.crValMask,R)...
-               - PredGenes(:,LikParams.comInds(LikParams.crValMask))).^2)./sigmas(:,LikParams.crValMask),2);
+      loglikval = - 0.5*log(2*pi*sigmas(:, LikParams.crValMask))....
+               - 0.5*((LikParams.Genes(Gindex, LikParams.crValMask,R)...
+               - PredGenes(:,LikParams.comInds(LikParams.crValMask))).^2)./sigmas(:,LikParams.crValMask);
    else 
-     loglikval = - 0.5*sum(log(2*pi*sigmas),2) ...
-               - 0.5*sum(((LikParams.Genes(Gindex,:,R) - PredGenes(:,LikParams.comInds)).^2)./sigmas,2);
+      loglikval = - 0.5*log(2*pi*sigmas) ...
+               - 0.5*((LikParams.Genes(Gindex,:,R) - PredGenes(:,LikParams.comInds)).^2)./sigmas;
    end            
+      
+   % check if it is robust Gaussian 
+   if strcmp(LikParams.type, 'robustGaussian')
+      a = zeros([size(loglikval) 2]);
+      a(:,:,1) = log(LikParams.robustAlpha) + loglikval;
+      a(:,:,2) = log(1-LikParams.robustAlpha) + log(LikParams.robustUniform);
+      loglikval = logsumexp(a, 3);
+   end   
+   loglikval = sum(loglikval, 2);
    %
    %
 end
 
-loglikval = loglikval(:)';                 
+loglikval = loglikval(:)';

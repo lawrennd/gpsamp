@@ -142,10 +142,10 @@ epsilon = 0.1;
 cnt = 0;
 %
 % do the adaption 
-minAccR = 18; 
-maxAccR = 38; 
+minAccR = 20; 
+maxAccR = 40; 
 
-nextbreak = -1; 
+nextbreak = -3; 
 while 1
 %
 %  
@@ -181,7 +181,7 @@ while 1
    % if you got a good acceptance rate, then stop
    if (min(accRateKin(:))>minAccR) & (min(accRateW(:))>minAccR) & (min(accRateNoiseM(:))>minAccR)  & (max(accRateKin(:))<maxAccR) & (max(accRateW(:))<maxAccR)  & (max(accRateNoiseM(:))<maxAccR) 
       if nextbreak == 1
-          disp('END OF ADAPTION: acceptance rates OK');
+          fprintf(1,'END OF ADAPTION: acceptance rates OK, Adaption iterations= %2d\n', cnt+1);
           break;
       else
           nextbreak = nextbreak + 1;
@@ -189,7 +189,7 @@ while 1
    end
     
    cnt = cnt + 1;
-   % do not allow more than 150 iterations when you adapt the proposal distribution
+   % do not allow more than 250 iterations when you adapt the proposal distribution
    if cnt == 250   
        disp('END OF ADAPTION: acceptance rates NOT OK');
        break;

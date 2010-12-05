@@ -82,7 +82,14 @@ function model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, Times
 
 % create the Likelihood model structrure
 % differential equation model
-model.Likelihood.type = 'diffeq';
+model.type = 'diffeq';
+model.Likelihood.type = options.likelihoodModel; 
+if strcmp(model.Likelihood.type, 'robustGaussian')
+    % set the mixing propotrion and the uniform distribution value
+    model.Likelihood.robustAlpha = 0.9; 
+    model.Likelihood.robustUniform = 1/(max(Genes(:)) - min(Genes(:)));
+end
+
 % number of genes
 [NumOfGenes NumOfTimes NumOfReplicas] = size(Genes);
 

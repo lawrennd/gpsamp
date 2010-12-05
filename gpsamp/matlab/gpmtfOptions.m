@@ -12,6 +12,7 @@ if numTFs == 0
         options.numTFs = 0;
         %
         options.noiseModel = {'white'};
+        options.likelihoodModel = 'Gaussian';
         % 
         % CONSTRAINTS of the initial conditions of each differential equation 
         % for each gene  
@@ -54,6 +55,7 @@ elseif numTFs == 1
         %
         options.noiseModel = {'white'};
         %
+        options.likelihoodModel = 'Gaussian';
         
         % CONSTRAINTS of the initial value of the TF at time t=0. 
         % if 0, then the TF has concentration 0 at time t=0
@@ -110,6 +112,9 @@ else
         
         % sophisticated noise model described by a GP (default is not to use this) 
         options.noiseModel = {'white'}; 
+        %
+        % likelihod model
+        options.likelihoodModel = 'Gaussian';
         %
         
         % CONSTRAINTS of the initial value of the TF at time t=0. 

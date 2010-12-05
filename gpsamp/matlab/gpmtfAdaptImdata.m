@@ -91,8 +91,10 @@ SizKin = size(model.Likelihood.kinetics,2);
 SizKinTF = 2;
 SizF = size(model.Likelihood.TimesF,2);
 
-
-% initialize the transcription factors
+% if inialize model parameters if required
+if AdaptOps.initParams == 1
+%
+% initialize the GP functions
 if strcmp(model.constraints.replicas,'free')
     %
     F = zeros(NumOfTFs, SizF, NumReplicas);
@@ -133,7 +135,6 @@ end
 end
 end
 
-  
 % initialiaze the imaginary data
 model.Z = F + sqrt(model.auxLikVar).*randn(size(F)); 
 
@@ -183,6 +184,8 @@ for j=1:NumOfTFs
   end
 end
 
+end % if for the initialization of model parameters
+
 
 % Initial proposal Gaussian distribution (with diagonal covariance matrices) 
 % for the kinetic parameters interection weights and the lengthscale of the GPs 
@@ -230,52 +233,6 @@ epsilon = 0.1;
 cnt = 0;
 opt = 0.25;
 
-%fbgns = [];
-%for i=1:92,
-%   fbgns(i) = 'i'; 
-%end
-%drosTF.names = {'e' 'f' 'g' 'd' 'a'};
-
-% F = model.F; 
-% % initilize the GP function more properly 
-% if isfield(model.Likelihood,'GenesTF')      
-%    for r=1:model.Likelihood.numReplicas
-%       oldLogLikTF(r,:) = gpmtfLogLikelihoodGeneTF(model.Likelihood, F(:,:,r), r, 1:NumOfTFs);
-%    end
-%    for it=1:200
-%    for j=1:model.Likelihood.numTFs
-%    for r=1:model.Likelihood.numReplicas
-%          Z = F(j,:,r) + sqrt(model.auxLikVar(j,:,r)).*randn(1,n);          
-%          % STEP 2: M-H step
-%          if model.constraints.Ft0(j)==0  
-%            cmu = model.mu(:,j)' + (Z - model.mu(:,j)')*model.invKsigmaK{r}(:,:,j);
-%          else
-%            cmu = Z*model.invKsigmaK{r}(:,:,j); 
-%          end
-%          Fnew = gaussianFastSample(1, cmu, model.auxPostL{r}(:,:,j));
-%          FFnew = F(:,:,r);
-%          FFnew(j,:) = Fnew;   
-%          newLogLikTF = gpmtfLogLikelihoodGeneTF(model.Likelihood, FFnew, r, j);
-%          newL = newLogLikTF;
-%          oldL = oldLogLikTF(r,j);
-%          [accept, uprob] = metropolisHastings(newL, oldL, 0, 0);   
-%          % visualization 
-%          if mod(it,50) == 0    
-%              visualization(model, F(j,:,r), Fnew, Z, j);
-%          end   
-%          if accept == 1
-%             F(j,:,r) = Fnew;    
-%             oldLogLikTF(r,j) = newLogLikTF;
-%          end
-%     end % num Replicas loop
-%     end % num TFs loop
-%    end
-%    % END SAMPLE THE TFs USING IMAGINARY DATA
-%    model.F = F; 
-%    sum(oldLogLikTF(:))
-% end    
-
-
 %
 % do the adaption 
 while 1
@@ -286,10 +243,8 @@ while 1
   
    model.Likelihood.kineticsTF
    samples.lengthScale(:,end)
-   %PropDist.TFkin
-   %gpmtfPlot(model, samples, 'dros', drosTF.names, fbgns, 0, 'antti/')
-   %pause
-   %close all;
+   %samples.LogL(end)
+   %samples.LogLTF(end)
    
    %toc;
    accRateF = accRates.F;
@@ -355,7 +310,7 @@ while 1
     
    cnt = cnt + 1;
    % do not allow more than 100 iterations when you adapt the proposal distribution
-   if cnt == 100
+   if cnt == AdaptOps.maxIters
        warning('END OF ADAPTION: acceptance rates were not all OK');
        break;
    end

@@ -1,10 +1,10 @@
-% DEMO that has created the file drosTrainTotal_16NOV2010.mat
+% DEMO that has created the file drosTrainTotal_4DEC2010.mat (the correct demo)
 dataName = 'drosophila_data';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
-normGenes = 1;
-noiseM = {'pumaWhite' 'white'};
+normGenes = 3;
+noiseM = {'pumaWhite'};
 
 % This should go inside the loadDatasets function later
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
@@ -52,8 +52,52 @@ numGenes = 92;
 numTFs = 5; 
 glbSc = 1;
 
-% separate are normalized seprately 
-if normGenes == 1
+% normalization based on Antti suggestion
+if normGenes == 3
+   for j=1:size(Genes,1)
+       G = Genes(j,:);
+       G = G(:);
+       sc = mean(G.^2, 1); 
+       G =Genes(j,:)/sqrt(sc); 
+       Genes(j,:) = G;
+       GenesVar(j,:) = GenesVar(j,:)/sc;
+   end
+   Genes = reshape(Genes, numGenes, 12, 3);
+   GenesVar = reshape(GenesVar,numGenes, 12, 3);
+   for j=1:size(GenesTF,1)
+       G = GenesTF(j,:);
+       G = G(:);
+       sc = mean(G.^2, 1);
+       G =GenesTF(j,:)/sqrt(sc); 
+       GenesTF(j,:) = G;
+       GenesTFVar(j,:) = GenesTFVar(j,:)/sc;
+   end
+   GenesTF = reshape(GenesTF, numTFs, 12, 3);
+   GenesTFVar = reshape(GenesTFVar,numTFs, 12, 3);
+% normalize so that each gene has unit variance 
+elseif normGenes == 2
+   for j=1:size(Genes,1)
+       G = Genes(j,:);
+       G = G(:); 
+       sc = var(G);
+       G =Genes(j,:)/sqrt(sc); 
+       Genes(j,:) = G;
+       GenesVar(j,:) = GenesVar(j,:)/sc;
+   end
+   Genes = reshape(Genes, numGenes, 12, 3);
+   GenesVar = reshape(GenesVar,numGenes, 12, 3);
+   for j=1:size(GenesTF,1)
+       G = GenesTF(j,:);
+       G = G(:);
+       sc = var(G);
+       G =GenesTF(j,:)/sqrt(sc); 
+       GenesTF(j,:) = G;
+       GenesTFVar(j,:) = GenesTFVar(j,:)/sc;
+   end
+   GenesTF = reshape(GenesTF, numTFs, 12, 3);
+   GenesTFVar = reshape(GenesTFVar,numTFs, 12, 3);
+% separate are normalized separately based on the maximum value
+elseif normGenes == 1
 %    
    sc = glbSc./max(Genes, [], 2);
    Genes = Genes.*repmat(sc, 1, size(Genes,2));
@@ -86,11 +130,20 @@ TimesG = 0:11;
 % model options
 options = gpmtfOptions(Genes,numTFs); 
 genesAndChip.data(genesAndChip.data~=0)=1;
+%
+%selSubset = sum(genesAndChip.data,2)<=3;
+%Genes = Genes(selSubset,:,:); 
+%GenesVar = GenesVar(selSubset,:,:); 
+%genesAndChip.data = genesAndChip.data(selSubset,:);
+%fbgns = fbgns(selSubset);
+%
 options.constraints.X = genesAndChip.data; 
-options.noiseModel = noiseM;
+options.noiseModel = {'pumaWhite' 'white'};
 options.tauMax = 0; % no delays
 options.lengthScalePrior = 'invGamma';
-
+% robust Gaussian means: a two-component mixture with 
+% a Gaussian  and a uniform distribution
+%options.likelihoodModel = 'robustGaussian';
 % define the dense discretized grid in the time axis for the TF latent functions 
 [options, TimesF] = gpmtfDiscretize(TimesG, options); 
 
@@ -100,24 +153,47 @@ rand('seed', 1e6);
 % CREATE the model
 %options.constraints.spaceW = 'positive';
 model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, options);
-model.prior.lengthScale.constraint(1) = 4;
+model.prior.lengthScale.constraint(1) = 1.5;
 for j=1:model.Likelihood.numTFs
-       model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
+    model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
 end
+model.Likelihood.kineticsTF(:,1) = 0.1;
 model.constraints.Ft0(2) = 1;
-model.constraints.TFinitCond(2) = 1;
+%model.constraints.TFinitCond(2) = 1;
 
-mcmcoptions = mcmcOptions('controlPnts'); 
+% ADAPTION WITH TEMPERING 
+mcmcoptions = mcmcOptions('imData'); 
+mcmcoptions.adapt.T = 100;
+mcmcoptions.adapt.Burnin = 50;
+mcmcoptions.adapt.maxIters = 10;
+mcmcoptions.train.StoreEvery = 50;
+mcmcoptions.train.Burnin = 5000;
+mcmcoptions.train.T = 50000;
+% adaption phase (few iterations with puma+white which allows for fast transient
+% phase... acts like tempering)
+[model PropDist samples accRates] = gpmtfAdaptImdata(model, mcmcoptions.adapt);
+% END -- ADAPTION WITH TEMPERING 
+
+
+% CONTINUE WITH A COMPLETE ADAPTION WITHOUT TEMPERING 
+model.Likelihood.noiseModel.type = 'pumaWhite';
+model.Likelihood.noiseModel.active = [1 0 0];
+model.Likelihood.noiseModel.sigma2 = [];
+mcmcoptions = mcmcOptions('imData'); 
+mcmcoptions.adapt.initParams = 0;
 mcmcoptions.adapt.T = 150;
 mcmcoptions.adapt.Burnin = 50;
 mcmcoptions.train.StoreEvery = 50;
 mcmcoptions.train.Burnin = 5000;
 mcmcoptions.train.T = 50000;
-% adaption phase
+% adaption phase (few iterations with puma+white which allows for fast transient
+% phase... acts like tempering)
 [model PropDist samples accRates] = gpmtfAdaptImdata(model, mcmcoptions.adapt);
-% training/sampling phase
-[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
+% END -- CONTINUE WITH A COMPLETE ADAPTION WITHOUT TEMPERING 
 
+
+% TRAINING SAMPLING
+[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
 if storeRes == 1
     d = date; 
     save(['dem' dataName num2str(expNo) d '.mat'], 'model','samples','accRates');

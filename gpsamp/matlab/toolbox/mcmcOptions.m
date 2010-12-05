@@ -34,4 +34,18 @@ switch algorithm
         % needed
         mcmcoptions.adapt = [];
         %
+    otherwise 
+        %
+        mcmcoptions.adapt.T = 200;          
+        mcmcoptions.adapt.Burnin = 100;
+        mcmcoptions.adapt.StoreEvery = 10; 
+        mcmcoptions.adapt.disp = 1;
+        %
 end
+
+% maximum number of adaption iterations
+mcmcoptions.adapt.maxIters = 100;
+
+% if 1 then the adaptive function must re-initialize
+% all the parameters that are sampled
+mcmcoptions.adapt.initParams = 1;

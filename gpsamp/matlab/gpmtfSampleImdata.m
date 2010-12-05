@@ -132,7 +132,6 @@ end
 
 %sum(oldLogLikTF(:))
 %sum(oldLogLik(:))
-%pause
 
 % evaluation of the log prior for the kinetic parameters
 lnpriorKin = ['ln',model.prior.kinetics.type,'pdf'];
