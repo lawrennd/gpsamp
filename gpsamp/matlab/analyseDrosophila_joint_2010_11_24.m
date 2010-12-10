@@ -67,7 +67,7 @@ baselinecomb = [0 0 0 0 0;
     
 if flag == 1     
     % load the results
-    results_b = sortResults(load('results/multitf8a_2010-11-19_summary.mat'));
+    results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
 
     % load the 15 baseline models (zerhoth model is excluded)
     baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
