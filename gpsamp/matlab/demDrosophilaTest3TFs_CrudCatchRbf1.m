@@ -10,7 +10,7 @@ load datasets/trainScaleDros;
 load datasets/testset;
 load drosTrainTotal;
 
-numGenes = 500;
+numGenes = 100;
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
 GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 
@@ -39,7 +39,7 @@ mcmcoptions.train.Burnin = 1000;
 options = gpmtfOptions(ones(1,12,3),numTFs); 
 options.jointAct = 'sigmoid';
 options.spikePriorW = 'yes';
-options.noiseModel = {'pumaWhite' 'rbf'};
+options.noiseModel = {'pumaWhite', 'rbf'};
 options.constraints.spaceW = 'positive';
 %
 % prior probablity for each interaction weight to be around zero 
@@ -69,7 +69,8 @@ samples.kineticsTF = samples.kineticsTF(TFset, :);
 
 
 %
-for n=1:size(Genes,1)
+for n=1:size(Genes,1)n=1:size(Genes,1)
+    n = nset(nn);
     %
     TestGenes = Genes(n,:,:);
     % cheat the puma variances

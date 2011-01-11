@@ -8,7 +8,7 @@ end
 
 I = zeros(size(tforder));
 for k=1:length(tforder),
-  I(k) = find(~cellfun(@isempty, strfind(chipdistances.labels, tforder{k})));
+  I(k) = find(~cellfun('isempty', strfind(chipdistances.labels, tforder{k})));
 end
 
 J = drosFindGeneinds(chipdistances, genes, 1);

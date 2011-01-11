@@ -8,14 +8,14 @@ end
 
 
 % All possible models (allowing only 2 TFs at the same time))
-comb = [0 0 0 0 0];
+%comb = [0 0 0 0 0];
 
 % All possible models (allowing only 2 TFs at the same time))
-%comb = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
-%        1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
-%        0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
-%        0 0 1 1 0; 0 0 1 0 1;
-%        0 0 0 1 1];
+comb = [ 0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
+        1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+        0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+        0 0 1 1 0; 0 0 1 0 1;
+        0 0 0 1 1];
                     
 % if flag =0 , then jsut retutn the precomputations 
 if flag == 0

@@ -22,7 +22,7 @@ if flag == 0
     load datasets/testset;
     noiseM = {'pumaWhite' 'white'};
 
-    if 1
+    if 0
         load topranked10GenesMef2Twi;
         numGenes = 20;
         mygenes = drosexp.genes(G);
@@ -129,7 +129,7 @@ else % otherwise run the demo
     load drosTrainTotal;
 
 
-    if 1
+    if 0
         load topranked10GenesMef2Twi;
         numGenes = 20;
         mygenes = drosexp.genes(G);
@@ -143,7 +143,6 @@ else % otherwise run the demo
         Genes = drosexp.fitmean(indices, :);
         GenesVar = drosexp.fitvar(indices, :);
     end
-
     sc = 10./max(Genes, [], 2);
     Genes = Genes.*repmat(sc, 1, size(Genes,2));
     Genes = reshape(Genes, numGenes, 12, 3);
@@ -173,7 +172,7 @@ else % otherwise run the demo
     end
 
     %
-    for n=1:size(Genes,1)
+    for n=2:size(Genes,1)
         %
         if size(testGene,1) > n,
             continue;

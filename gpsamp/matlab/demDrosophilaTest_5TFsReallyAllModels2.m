@@ -13,7 +13,7 @@ end
 glbSc = 1;
 % run the chekcingn genes or all
 % (zero for all)
-checkG = 0;
+checkG = 1;
 
 % All possible models
 comb = [0 0 0 0 0;

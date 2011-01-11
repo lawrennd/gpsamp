@@ -20,7 +20,7 @@ plotRest = [1 0 0 0 1 0 1];
 %plotRest = [1 1 1 1 1 1 1]; 
 
 % USER-specified: whether to include empirical prior line
-incPrior = 0;
+incPrior = 1;
 figSize = [7 5];
 fontSize = 7;
 
@@ -67,8 +67,9 @@ baselinecomb = [0 0 0 0 0;
     
 if flag == 1     
     % load the results
-    results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
-
+    %results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
+    results_b = sortResults(load('results/multitf8c_2010-12-14_summary.mat'));
+    
     % load the 15 baseline models (zerhoth model is excluded)
     baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
     % load the zeroth model and append

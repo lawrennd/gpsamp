@@ -17,7 +17,7 @@ if flag == 0
     load drosTrainTotal;
     noiseM = {'white'};
 
-    if 0
+    if 1
         load topranked10GenesMef2Twi;
         numGenes = 20;
         mygenes = drosexp.genes(G);

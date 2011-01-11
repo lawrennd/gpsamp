@@ -1,15 +1,27 @@
 %results = load('results/multitf3_2010-03-05_summary.mat');
+
+% load resutls for 4 models using at most pairs of twist and mef2 
+% (the decay-zeroth (first) model had an error... )
 results_b = sortResults(load('results/multitf5a_2010-04-22_summary.mat'));
+% load the correct result for the zeroth model 
 results_b2 = sortResults(load('results/multitf5a_null_2010-06-07_summary.mat'));
+% load the 12 models that correspond to a most of 2 TFs
 results_b3 = sortResults(load('results/multitf6a_2010-06-24_summary.mat'));
+% correct the zeroth model 
 results_b.marlls(:, 1) = results_b2.marlls;
+% append the 4-models with the remaining 16 models 
 results_b.marlls = [results_b.marlls, results_b3.marlls];
 
+% Baseline multiple TF models of 15 models 
+% (it does not include the zeroth model)
 baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
+% load the zeroth model
 baseline_a2 = sortResults(load('results/multitf5a_baseline2_2010-07-02_summary.mat'));
-
+% append to get the full 16 set of models 
 baseline_a.marlls = [baseline_a2.marlls, baseline_a.marlls];
 
+% this stores the order of models for the Bayesian multiple TF resutls 
+% (as they are stored in results_b variable)
 comb = [0 0 0 0 0; 0 0 1 0 0; 0 0 0 0 1; 0 0 1 0 1;
 	1 0 0 0 0; 0 1 0 0 0; 0 0 0 1 0;
 	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
@@ -17,6 +29,8 @@ comb = [0 0 0 0 0; 0 0 1 0 0; 0 0 0 0 1; 0 0 1 0 1;
 	0 0 1 1 0;
 	0 0 0 1 1];
 
+% this stores the order of models for the Bayesian multiple TF resutls 
+% (as they are stored in baseline_a variable)
 baselinecomb = [0 0 0 0 0;
 		1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
 		1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
@@ -24,10 +38,11 @@ baselinecomb = [0 0 0 0 0;
 		0 0 1 1 0; 0 0 1 0 1;
 		0 0 0 1 1];
 
+% indices of models with exactly 2 TFs     
 combinds = find(sum(comb, 2) == 2);
-
 M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
 
+% indices of models with exactly 1 TFs  
 I = find(sum(comb, 2) == 1);
 
 % Order the baseline results the same as the others
@@ -75,9 +90,9 @@ for k=1:3,
     count = 0;
     for m=1:T(l),
       if I{k}(J{k}(m)) ~= 1,
-	acc = acc + all(M(J{k}(m), mycomb(I{k}(J{k}(m)), :)==1), 2);
-	acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
-	count = count + 1;
+	      acc = acc + all( M(J{k}(m), mycomb( I{k}(J{k}(m)), :)==1), 2);
+	      acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
+	      count = count + 1;
       end
     end
     r(k, l) = acc / count;
@@ -87,7 +102,9 @@ for k=1:3,
 end
 
 figure(1);
+% plot bars
 h = bar(100*r');
+
 set(gca, 'XTickLabel', T);
 hold on
 v = axis;
@@ -100,7 +117,6 @@ legend('No prior', 'Empirical prior', 'Baseline', 'Uniform random', 'Random from
 axis(v)
 xlabel('# of top genes')
 ylabel('Enrichment (%)')
-
 drosStarBars(h, pvals');
 
 
@@ -131,7 +147,6 @@ for k=1:3,
     pvals2(k, l) = 1 - binocdf(acc - 1, count, prioraccs(prioraccinds(k)));
   end
 end
-
 
 
 T = [100, 200, 400, 800, 1600, 3200];
@@ -177,7 +192,10 @@ for k=1:length(sposteriors),
 end
 
 figure(2);
+
+% plots bars 
 h2 = bar(100*r3);
+
 set(gca, 'XTickLabel', T);
 hold on
 v = axis;

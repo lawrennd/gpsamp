@@ -17,10 +17,17 @@ numGenes = length(testset.indices);
 Genes = drosexp.fitmean(testset.indices(1:numGenes), :);
 GenesVar = drosexp.fitvar(testset.indices(1:numGenes), :);
 
+%sc = 10./max(Genes, [], 2);
+%Genes = Genes.*repmat(sc, 1, size(Genes,2));
+%Genes = reshape(Genes, numGenes, 12, 3);
+%GenesVar = GenesVar.*repmat(sc.^2, 1, size(GenesVar,2));
+%GenesVar = reshape(GenesVar,numGenes, 12, 3);
+
 Genes = Genes/sc;
 Genes = reshape(Genes,numGenes,12,3);
 GenesVar = GenesVar/(sc.^2);
 GenesVar = reshape(GenesVar,numGenes,12,3);
+
 %
 TimesG = 0:11;
 numTFs = 3;
@@ -38,6 +45,7 @@ options = gpmtfOptions(ones(1,12,3),numTFs);
 options.jointAct = 'sigmoid';
 options.spikePriorW = 'yes';
 options.constraints.spaceW = 'positive';
+options.noiseModel = {'pumaWhite'};
 % prior probablity for each interaction weight to be around zero 
 % for each TF
 TFpis = [0.1163 0.1729  0.2387];
@@ -73,14 +81,14 @@ for n=1:size(Genes,1)
     TestGenes = Genes(n,:,:);
     % !!! NO PUMA variancwes will be used. The model will samples the
     % variances !!!!!
-    TestGenesVar = [];
+    TestGenesVar = GenesVar(n,:,:); % [];
     % CREATE the model
     modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
    
     tic;
-    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, [], mcmcoptions.adapt); 
+    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesAdapt2(modelTest, TFs, mcmcoptions.adapt); 
     % training/sampling phase
-    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesSample2(modelTest, TFs, [], PropDist, mcmcoptions.train);
+    [modelTest PropDist samplesTest accRates] = gpmtfTestGenesSample2(modelTest, TFs, PropDist, mcmcoptions.train);
     toc;
     %
     testGene{n} = samplesTest;

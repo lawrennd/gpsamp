@@ -1,4 +1,4 @@
-function gpmtfPlot(model, samples, demdata, TFname, Genename, printResults, dirr)
+function gpmtfPlot(model, samples, demdata, TFname, Genename, printResults, dirr, ops)
 %function gpmtfPlot(model, samples, demdata, TFname, printResults, ddir)
 %
 % Description: Creates plots to display the outcome of MCMC in the traning phase 
@@ -20,30 +20,58 @@ function gpmtfPlot(model, samples, demdata, TFname, Genename, printResults, dirr
 %
 
 % USER DEFINED PARAMETERS
-ok = '15-Nov-2010';% date; % '24-Oct-2010';  %date;
+
+% default options if not provided
+if nargin == 7
+   ops = ones(1,8);
+   ops(2) = 0;
+   ops(7) = 0;
+end
+
+ok = '';%'15-Nov-2010';% date; % '24-Oct-2010';  %date;
 fileName = [demdata 'MCMC' ok model.Likelihood.singleAct model.Likelihood.jointAct]; 
 FONTSIZE=10;
 FS2 = 16;
-timeshift = 1;
-XLabel = 'time (h)';
+timeshift = ops(1);
+if ops(8) == 0
+   XLabel = 'time';
+elseif ops(8) == 1
+   XLabel = 'time (h)';
+else
+   XLabel = 'time (s)';
+end
 % how gene per plot
 ManyGenes = 5;
 % separate plots or grouped 
-SepPlot = 0;
+SepPlot = ops(2);
 % allow different colours fot the TF profiles 
-%colSet = {'b','r','g'}; 
+if ops(3)==1
 colSet = {'b','b','b', 'b','b'}; 
+else
+colSet = {'b','r','g'};
+end
 %scTFAxis = [0 1.2];
 scTFAxis = [];
 % write replicas or conditions 
-rep = 'rep';
-%rep = 'cond'; 
+if ops(4)==1 
+  rep = 'rep';
+else
+  rep = 'cond'; 
+end
 % write the wrod rep or cond or not
-Wrtrep = 1;
+if ops(5)==1
+   Wrtrep = 0;
+else
+   Wrtrep = 1;
+end
 % which replicas are plotted in for the mRNA data  (default is all)
-sRep = ones(1,model.Likelihood.numReplicas); 
-%sRep = [1 1 0];
-
+if ops(6) == 1
+  sRep = ones(1,3);
+elseif ops(6) == 2
+  sRep = [1 1 0];
+else
+  sRep = [1 0 0];
+end
 %demdata = 'demEcoli';
 %order = [1 5 3 4 2];
 %order = 1:NumOfGenes;
@@ -125,13 +153,13 @@ for r=1:NumOfReplicas
          figure;
      end
      TimesFP = TimesF + timeshift;
-     plot(TimesFP,mu, colSet{j}, 'lineWidth',3);
+     plot(TimesFP,mu, colSet{j}, 'lineWidth',2);
      hold on;
      fillColor = [0.7 0.7 0.7];
      %fillColor = [0.8 0.8 0.8];  % for the paper
      fill([TimesFP; TimesFP(end:-1:1)], [mu; mu(end:-1:1)]...
             + 2*[stds1; -stds2(end:-1:1)], fillColor,'EdgeColor',fillColor);
-     plot(TimesFP,mu,colSet{j},'lineWidth',3);
+     plot(TimesFP,mu,colSet{j},'lineWidth',2);
      
      %if isempty(scTFAxis) 
      %   axis([TimesF(1) TimesF(end)+0.1 0 max(mu+2*stds1)+0.1]);
@@ -140,18 +168,20 @@ for r=1:NumOfReplicas
      %end
      
      % plot the ground truth if exist
-     if isfield(model,'groundtr') == 1
+     if isfield(model,'groundtr.TF') == 1
         FFgt = model.groundtr.TF(j,:,r);
         %FFgt = feval(model.Likelihood.TFsingleAct,model.GroundTruth.F(j,:,r));
-        plot(TimesFP,FFgt,'r','lineWidth',3);
+        plot(TimesFP,FFgt,'r','lineWidth',2);
      end
      
      axis tight;
      set(gca, 'FontSize', FONTSIZE);
      set(gca, 'YTickLabel', []);
      xlabel(XLabel);
-     set(gcf, 'PaperUnits', 'centimeters');
-     set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
+     if SepPlot==1
+        set(gcf, 'PaperUnits', 'centimeters');
+        set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
+     end
      if printResults & SepPlot==1
          print('-depsc', [dirr fileName 'TFproteins_Rep' num2str(r) 'TF' num2str(j)]); 
          print('-dpng', [dirrhtml fileName 'TFproteins_Rep' num2str(r) 'TF' num2str(j)]);
@@ -182,6 +212,11 @@ end
 % END OF PLOTING PREDTICTED TFs
 
 
+% return if only TFs are needed; 
+if ops(7) == 1
+    return;
+end
+
 % PLOT PREDICTED TF mRNA EXPRESSION PROFILES  
 %
 if isfield(model.Likelihood,'GenesTF')
@@ -210,13 +245,13 @@ for r=1:NumOfReplicas
     
      TimesFP = TimesF + timeshift; 
      TimesGP = TimesG + timeshift; 
-     plot(TimesFP,mu,'b','lineWidth',r);
+     plot(TimesFP,mu,'b','lineWidth',2);
      hold on;
      fillColor = [0.7 0.7 0.7];
      %fillColor = [0.8 0.8 0.8];  % for the paper
      fill([TimesFP; TimesFP(end:-1:1)], [mu; mu(end:-1:1)]...
             + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
-     plot(TimesFP,mu,'b','lineWidth',3);
+     plot(TimesFP,mu,'b','lineWidth',2);
    
      plot(TimesGP,GenesTF(j,:,r),'rx','markersize', 14','lineWidth', 2);
      if model.Likelihood.noiseModel.active(1) == 1
@@ -227,10 +262,10 @@ for r=1:NumOfReplicas
      set(gca, 'FontSize', FONTSIZE);
      %set(gca, 'YTickLabel', []);
      xlabel(XLabel);
-     set(gcf, 'PaperUnits', 'centimeters');
-     set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
-     %axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1  0.95*min([GenesTF(j,:,r), mu' - stds'])  1.05*max([GenesTF(j,:,r), mu' - stds'])]);
-     
+     if SepPlot==1
+        set(gcf, 'PaperUnits', 'centimeters');
+        set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
+     end     
      if printResults & SepPlot==1
          print('-depsc', [dirr fileName 'TFmRNAs_Rep' num2str(r) 'Gene' num2str(j)]);
      end
@@ -302,13 +337,13 @@ for j=1:NumOfGenes
      end
      
      %subplot(5, NumOfReplicas, r + mod(j-1, 5)*NumOfReplicas);
-     plot(TFP,mu,'b','lineWidth',r);
+     plot(TFP,mu,'b','lineWidth',2);
      hold on;
      fillColor = [0.7 0.7 0.7];
      %fillColor = [0.8 0.8 0.8];  % for the paper
      fill([TFP; TFP(end:-1:1)], [mu; mu(end:-1:1)]...
             + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
-     plot(TFP,mu,'b','lineWidth',3);
+     plot(TFP,mu,'b','lineWidth',2);
    
      plot(TimesGP,Genes(j,:,r),'rx','markersize', 14','lineWidth', 2);
      if model.Likelihood.noiseModel.active(1) == 1
@@ -319,8 +354,10 @@ for j=1:NumOfGenes
      set(gca, 'FontSize', FONTSIZE);
      %set(gca, 'YTickLabel', []);
      xlabel(XLabel);
-     set(gcf, 'PaperUnits', 'centimeters');
-     set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
+     if SepPlot==1
+        set(gcf, 'PaperUnits', 'centimeters');
+        set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
+     end
      %axis([min(TimesGP(:))-0.1 max(TimesG(:))+0.1  0.95*min([Genes(j,:,r), mu' - stds'])  1.05*max([Genes(j,:,r), mu' - stds'])  ]);
      
      

@@ -12,6 +12,7 @@ T2 = [100, 200, 400, 800, 1600, 3200];
 ddir = 'figures/';
 printPlot = 1; % 0 means not printing
 
+<<<<<<< .mine
 % plot MAP models
 plotMAP = [1 0 0 0 1]; 
 %plotMAP = [1 1 1 1 1]; 
@@ -19,12 +20,25 @@ plotMAP = [1 0 0 0 1];
 plotRest = [1 0 0 0 1 0 1]; 
 %plotRest = [1 1 1 1 1 1 1]; 
 
-% USER-specified: whether to include empirical prior line
-incPrior = 0;
+incPrior = 1;
+figSize = [7 5];
+fontSize = 8;
+
+
+=======
+% plot MAP models
+plotMAP = [1 0 0 0 1]; 
+%plotMAP = [1 1 1 1 1]; 
+% for the rest plots 
+plotRest = [1 0 0 0 1 0 1]; 
+%plotRest = [1 1 1 1 1 1 1]; 
+
+incPrior = 1;
 figSize = [7 5];
 fontSize = 7;
 
 
+>>>>>>> .r955
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
 combConstr = [0 0 0 0 0; 0 0 1 0 0; 0 0 0 0 1; 0 0 1 0 1;
@@ -287,8 +301,13 @@ if incPrior,
   plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
 end
 hold off
+<<<<<<< .mine
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'ChiP prior', 'Location', 'EastOutside'};
+legend(legends([plotMAP, 1, incPrior]==1));
+=======
 legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
 legend(legends([plotMAP, 1, incPrior]==1));
+>>>>>>> .r955
 axis(v)
 xlabel('# of global top genes')
 ylabel('Enrichment (%)')
@@ -300,6 +319,75 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % GLOBAL RANKING BASED ON THE MAP MODEL 
 % END    ---------------------------------------------------------------
 
+<<<<<<< .mine
+% 1B PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
+% START  ---------------------------------------------------------------
+
+% Find the genes with positive in situ annotations
+[C, IA, IB] = intersect(drosinsitu.genes(any(drosinsitu.data, 2)), results_b.genes);
+
+scores = {}; I={}; sscores={}; J={};
+r1 = zeros(length(posteriors), length(T1));
+pvals1 = r1;
+for k=1:length(posteriors)   
+  if k <=2, % 32 models 
+    mycomb = combConstr;
+  elseif  (k>2 & k<=4), % 16 models 
+    mycomb = comb16;
+  else
+    mycomb = baselinecomb;
+  end
+  [scores{k}, I{k}] = max(posteriors{k}, [], 2);
+  [sscores{k}, J{k}] = sort(scores{k}, 'descend');
+  for l=1:length(T1),
+    acc = 0; acc2 = 0;
+    count = 0;
+    for m=1:T1(l),
+      if I{k}(J{k}(m)) ~= 1 && any(IB == J{k}(m)),
+	      acc = acc + all( M(J{k}(m), mycomb( I{k}(J{k}(m)), :)==1), 2); 
+          %acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
+	      count = count + 1;
+      end
+    end
+    r1(k, l) = acc / count;
+    %r2(k, l) = acc2 / count;
+    pvals1(k, l) = 1 - binocdf(acc - 1, count, focused_prioraccs31(prioraccinds(k)));
+  end
+end
+h1b = figure;
+set(gca, 'FontSize', fontSize);
+% plot bars
+h = bar(100*r1(plotMAP==1,:)');
+set(gca, 'XTickLabel', T1);
+hold on
+v = axis;
+v(3:4) = [0 100];
+axis(v);
+plot(v(1:2), 100*focused_prioraccs31(1)*[1 1], 'b');
+%plot(v(1:2), 100*prioraccs31(1)*[1 1], 'b--');
+if incPrior,
+  plot(v(1:2), 100*focused_prioraccs31(2)*[1 1], 'g');
+  %plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g--');
+end
+hold off
+%legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused ChIP prior', 'Global ChIP prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused ChIP prior', 'Location', 'EastOutside'};
+%legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
+legend(legends([plotMAP, 1, incPrior]==1));
+axis(v)
+xlabel('# of global top genes')
+ylabel('Enrichment (%)')
+drosStarBars(h, pvals1(plotMAP==1,:)');
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
+% 1B PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
+% END    ---------------------------------------------------------------
+
+
+=======
 % 1B PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
 % START  ---------------------------------------------------------------
@@ -352,7 +440,7 @@ if incPrior,
 end
 hold off
 %legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused Empirical prior', 'Global Empirical prior', 'Location', 'EastOutside'};
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Focused Empirical prior', 'Location', 'EastOutside'};
 %legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
@@ -367,6 +455,7 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % END    ---------------------------------------------------------------
 
 
+>>>>>>> .r955
 % Computation of marginal posterior probabilities over single links 
 for k=1:numTFs
 %
@@ -500,8 +589,13 @@ end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
        'Posterior-2', 'Posterior-2 + prior',...
+<<<<<<< .mine
+       'Baseline', 'Uniform prior', 'ChiP prior'};
+legend(legends([plotRest, 1, incPrior]==1));  
+=======
        'Baseline', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
+>>>>>>> .r955
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
 %       'Posterior-2', 'Posterior-2 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
@@ -662,9 +756,15 @@ if incPrior,
   plot(v(1:2), 100*prioraccsPairTF(2)*[1 1], 'g');
 end
 hold off
+<<<<<<< .mine
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior'};
+legend(legends([plotRest, 1, incPrior]==1));  
+=======
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
        'Baseline', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
+>>>>>>> .r955
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
 %       'Location', 'EastOutside');
@@ -743,6 +843,93 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % prioraccsSingleAbsentTF(2) = sum(priorSingleAbsentTF.*priorSingleAbsentTF) / sum(priorSingleAbsentTF);
 
 
+<<<<<<< .mine
+r4 = zeros(length(T2), length(linkNegativeMargPosteriors));
+pvals4 = r4;
+for k=1:length(linkNegativeMargPosteriors), 
+    BestLink = [];
+    BestPost = []; 
+    % for loop over the number of genes 
+    % that computes the best single-TF-absent-link for each gene
+    for n=1:size(linkNegativeMargPosteriors{k},1)
+       [foo, BL] = sort(linkNegativeMargPosteriors{k}(n,:), 'descend');
+       BestLink(n) = BL(1); 
+       BestPost(n) = foo(1);
+    end
+    [foo, I] = sort(BestPost, 'descend');
+    for l=1:length(T2),
+       r4(l,k) = 0;  
+       nanCnt =0;
+       for j=1:T2(l)
+          gene = I(j);   
+          TF = BestLink(I(j));
+          MM = M(gene, TF);
+          if ~isnan(MM)
+             r4(l,k) = r4(l,k) + 1-MM;
+          else
+             nanCnt = nanCnt + 1;
+          end
+       end
+       pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
+			          T2(l)-nanCnt, ...
+			          priorSingleAbsentTF (baselines2(k)));
+       r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
+    end
+    %[foo, I] = sort(linkNegativeMargPosteriors{k}(:), 'descend');
+    %for l=1:length(T2),
+    %   r4(l,k) = 0;  
+    %   nanCnt =0;
+    %   for j=1:T2(l)
+    %      gene = mod(I(j), numGenes);
+    %      gene(gene==0)=numGenes;          
+    %      TF = floor(I(j)/numGenes) + 1;
+    %      TF(TF==6)=5; 
+    %      MM = M(gene, TF);
+    %      if ~isnan(MM)
+    %         r4(l,k) = r4(l,k) + 1-MM;
+    %      else
+    %         nanCnt = nanCnt + 1;
+    %      end
+    %   end
+    %   %pvals3(l, k) = 1 - binocdf(nansum(M(I(1:T2(l)))) - 1, ...
+	%   %		          sum(~isnan(M(I(1:T2(l))))), ...
+	%   %		          prioraccs2(baselines2(k)));
+    %   pvals4(l, k) = 1 - binocdf(r4(l,k) - 1, ...
+	%		          T2(l)-nanCnt, ...
+	%		          priorSingleAbsentTF (baselines2(k)));
+    %   r4(l,k) = r4(l,k)/(T2(l)-nanCnt); 
+    %end
+%
+end
+% plots bars 
+h4 = figure;
+set(gca, 'FontSize', fontSize);
+h = bar(100*r4(:, plotRest==1));
+set(gca, 'XTickLabel', T2);
+hold on
+v = axis;
+v(3:4) = [0 100];
+axis(v)
+plot(v(1:2), 100*prioraccsSingleAbsentTF(1)*[1 1], 'b');
+if incPrior,
+  plot(v(1:2), 100*prioraccsSingleAbsentTF(2)*[1 1], 'g');
+end
+hold off
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-2', 'Posterior-2 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior', ...
+       'Location', 'EastOutside'};
+legend(legends([plotRest, 1, incPrior]==1));  
+axis(v)
+xlabel('# of top predictions')
+ylabel('Enrichment (%)')
+drosStarBars(h, pvals4(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
+% 4 PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
+% END    ---------------------------------------------------------------
+=======
 % r4 = zeros(length(T2), length(linkNegativeMargPosteriors));
 % pvals4 = r4;
 % for k=1:length(linkNegativeMargPosteriors), 
@@ -828,6 +1015,7 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % % 4 PLOT ---------------------------------------------------------------
 % % GLOBAL RANKING BASED ON THE ABSENCE OF A SINGLE LINK
 % % END    ---------------------------------------------------------------
+>>>>>>> .r955
 
 
 % % Computation of marginal posterior probability over pairs of links 
@@ -907,6 +1095,91 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % %prioraccsPairAbsentTF(1) = mean(priorPairAbsentTF);
 % %prioraccsPairAbsentTF(2) = sum(priorPairAbsentTF .* priorPairAbsentTF) / sum(priorPairAbsentTF).^2;
 
+<<<<<<< .mine
+r5 = zeros(length(T2), length(linkNegativePairPosteriors));
+pvals5 = r5;
+for k=1:length(linkNegativePairPosteriors),
+    BestLink = [];
+    BestPost = []; 
+    % for loop over the number of genes 
+    % that computes the besrt pair-TF-absent-link for each gene
+    for n=1:size(linkNegativePairPosteriors{k},1)
+       [foo, BL] = sort(linkNegativePairPosteriors{k}(n,:), 'descend');
+       BestLink(n) = BL(1); 
+       BestPost(n) = foo(1);
+    end
+    [foo, I] = sort(BestPost, 'descend');
+    for l=1:length(T2),
+       r5(l,k) = 0;  
+       nanCnt =0;
+       for j=1:T2(l)
+          gene = I(j);   
+          TFpair = BestLink(I(j)); 
+          MM =  prod(1 - M(gene, pairs(TFpair,:)));
+          if ~isnan(MM)
+             r5(l,k) = r5(l,k) + MM;
+          else
+             nanCnt = nanCnt + 1;
+          end          
+       end
+       pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
+			          T2(l)-nanCnt, ...
+			          prioraccsPairAbsentTF(baselines2(1)));                  
+       r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
+    end
+    %[foo, I] = sort(linkNegativePairPosteriors{k}(:), 'descend');
+    %for l=1:length(T2),
+    %   r5(l,k) = 0;  
+    %   nanCnt = 0;
+    %   for j=1:T2(l)
+    %      gene = mod(I(j), numGenes);
+    %      gene(gene==0)=numGenes;          
+    %      TFpair = floor(I(j)/numGenes) + 1;
+    %      TFpair(TFpair==11)=10;
+    % 
+    %      MM =  prod(1 - M(gene, pairs(TFpair,:)));
+    %      if ~isnan(MM)
+    %         r5(l,k) = r5(l,k) + MM;
+    %      else
+    %         nanCnt = nanCnt + 1;
+    %      end
+    %   end
+    %   pvals5(l, k) = 1 - binocdf(r5(l,k) - 1, ...
+	%		          T2(l)-nanCnt, ...
+    %		        prioraccsPairAbsentTF(baselines2(1)));                  
+    %  r5(l,k) = r5(l,k)/(T2(l)-nanCnt);
+    %end
+%
+end
+% plots bars 
+h5 = figure;
+set(gca, 'FontSize', fontSize);
+h = bar(100*r5(:, plotRest==1));
+set(gca, 'XTickLabel', T2);
+hold on
+v = axis;
+v(3:4) = [0 100];
+axis(v)
+plot(v(1:2), 100*prioraccsPairAbsentTF(1)*[1 1], 'b');
+if incPrior,
+  plot(v(1:2), 100*prioraccsPairAbsentTF(2)*[1 1], 'g');
+end
+hold off
+legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior','Posterior-4', 'Posterior-4 + prior',...
+       'Baseline', 'Uniform prior', 'ChiP prior', ...
+       'Location', 'EastOutside'};
+legend(legends([plotRest, 1, incPrior]==1));  
+axis(v)
+xlabel('# of top predictions')
+ylabel('Enrichment (%)')
+drosStarBars(h, pvals5(:, plotRest==1));
+set(gca, 'FontSize', fontSize);
+set(gcf, 'PaperUnits', 'centimeters')
+set(gcf, 'PaperPosition', [0, 0, figSize])
+% 5 PLOT ---------------------------------------------------------------
+% GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
+% END    ---------------------------------------------------------------
+=======
 % r5 = zeros(length(T2), length(linkNegativePairPosteriors));
 % pvals5 = r5;
 % for k=1:length(linkNegativePairPosteriors),
@@ -990,6 +1263,7 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % % 5 PLOT ---------------------------------------------------------------
 % % GLOBAL RANKING BASED ON THE ABSENCE OF A PAIR OF LINKS
 % % END    ---------------------------------------------------------------
+>>>>>>> .r955
 
 
 
@@ -999,6 +1273,14 @@ if flag ~= 1
     property = 'Unconstrained'; 
 end
 if printPlot 
+<<<<<<< .mine
+   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(sum(plotMAP)) '_', property '.eps']);
+   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(sum(plotMAP)) '_', property '.eps']);
+   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
+   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks' num2str(sum(plotRest)) '_', property '.eps']);
+end=======
    print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(sum(plotMAP)) '_', property '.eps']);
    print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(sum(plotMAP)) '_', property '.eps']);
    print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
@@ -1006,3 +1288,4 @@ if printPlot
    %print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);
    %print(h5, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativePairLinks' num2str(sum(plotRest)) '_', property '.eps']);
 end
+>>>>>>> .r955

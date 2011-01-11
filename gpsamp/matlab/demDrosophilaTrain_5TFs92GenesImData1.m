@@ -1,10 +1,10 @@
-
+% DEMO that has created the file drosTrainTotal_15NOV2010.mat
 dataName = 'drosophila_data';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
-normGenes = 0;
-noiseM = {'pumaWhite'};
+normGenes = 1;
+noiseM = {'pumaWhite' 'white'};
 
 % This should go inside the loadDatasets function later
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
@@ -50,18 +50,17 @@ end
 
 numGenes = 92;
 numTFs = 5; 
+glbSc = 1;
 
 % separate are normalized seprately 
 if normGenes == 1
 %    
-   % scale the genes expression to roughly be  
-   % in range [0 10]
-   sc = 10./max(Genes, [], 2);
+   sc = glbSc./max(Genes, [], 2);
    Genes = Genes.*repmat(sc, 1, size(Genes,2));
    Genes = reshape(Genes, numGenes, 12, 3);
    GenesVar = GenesVar.*repmat(sc.^2, 1, size(GenesVar,2));
    GenesVar = reshape(GenesVar,numGenes, 12, 3);
-   sc = 10./max(GenesTF, [], 2);
+   sc = glbSc./max(GenesTF, [], 2);
    GenesTF = GenesTF.*repmat(sc, 1, size(GenesTF,2));
    GenesTF = reshape(GenesTF, numTFs, 12, 3);
    GenesTFVar = GenesTFVar.*repmat(sc.^2, 1, size(GenesTFVar,2));   
@@ -89,8 +88,8 @@ options = gpmtfOptions(Genes,numTFs);
 genesAndChip.data(genesAndChip.data~=0)=1;
 options.constraints.X = genesAndChip.data; 
 options.noiseModel = noiseM;
-%options.constraints.Ft0 = ones(1,numTFs);
 options.tauMax = 0; % no delays
+options.lengthScalePrior = 'invGamma';
 
 % define the dense discretized grid in the time axis for the TF latent functions 
 [options, TimesF] = gpmtfDiscretize(TimesG, options); 
@@ -99,10 +98,15 @@ options.tauMax = 0; % no delays
 randn('seed', 1e6);
 rand('seed', 1e6);
 % CREATE the model
+%options.constraints.spaceW = 'positive';
 model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, options);
+%model.prior.lengthScale.constraint = [1 121];
+model.constraints.Ft0(2) = 1;
+model.constraints.TFinitCond(2) = 1;
+
 mcmcoptions = mcmcOptions('controlPnts'); 
-mcmcoptions.adapt.T = 190;
-mcmcoptions.adapt.Burnin = 10;
+mcmcoptions.adapt.T = 150;
+mcmcoptions.adapt.Burnin = 50;
 mcmcoptions.train.StoreEvery = 50;
 mcmcoptions.train.Burnin = 5000;
 mcmcoptions.train.T = 50000;
@@ -115,6 +119,3 @@ if storeRes == 1
     d = date; 
     save(['dem' dataName num2str(expNo) d '.mat'], 'model','samples','accRates');
 end
-
-% Plot/Print the results 
-%gpmtfPlot(model, samples, dataName, printPlot);

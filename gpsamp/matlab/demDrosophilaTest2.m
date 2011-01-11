@@ -18,6 +18,12 @@ Genes = Genes/sc;
 Genes = reshape(Genes,numGenes,12,3);
 GenesVar = GenesVar/(sc.^2);
 GenesVar = reshape(GenesVar,numGenes,12,3);
+
+%%!!!!
+%numGenes = 92;
+%load datasets/dros92proprocessedTraininggenes;
+%%!!!!
+
 %
 TimesG = 0:11;
 numTFs = 5;
@@ -34,7 +40,11 @@ mcmcoptions.train.Burnin = 1000;
 options = gpmtfOptions(ones(1,12,3),numTFs); 
 options.jointAct = 'sigmoid';
 options.spikePriorW = 'yes';
+<<<<<<< .mine
+options.constraints.spaceW = 'positive';
+=======
 options.constraints.spaceW = '';
+>>>>>>> .r676
 % prior probablity for each interaction weight to be around zero 
 % for each TF
 options.spikepriors = 1 - [0.0751 0.1163 0.1729  0.0378  0.2387];
@@ -72,6 +82,9 @@ for n=1:size(Genes,1)
 
     TestGenes = Genes(n,:,:);
     TestGenesVar = GenesVar(n,:,:);
+    
+    %options.constraints.X = Chip(n,:); 
+    
     % CREATE the model
     modelTest = gpmtfCreate(TestGenes, TestGenesVar, [], [], TimesG, TimesF, options);
    

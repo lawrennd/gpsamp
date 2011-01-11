@@ -18,7 +18,7 @@ if flag == 0
     load datasets/testset;
     noiseM = {'pumaWhite' 'white'};
 
-    if 0
+    if 1
         load topranked10GenesMef2Twi;
         numGenes = 20;
         mygenes = drosexp.genes(G);
@@ -99,8 +99,8 @@ else % otherwise run the demo
         identifier = datestr(now, 29);
     end
 
-    outdir = '~/mlprojects/gpsamp/matlab/results';
-    %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
+    %outdir = '~/mlprojects/gpsamp/matlab/results';
+    outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
     outfile = sprintf('%s/multitf5a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
@@ -226,8 +226,9 @@ else % otherwise run the demo
             models{c} = modelTest;
             %
         end
-        % Only save after each gene is completed
-        safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        % Only save after each gene is completed 
+        save(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        %safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
         %
     end

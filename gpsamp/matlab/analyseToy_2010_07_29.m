@@ -6,13 +6,14 @@ tcomb = [0 0 0; 1 0 0; 0 1 0; 0 0 1;
 	 1 1 0; 1 0 1; 0 1 1;
 	 1 1 1];
 gstyles = {'m--', 'g--'};
-styles = {'r', 'b', 'g-', 'g-.'};
+styles = {'r', 'b', 'r-.', 'b-.'};
 styles2 = {'ro-.', 'bx-'};
 LinWidth = 3; 
 FONTSIZE=12;
 % USER-specified:: Directory where you store figures
 ddir = 'figures/';
 printPlot = 1; % 0 means not printing
+plotAll = 0;
 
 %TFnames = {'first', 'second', 'third'};
 TFnames = {'TF1', 'TF2', 'TF3'};
@@ -58,13 +59,13 @@ for k=1:2, % two conditions
 end
 plot([0,1], [0,1], 'k:', 'LineWidth',LinWidth);
 set(gca, 'FontSize', FONTSIZE);
-legend(sprintf('One cond\n(AUC=%.2f)', auc8{1}(1)),...
-       sprintf('Two conds\n(AUC=%.2f)', auc8{1}(2)),...
-       'Random', 'Location', 'SouthEast');
+legend(sprintf('One cond\nAUC=%.2f', auc8{1}(1)),...
+       sprintf('Two conds\nAUC=%.2f', auc8{1}(2)), 'Location', 'SouthEast');
 set(gca, 'FontSize', FONTSIZE);
 set(gcf, 'PaperUnits', 'centimeters');
 set(gcf, 'PaperSize', [20 20])
-set(gcf, 'PaperPosition', [0 0 10 7])
+set(gcf, 'PaperPosition', [0 0 10 7]);
+title('Overall');
 hold off;
 % 1 PLOT ---------------------------------------------------------------
 % ROC CURVES FOR GLOBAL PREDICTION OF SINGLE  LINKS
@@ -95,10 +96,10 @@ for l=1:3,
   set(gcf, 'PaperUnits', 'centimeters');
   set(gcf, 'PaperSize', [20 20])
   set(gcf, 'PaperPosition', [0 0 10 7])
-  legend(sprintf('One cond\n(AUC=%.2f)', sepAuc8{1}(1)),...
-         sprintf('Two conds \n(AUC=%.2f)', sepAuc8{1}(2)),...
-         'Random', 'Location', 'SouthEast');
-  %tt = ['TF' num2str(l)];
+  legend(sprintf('One cond\nAUC=%.2f', sepAuc8{1}(1)),...
+         sprintf('Two conds \nAUC=%.2f', sepAuc8{1}(2)),'Location', 'SouthEast');
+  %tt = ['TF' num2str(l)]; 
+  title(sprintf('%s', TFnames{l}));
   %title(tt);
   hold off;
 end
@@ -106,6 +107,155 @@ end
 % SEPARATE ROC CURVES FOR PREDICTION OF EACH LINKS
 % END    ---------------------------------------------------------------
 %
+
+
+% 2b PLOT ---------------------------------------------------------------
+% SEPARATE ROC CURVES FOR PREDICTION OF PAIR LINKS
+% START  ---------------------------------------------------------------
+sepPairAuc8 = {};
+sepPairVal8 = {};
+sepPairAucSingle = {};
+sepPairValSingle = {};
+cnt = 0;
+for k=1:numTFs
+for g=(k+1):numTFs
+    cnt = cnt + 1;
+    hPair(cnt) = figure;  
+    for cond=1:2, % two conditions 
+      % posterior pair-link probabilites using all possible 8 models 
+      % find all the indices inside comb where the TFs "k" and "g" are active 
+      indPair = find(tcomb(:,k)==1 & tcomb(:,g)==1);
+   
+      % posterior probability of the TF-pair under the 8 hypotheses case
+      pairLinkprobs8{cond}(:,cnt) = logsumexp(results{cond}.marlls(:,  indPair), 2) - ...
+			              logsumexp(results{cond}.marlls(:, setdiff(ind8, indPair)), 2);
+          
+      [foo, I8] = sort(pairLinkprobs8{cond}(:,cnt), 'descend');  
+      sepPairVal8 = prod(M(I8,[k,g]),2);
+      sepPairAuc8{1}(cond) = drosPlotROC(sepPairVal8', sum(sepPairVal8), length(sepPairVal8), styles{cond}, 'LineWidth',LinWidth);
+      hold on;
+      set(gca, 'FontSize', FONTSIZE);
+      
+      if plotAll == 1
+      % posterior probability of the TF-pair by combining *Heuristically*
+      % the single TFs models 
+      indk = find(tcomb(:,k)==1  &  sum(tcomb,2)==1);
+      indg = find(tcomb(:,g)==1  &  sum(tcomb,2)==1);
+  
+      pairLinkprobsFromSingleTF8{cond}(:,cnt) = results{cond}.marlls(:, indk) + results{cond}.marlls(:, indg)  - ...
+  			             results{cond}.marlls(:, ind0) - logsumexp(results{cond}.marlls(:, [ind0  indk indg]),2);   
+ 
+      [foo, I8] = sort(pairLinkprobsFromSingleTF8{cond}(:,cnt), 'descend');  
+      sepPairValSingle = prod(M(I8,[k,g]),2);
+      sepPairAucSingle{1}(cond) = drosPlotROC(sepPairValSingle', sum(sepPairValSingle), length(sepPairValSingle), styles{cond+2}, 'LineWidth',LinWidth);          
+      end
+      
+    end
+    if plotAll == 1
+    sepPairAucSingle{1}
+    end
+    plot([0,1], [0,1], 'k:', 'LineWidth',LinWidth);
+    set(gca, 'FontSize', FONTSIZE);
+    set(gcf, 'PaperUnits', 'centimeters');
+    set(gcf, 'PaperSize', [20 20])
+    set(gcf, 'PaperPosition', [0 0 10 7])
+    
+    if plotAll == 1 
+      legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
+         sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),...
+         sprintf('One cond,\nsingle-TF models\nAUC=%.2f', sepPairAucSingle{1}(1)),...
+         sprintf('Two conds,\nsingle-TF models\nAUC=%.2f', sepPairAucSingle{1}(2)), 'Location', 'SouthEast');
+    else
+      legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
+         sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),'Location', 'SouthEast');
+    end
+    title(sprintf('%s + %s', TFnames{k}, TFnames{g}));
+    hold off;
+end
+end
+% 2b PLOT ---------------------------------------------------------------
+% SEPARATE ROC CURVES FOR PREDICTION OF PAIR LINKS
+% END    ---------------------------------------------------------------
+%
+
+
+% 2c PLOT ---------------------------------------------------------------
+% GLOBAL ROC CURVE FOR PREDICTION OF PAIR LINKS
+% START  ---------------------------------------------------------------
+sepPairAuc = {};
+sepPairVal8 = [];
+sepPairAucSingle = {};
+sepPairValSingle = [];
+cnt = 0;  
+hPairGlob = figure;  
+hold on;
+for cond=1:2, % two conditions   
+    [foo, I8] = sort(pairLinkprobs8{cond}(:), 'descend');  
+    for j=1:size(I8,1)
+        gene = mod(I8(j), 1000);
+        gene(gene==0)=100;          
+        TFpair = floor(I8(j)/1000) + 1;
+        %TFpair(TFpair==4)=3;
+        %[gene TFpair I8(j)]
+        %pause
+        if TFpair == 1 
+           sepPairVal8(j) = prod(M(gene, [1, 2]),2); 
+        elseif TFpair == 2
+           sepPairVal8(j) = prod(M(gene, [1, 3]),2); 
+        elseif TFpair == 3
+           sepPairVal8(j) = prod(M(gene, [2, 3]),2); 
+        end
+    end
+    sepPairAuc8{1}(cond) = drosPlotROC(sepPairVal8, sum(sepPairVal8), length(sepPairVal8), styles{cond}, 'LineWidth',LinWidth);
+    hold on;
+    set(gca, 'FontSize', FONTSIZE);                 
+    
+    if plotAll == 1
+    [foo, I8] = sort(pairLinkprobsFromSingleTF8{cond}(:), 'descend');  
+    for j=1:size(I8,1)
+        gene = mod(I8(j), 1000);
+        gene(gene==0)=100;          
+        TFpair = floor(I8(j)/1000) + 1;
+        %TFpair(TFpair==4)=3;
+        %[gene TFpair I8(j)]
+        %pause
+        if TFpair == 1 
+           sepPairValSingle(j) = prod(M(gene, [1, 2]),2); 
+        elseif TFpair == 2
+           sepPairValSingle(j) = prod(M(gene, [1, 3]),2); 
+        elseif TFpair == 3
+           sepPairValSingle(j) = prod(M(gene, [2, 3]),2); 
+        end
+    end
+    sepPairAucSingle{1}(cond) = drosPlotROC(sepPairValSingle, sum(sepPairValSingle), length(sepPairValSingle), styles{cond+2}, 'LineWidth',LinWidth);    
+    end
+end
+if plotAll == 1
+    sepPairAucSingle{1}
+end
+plot([0,1], [0,1], 'k:', 'LineWidth',LinWidth);
+set(gca, 'FontSize', FONTSIZE);
+set(gcf, 'PaperUnits', 'centimeters');
+set(gcf, 'PaperSize', [20 20])
+set(gcf, 'PaperPosition', [0 0 10 7]);
+if plotAll == 1
+legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
+       sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),...
+       sprintf('One cond, \nsingle-TF models\nAUC=%.2f', sepPairAucSingle{1}(1)),...
+       sprintf('Two conds, \nsingle-TF models\nAUC=%.2f', sepPairAucSingle{1}(2)), 'Location', 'SouthEast');   
+else
+legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
+       sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),'Location', 'SouthEast');
+end
+box on;
+title('Overall');
+hold off;
+% 2c PLOT ---------------------------------------------------------------
+% GLOBAL ROC CURVE FOR PREDICTION OF PAIR LINKS
+% END    ---------------------------------------------------------------
+%
+
+
 
 
 % 3 PLOT ---------------------------------------------------------------
@@ -296,35 +446,23 @@ if printPlot
    %   plot(TimesF, exp(TFs(j,:,2)), 'r'); 
    %   plot(TimesF, exp(TFs(4,:,1)), 'k-.'); 
    %end
-   % plot the ground truth TF
-   scTFAxis = [0 1.2];
-   for r=1:size(TFs,3)
-      figure; 
-      hold on;    
-      plot(TimesF, exp(TFs(1,:,r)), 'b','lineWidth', 3); 
-      plot(TimesF, exp(TFs(2,:,r)), 'r','lineWidth', 3);
-      plot(TimesF, exp(TFs(3,:,r)), 'g','lineWidth', 3);
-      plot(TimesF, exp(TFs(4,:,r)), 'k-.','lineWidth', 3); 
-      axis([TimesF(1) TimesF(end)+0.1 scTFAxis(1) scTFAxis(2)]);
-      box on;
-      print('-depsc', [ddir 'groudTruthTFs_' 'Rep' num2str(r)]);
-   end
-    
+   print(hPairGlob, '-depsc2', [ddir 'toy_pairGlobal_roc' '.eps']);
    print(h1, '-depsc2', [ddir 'toy_link_roc' '.eps']);
    print(h2, '-depsc2', [ddir 'toy_map_accuracy' '.eps']);
    % plot the seprate roc for each TF 
    for l=1:3
        print(hh(l), '-depsc2', [ddir 'toy_link_roc_TF' num2str(l) '.eps']);
+       print(hPair(l) , '-depsc2', [ddir 'toy_pair_roc_TF' num2str(l) '.eps']);
    end
    print(h3, '-depsc2', [ddir 'toy_singleLinks_bars' '.eps']);
    print(h4, '-depsc2', [ddir 'toy_pairsOfTFs_bars' '.eps']);
 
    % print also plots from the training phase
-   load datasets/toy4TFs28_June_10.mat;
-   load demtoy_dataTwoConds109-Jul-2010.mat 
-   gpmtfPlot(model, samples, 'toyTwoConds', {'TF1', 'TF2', 'TF3'}, 1, 'figures/')
-
-   load datasets/toy4TFs28_June_10.mat;
-   load demtoy_dataOneCond108-Jul-2010.mat
-   gpmtfPlot(model, samples, 'toyOneCond', {'TF1', 'TF2', 'TF3'}, 1, 'figures/')  
+   %load datasets/toy4TFs28_June_10.mat;
+   %load demtoy_dataTwoConds109-Jul-2010.mat 
+   %gpmtfPlot(model, samples, 'toyTwoConds', {'TF1', 'TF2', 'TF3'}, 1, 'figures/')
+   % 
+   %load datasets/toy4TFs28_June_10.mat;
+   %load demtoy_dataOneCond108-Jul-2010.mat
+   %gpmtfPlot(model, samples, 'toyOneCond', {'TF1', 'TF2', 'TF3'}, 1, 'figures/')  
 end

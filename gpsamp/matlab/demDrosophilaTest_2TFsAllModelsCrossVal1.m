@@ -2,7 +2,11 @@
 % using all possible combinations of two TFs(twist and mef2)
 % It also used cros validation validatino by excluding each time 
 % point at a time
+<<<<<<< .mine
+function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_2TFsAllModelsCrossVal1(modulus, remainder, identifier, flag)
+=======
 function [Genes, GenesVar, TFs, models, mygenes] = demDrosophilaTest_2TFsAllModelsCrossVal1(modulus, remainder, identifier, flag),
+>>>>>>> .r885
 
 addpath ~/mlprojects/ndlutil/matlab
 addpath ~/mlprojects/gpsamp/matlab
@@ -39,7 +43,7 @@ load datasets/testset;
 load drosTrainTotal;
 
 
-if 0
+if 1
 load topranked10GenesMef2Twi;   
 numGenes = 20;
 mygenes = drosexp.genes(G);
@@ -196,6 +200,7 @@ else
         %
         testGene{n, m, cv} = samplesTest;
         testaccRates{n, m, cv} = accRates; 
+        modelTest.Likelihood.TFcomb = comb(c,:);
         models{m, cv} = modelTest;
         %
       end
