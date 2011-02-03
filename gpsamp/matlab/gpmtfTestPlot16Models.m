@@ -1,10 +1,10 @@
-function gpmtfTestPlot16Models(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
+function gpmtfTestPlot16Models(testGenes, Genes, GeneVars, TFs, model, fbgn, TFnames, demdata, printResults, Grtruth)
 % function gpmtfTestPlot(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
 
 NumPlotRows = 4;
 NumPlotCols = 3;
 FONTSIZE=8;
-PNGSIZE=[400 300];
+PNGSIZE=[600 400];
 
 
 numModels = size(testGenes,2);
@@ -135,7 +135,16 @@ for m=1:numModels
       %titlestring = [num2str(m)];
       %titlestring = [titlestring, ' r:', num2str(r)];
       %titlestring = [titlestring, ' g:' fbgn];
-      title(num2str(model{m}.Likelihood.TFcomb),'fontsize', FONTSIZE);
+      tstring = [];
+      for j=1:size(TFnames,2)
+          if model{m}.Likelihood.TFcomb(j) == 0
+             tstring = [tstring, '- '];
+          else
+             tstring = [tstring, TFnames{j}, ' '];
+          end
+      end
+      title(tstring,'fontsize', FONTSIZE);
+      %title(num2str(model{m}.Likelihood.TFcomb),'fontsize', FONTSIZE);
    %
    end
 %
