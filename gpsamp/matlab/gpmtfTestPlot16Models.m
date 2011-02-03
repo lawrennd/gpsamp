@@ -145,6 +145,7 @@ for m=1:numModels
       end
       title(tstring,'fontsize', FONTSIZE);
       %title(num2str(model{m}.Likelihood.TFcomb),'fontsize', FONTSIZE);
+      axis tight;
    %
    end
 %
@@ -241,6 +242,7 @@ hold on;
 errorbar([1:numModels]-0.14, modelB, modelB-stdBB1, stdBB2-modelB,'.'); 
 %errorbar([1:NumOfGenes], modelB(order), modelB(order)-stdBB1(order), stdBB2(order)-modelB(order),'.'); 
 title('Basal rates','fontsize', FONTSIZE);
+axis tight;
 
 plotIndex = plotIndex+1;
 subplot(NumRowsParams, NumColsParams, plotIndex);
@@ -248,7 +250,7 @@ bar(modelD', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
 errorbar([1:numModels]-0.14, modelD, modelD-stdDD1, stdDD2-modelD,'.'); 
 title('Decay rates','fontsize', FONTSIZE);
-
+axis tight;
 
 plotIndex = plotIndex+1;
 subplot(NumRowsParams, NumColsParams, plotIndex);
@@ -256,7 +258,7 @@ bar(modelS', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
 errorbar([1:numModels]-0.14, modelS, modelS-stdSS1, stdSS2-modelS,'.'); 
 title('Sensitivities','fontsize', FONTSIZE);
-
+axis tight;
 
 plotIndex = plotIndex+1;
 subplot(NumRowsParams, NumColsParams, plotIndex);
@@ -264,7 +266,7 @@ bar(modelA', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
 errorbar([1:numModels]-0.14, modelA, modelA-stdAA1, stdAA2-modelA,'.'); 
 title('Initial Conds','fontsize', FONTSIZE);
-
+axis tight;
 
 
 
@@ -281,6 +283,7 @@ titlestring = [titlestring, ' TF '];
 titlestring = [titlestring, num2str(j)];
 %titlestring = [titlestring, ' TF'];
 title(titlestring,'fontsize', FONTSIZE);
+axis tight;
 end
 
 
@@ -290,7 +293,7 @@ bar(modelW0', 0.7); colormap([0.9 0.9 0.9]);
 hold on;
 errorbar([1:numModels]-0.14, modelW0, 2*stdW0_1,'.'); 
 title('Inter. biases','fontsize', FONTSIZE);
-
+axis tight;
  
 % plot the variance of the added white noise
 if isfield(testGenes{1}, 'sigma2')
@@ -303,7 +306,7 @@ if isfield(testGenes{1}, 'sigma2')
   errorbar([1:numModels]-0.14, modelSigma2, modelSigma2-stdSigma2_1, stdSigma2_2-modelSigma2,'.'); 
   title('Observ. noise','fontsize', FONTSIZE);
 end
-
+axis tight;
 
 if printResults
     %print('-depsc', [dirr fileName 'Params' fbgn]);

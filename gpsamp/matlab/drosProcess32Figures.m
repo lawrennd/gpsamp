@@ -23,10 +23,11 @@ for k=my_k,
   fprintf('Processing file %s, %d/%d...\n', fname1, k, N);
   [Genes, GenesVar, TFs, models, mygenes] = feval(demo, N, k, '', 0);
 
+  TFnames = {'t','b','w','p','m'};
   for l=1:length(mygenes),
     close all;
     gpmtfTestPlot16Models(r.testGene(l, :), ...
 			  Genes(l, :, :), GenesVar(l, :, :), ...
-			  TFs, models, mygenes{l}, filestem, 1);
+			  TFs, models, mygenes{l}, TFnames, filestem, 1);
   end
 end
