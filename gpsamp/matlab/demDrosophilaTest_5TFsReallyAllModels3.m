@@ -144,7 +144,7 @@ else % otherwise run the demo
 
     outdir = '~/mlprojects/gpsamp/matlab/results';
     %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outfile = sprintf('%s/multitf8b_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
