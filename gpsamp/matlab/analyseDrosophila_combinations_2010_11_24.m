@@ -4,7 +4,8 @@
 % !! Warning: Baseline models was run only for the constrained case !!
 flag = 1; % "1" for  constrained; "anything else" for unconstrained 
 
-tfnames = {'tin', 'bin', 'twi', 'bap', 'Mef2'};
+%tfnames = {'tin', 'bin', 'twi', 'bap', 'Mef2'};
+tfnames = {'TIN', 'BIN', 'TWI', 'BAP', 'MEF2'};
 
 % USER-specified: Sizes of the ranking sets 
 T = [20, 50, 100, 150, 200];
@@ -59,7 +60,7 @@ baselinecomb = [0 0 0 0 0;
     
 if flag == 1     
     % load the results
-    results_b = sortResults(load('results/multitf8c_2010-12-14_summary.mat'));
+    results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
 
     % load the 15 baseline models (zerhoth model is excluded)
     baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
@@ -80,6 +81,25 @@ else
     % the code below refers to the combConstr variable, so re-define it
     combConstr = combUnconstr; 
 end
+
+
+% You need to exclude the 92 training genes 
+genesAndChip = importdata('datasets/eileen_nature_training_set.txt'); 
+Trfbgns = genesAndChip.textdata(2:end,1);
+mask = ones(size(results_b.genes,1),1); 
+for i=1:size(results_b.genes,1)
+    for j=1:size(Trfbgns,1)
+         if strcmp(results_b.genes(i), Trfbgns(j)) 
+             mask(i) = 0; 
+         end
+    end
+end
+results_b.marlls = results_b.marlls(mask==1,:);
+results_b.genes = results_b.genes(mask==1); 
+baseline_a.marlls = baseline_a.marlls(mask==1,:);
+baseline_a.genes = baseline_a.genes(mask==1);
+
+
 
 
 numTFs = size(combConstr,2);
@@ -288,7 +308,7 @@ for k=1:numTFs
   else
   drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);   
   end
-  title(sprintf('%s + %s', tfnames{k}, tfnames{g}));
+  title(sprintf('%s & %s', tfnames{k}, tfnames{g}));
   end
 end
 figure(h2);

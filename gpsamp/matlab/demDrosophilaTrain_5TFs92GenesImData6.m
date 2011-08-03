@@ -1,11 +1,11 @@
-% (This demo used in the paper to produce the initial training with the 92 genes)
-% DEMO that has created the file drosTrainTotal_28NOV2010.mat
+%  (This demo used in the paper to produce the training with the 25 genes)
+% DEMO that has created the file drosTrainTotal_14DEC2010.mat
 dataName = 'drosophila_data';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
 normGenes = 3;
-noiseM = {'pumaWhite' 'white'};
+noiseM = {'pumaWhite'};
 
 % This should go inside the loadDatasets function later
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
@@ -126,18 +126,24 @@ else
 %
 end
 
+thr = 0.01;
+% load a training phase with puma+white 
+load drosTrainTotal_28NOV2010.mat;
+stdSigma2_2 = prctile(samples.sigma2',95,1);
+selectGenes = (stdSigma2_2<thr); 
+%pause
+Genes = Genes(selectGenes,:,:);
+GenesVar = GenesVar(selectGenes,:,:);
+
 TimesG = 0:11;
 
 % model options
 options = gpmtfOptions(Genes,numTFs); 
 genesAndChip.data(genesAndChip.data~=0)=1;
-%
-%selSubset = sum(genesAndChip.data,2)<=3;
-%Genes = Genes(selSubset,:,:); 
-%GenesVar = GenesVar(selSubset,:,:); 
-%genesAndChip.data = genesAndChip.data(selSubset,:);
-%fbgns = fbgns(selSubset);
-%
+% 
+genesAndChip.data = genesAndChip.data(selectGenes,:);
+fbgns = fbgns(selectGenes);
+
 options.constraints.X = genesAndChip.data; 
 options.noiseModel = noiseM;
 options.tauMax = 0; % no delays
@@ -154,7 +160,7 @@ rand('seed', 1e6);
 % CREATE the model
 %options.constraints.spaceW = 'positive';
 model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, options);
-model.prior.lengthScale.constraint(1) = 2;
+model.prior.lengthScale.constraint(1) = 1.5;
 for j=1:model.Likelihood.numTFs
     model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
 end
@@ -162,17 +168,17 @@ model.Likelihood.kineticsTF(:,1) = 0.1;
 model.constraints.Ft0(2) = 1;
 %model.constraints.TFinitCond(2) = 1;
 
-mcmcoptions = mcmcOptions('controlPnts'); 
+
+mcmcoptions = mcmcOptions('imData');
 mcmcoptions.adapt.T = 150;
 mcmcoptions.adapt.Burnin = 50;
 mcmcoptions.train.StoreEvery = 50;
 mcmcoptions.train.Burnin = 5000;
 mcmcoptions.train.T = 50000;
-% adaption phase
 [model PropDist samples accRates] = gpmtfAdaptImdata(model, mcmcoptions.adapt);
-% training/sampling phase
-[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
 
+% TRAINING SAMPLING
+[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
 if storeRes == 1
     d = date; 
     save(['dem' dataName num2str(expNo) d '.mat'], 'model','samples','accRates');

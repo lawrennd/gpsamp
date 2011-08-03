@@ -1,5 +1,4 @@
-% (This demo used in the paper to produce the initial training with the 92 genes)
-% DEMO that has created the file drosTrainTotal_28NOV2010.mat
+% DEMO that has created the file drosTrainTotal_29NOV2010.mat
 dataName = 'drosophila_data';
 expNo = 1;
 storeRes = 0;
@@ -131,13 +130,6 @@ TimesG = 0:11;
 % model options
 options = gpmtfOptions(Genes,numTFs); 
 genesAndChip.data(genesAndChip.data~=0)=1;
-%
-%selSubset = sum(genesAndChip.data,2)<=3;
-%Genes = Genes(selSubset,:,:); 
-%GenesVar = GenesVar(selSubset,:,:); 
-%genesAndChip.data = genesAndChip.data(selSubset,:);
-%fbgns = fbgns(selSubset);
-%
 options.constraints.X = genesAndChip.data; 
 options.noiseModel = noiseM;
 options.tauMax = 0; % no delays
@@ -145,6 +137,7 @@ options.lengthScalePrior = 'invGamma';
 % robust Gaussian means: a two-component mixture with 
 % a Gaussian  and a uniform distribution
 %options.likelihoodModel = 'robustGaussian';
+
 % define the dense discretized grid in the time axis for the TF latent functions 
 [options, TimesF] = gpmtfDiscretize(TimesG, options); 
 
@@ -159,7 +152,7 @@ for j=1:model.Likelihood.numTFs
     model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
 end
 model.Likelihood.kineticsTF(:,1) = 0.1;
-model.constraints.Ft0(2) = 1;
+%model.constraints.Ft0(2) = 1;
 %model.constraints.TFinitCond(2) = 1;
 
 mcmcoptions = mcmcOptions('controlPnts'); 

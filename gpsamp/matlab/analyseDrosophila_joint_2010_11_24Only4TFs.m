@@ -227,7 +227,7 @@ for l=1:30000
     % random ranking and prediction 
     perm = randperm(N);
     % random network
-    Mrand = round(rand(1,5));
+    Mrand = round(rand(1,numTFs));
     Mprior = combConstr(sample_discrete(prior32),:);
     if sum(Mrand(1,:),2) > 0 
 	   accRand = accRand + all( M(IB(perm(1)), Mrand==1), 2);

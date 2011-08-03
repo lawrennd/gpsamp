@@ -1,27 +1,45 @@
-function gpmtfTestPlotSeparatemRNA(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, dirr, Grtruth)
+function gpmtfTestPlotSeparate(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, dirr, Grtruth)
+% function gpmtfTestPlot(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, Grtruth)
 
-
-% USER DEFINED PARAMETERS 
 FONTSIZE=8;
+
 PNGSIZE=[400 300];
-timeshift = 1;
-XLabel = 'time (h)';
+
+%% precompute the TFs
+%TFset = model{end}.Likelihood.TFset; 
+%numTFs = model{end}.Likelihood.numTFs; 
+%load drosTrainTotal;
+%for cnt=1:size(samples.F,2)
+%%
+%    model{end}.Likelihood.kineticsTF = samples.kineticsTF(TFset,:,cnt);
+%    for r=1:model{end}.Likelihood.numReplicas
+%        TFs{cnt}(:,:,r) = gpmtfComputeTFODE(model{end}.Likelihood, samples.F{cnt}(TFset,:,r), 1:numTFs);
+%    end    
+%    TFs{cnt} = log(TFs{cnt} + 1e-100);
+%%
+%end
+
+numModels = size(testGenes,2);
 NumRowsParams = 2;
 NumColsParams = 4;
-% END OF USER DEFINED PARAMETERS
 
 %dirr = '~/mlprojects/gpsamp/tex/diagrams/';
 %dirrhtml = '~/mlprojects/gpsamp/html/';
 dirrhtml =  dirr; 
 
 warning off;
-numModels = size(testGenes,2);
 TimesG = model{numModels}.Likelihood.TimesG; 
 TimesF = model{numModels}.Likelihood.TimesF;
+%if isfield(model{numModels}.Likelihood,'GenesTF')
+%    GenesTF = model{numModels}.Likelihood.GenesTF;
+%    if strcmp(model{numModels}.constraints.sigmasTF,'fixed')
+%        GeneTFVars = model.Likelihood.sigmasTF;
+%    end
+%end
 
         
 TimesFF = TimesF(model{numModels}.Likelihood.startTime:end);
-ok = '2010-11-10'; %datestr(now, 29);
+ok = date;
 fileName = [demdata 'Test' 'MCMC' ok]; 
 
 NumOfTFs = size(TFs{1},1);
@@ -81,21 +99,23 @@ end
   for r=1:NumOfReplicas
       %
       figure; 
-   
+      %subplot(NumOfReplicas, numModels, (r-1)*numModels + m);  
+    
       GG = GGT(:,:,r); 
       mu = mean(GG, 1)';
       stds = sqrt(var(GG,0,1))';
-      TF = TimesFF' + timeshift; 
+      TF = TimesFF'; % TimesFF(1:2:end)';
       %figure;
       if size(mu,1) == size(TimesG(:),1)
-          TF = TimesG' + timeshift;
+          TF = TimesG';
       else
          TimesFF';
       end
 
       % max/min Gene values with offest
-      maxG = max(Genes(1,:,r) + 2*sqrt(GeneVars(1,:,r))) + 0.1*max(Genes(1,:,r));
-      minG = 0; %min(Genes(1,:,r)) - 0.1*min(Genes(1,:,r)); 
+      maxG = max(Genes(1,:,r)) + 0.1*max(Genes(1,:,r));
+      minG = min(Genes(1,:,r)) - 0.1*min(Genes(1,:,r));
+      minG(minG<0)=0; 
       
 
       plot(TF, mu, 'b','lineWidth',r);
@@ -106,23 +126,18 @@ end
                + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
       plot(TF,mu,'b','lineWidth',3);
 
-      plot(TimesG+timeshift, Genes(1,:,r),'rx','markersize', 6,'lineWidth', 2);
+
+      
+      plot(TimesG, Genes(1,:,r),'rx','markersize', 6,'lineWidth', 2);
       if model{m}.Likelihood.noiseModel.active(1) == 1 & sum(model{m}.Likelihood.noiseModel.active(2:3)==0)
-          errorbar(TimesG+timeshift,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
+          errorbar(TimesG,  Genes(1,:,r), 2*sqrt(GeneVars(1,:,r)), 'rx','lineWidth', 1.5);
       end
-      axis([min(TimesG)+timeshift max(TimesG)+timeshift minG maxG]);
+      axis([min(TimesG) max(TimesG) minG maxG]);
  
       V = axis; 
-      axis([min(TimesG(:))-0.1+timeshift max(TimesG(:))+0.1+timeshift V(3) V(4)]);
-
-      set(gca, 'FontSize', FONTSIZE)
-      set(gca, 'YTickLabel', [])
-      xlabel('time (h)')
-      set(gcf, 'PaperUnits', 'centimeters')
-      set(gcf, 'PaperPosition', [0 0 4.5 3.5])
-
+      axis([min(TimesG(:))-0.1 max(TimesG(:))+0.1 V(3) V(4)]);
       if printResults
-         print('-depsc2',[dirr fileName 'Model'  num2str(model{m}.Likelihood.TFcomb,'%1g') 'Replica' num2str(r) 'GeneExp' fbgn]);
+         print('-depsc',[dirr fileName 'Model'  num2str(model{m}.Likelihood.TFcomb,'%1g') 'Replica' num2str(r) 'GeneExp' fbgn]);
          print('-dpng', [dirrhtml fileName 'Model'  num2str(model{m}.Likelihood.TFcomb,'%1g')  'Replica' num2str(r) 'GeneExp' fbgn]);
       end
       %titlestring = ['m:', num2str(m)];

@@ -11,6 +11,7 @@ end
 noiseM = {'pumaWhite' 'white'};
 %noiseM = {'pumaWhite'};
 
+
 % file of the training samples 
 TrainSamplesFile = 'drosTrainTotal_4DEC2010.mat';
 
@@ -57,9 +58,9 @@ if flag == 0
     else
         testindices = remainder:modulus:length(testset.indices);
         indices = testset.indices(testindices);
-        %indices = [2282 10486];
-        %indices = 2282;
-        %indices = 10486;
+        
+        indices = [85 2282 10486];
+        
         numGenes = length(indices);
         mygenes = drosexp.genes(indices);
         Genes = drosexp.fitmean(indices, :);
@@ -83,6 +84,11 @@ if flag == 0
     Genes = reshape(Genes, numGenes, 12, 3);
     GenesVar = reshape(GenesVar,numGenes, 12, 3);
    
+    load drosTrainTotal_4DEC2010; 
+    Genes = model.Likelihood.Genes; 
+    GenesVar = model.Likelihood.noiseModel.pumaSigma2;
+    numGenes = size(Genes,1);
+    mygenes = fbgns;
     
     TimesG = 0:11;
     %
@@ -144,7 +150,7 @@ else % otherwise run the demo
 
     outdir = '~/mlprojects/gpsamp/matlab/results';
     %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf8b_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
@@ -171,8 +177,9 @@ else % otherwise run the demo
     else
         testindices = remainder:modulus:length(testset.indices);
         indices = testset.indices(testindices);
-        %indices = [2282 10486];
-        %indices = 2282;
+        
+        indices = [85 2282 10486];
+        
         numGenes = length(indices);
         mygenes = drosexp.genes(indices);
         Genes = drosexp.fitmean(indices, :);
@@ -196,6 +203,14 @@ else % otherwise run the demo
     Genes = reshape(Genes, numGenes, 12, 3);
     GenesVar = reshape(GenesVar,numGenes, 12, 3);
 
+    
+    load drosTrainTotal_4DEC2010; 
+    Genes = model.Likelihood.Genes; 
+    GenesVar = model.Likelihood.noiseModel.pumaSigma2;
+    numGenes = size(Genes,1);
+    mygenes = fbgns;
+    
+    
     mcmcoptions = mcmcOptions('controlPnts');
     mcmcoptions.adapt.T = 80;
     mcmcoptions.adapt.Burnin = 1;
@@ -272,8 +287,8 @@ else % otherwise run the demo
             %
         end
         % Only save after each gene is completed 
-        %save('ok', 'testGene', 'testaccRates', 'mygenes', 'models');
-        safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
+        save('ok', 'testGene', 'testaccRates', 'mygenes', 'models');
+        %safeSave(outfile, 'testGene', 'testaccRates', 'mygenes', 'models');
         %
         %
     end

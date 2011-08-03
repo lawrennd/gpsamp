@@ -253,19 +253,21 @@ for r=1:NumOfReplicas
             + 2*[stds; -stds(end:-1:1)], fillColor,'EdgeColor',fillColor);
      plot(TimesFP,mu,'b','lineWidth',2);
    
-     plot(TimesGP,GenesTF(j,:,r),'rx','markersize', 14','lineWidth', 2);
+     plot(TimesGP,GenesTF(j,:,r),'rx','markersize', 10,'lineWidth', 1);
      if model.Likelihood.noiseModel.active(1) == 1
      errorbar(TimesGP,  GenesTF(j,:,r), 2*sqrt(GeneTFVars(j,:,r)), 'rx','lineWidth', 1.5);
      end
      
      axis tight;
      set(gca, 'FontSize', FONTSIZE);
-     %set(gca, 'YTickLabel', []);
+     if ops(7) == 2 
+     set(gca, 'YTickLabel', []);
+     end
      xlabel(XLabel);
      if SepPlot==1
         set(gcf, 'PaperUnits', 'centimeters');
         set(gcf, 'PaperPosition', [0 0 4.5 3.5]);
-     end     
+     end
      if printResults & SepPlot==1
          print('-depsc', [dirr fileName 'TFmRNAs_Rep' num2str(r) 'Gene' num2str(j)]);
      end
@@ -291,6 +293,10 @@ end
 %
 % END OF PLOTING THE PREDICTED TF mRNAs
 
+% return if only TFs and TF mRNAs are needed; 
+if ops(7) == 2
+    return;
+end
 
 % PLOT PREDICTED mRNA PROFILES FOR THE TARGET GENES  
 %
@@ -519,7 +525,7 @@ axis tight;
 
 
 set(gca,'fontsize',FS2);
-title('TF mRNA degr. (\delta_i)','fontsize', FS2);
+title('Protein degr. (\delta_i)','fontsize', FS2);
 if printResults
       print('-depsc', [dirr fileName 'TFGeneDecay']);
 end

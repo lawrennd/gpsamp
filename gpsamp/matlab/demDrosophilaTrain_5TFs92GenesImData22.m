@@ -1,11 +1,10 @@
-% (This demo used in the paper to produce the initial training with the 92 genes)
-% DEMO that has created the file drosTrainTotal_28NOV2010.mat
+% DEMO that has created the file drosTrainTotal_3DEC2010a.mat
 dataName = 'drosophila_data';
 expNo = 1;
 storeRes = 0;
 printPlot = 0;
 normGenes = 3;
-noiseM = {'pumaWhite' 'white'};
+noiseM = {'pumaWhite'};
 
 % This should go inside the loadDatasets function later
 %%%%%%%%%%%%%%  Load data  %%%%%%%%%%%%%%%% 
@@ -139,7 +138,7 @@ genesAndChip.data(genesAndChip.data~=0)=1;
 %fbgns = fbgns(selSubset);
 %
 options.constraints.X = genesAndChip.data; 
-options.noiseModel = noiseM;
+options.noiseModel = {'pumaWhite' 'white'};
 options.tauMax = 0; % no delays
 options.lengthScalePrior = 'invGamma';
 % robust Gaussian means: a two-component mixture with 
@@ -154,7 +153,7 @@ rand('seed', 1e6);
 % CREATE the model
 %options.constraints.spaceW = 'positive';
 model = gpmtfCreate(Genes, GenesVar, GenesTF, GenesTFVar, TimesG, TimesF, options);
-model.prior.lengthScale.constraint(1) = 2;
+model.prior.lengthScale.constraint(1) = 1;
 for j=1:model.Likelihood.numTFs
     model.GP{j}.lengthScale = model.prior.lengthScale.constraint(1) + 0.3;
 end
@@ -162,17 +161,39 @@ model.Likelihood.kineticsTF(:,1) = 0.1;
 model.constraints.Ft0(2) = 1;
 %model.constraints.TFinitCond(2) = 1;
 
-mcmcoptions = mcmcOptions('controlPnts'); 
+% ADAPTION WITH TEMPERING 
+mcmcoptions = mcmcOptions('imData'); 
+mcmcoptions.adapt.T = 100;
+mcmcoptions.adapt.Burnin = 50;
+mcmcoptions.adapt.maxIters = 10;
+mcmcoptions.train.StoreEvery = 50;
+mcmcoptions.train.Burnin = 5000;
+mcmcoptions.train.T = 50000;
+% adaption phase (few iterations with puma+white which allows for fast transient
+% phase... acts like tempering)
+[model PropDist samples accRates] = gpmtfAdaptImdata(model, mcmcoptions.adapt);
+% END -- ADAPTION WITH TEMPERING 
+
+
+% CONTINUE WITH A COMPLETE ADAPTION WITHOUT TEMPERING 
+model.Likelihood.noiseModel.type = 'pumaWhite';
+model.Likelihood.noiseModel.active = [1 0 0];
+model.Likelihood.noiseModel.sigma2 = [];
+mcmcoptions = mcmcOptions('imData'); 
+mcmcoptions.adapt.initParams = 0;
 mcmcoptions.adapt.T = 150;
 mcmcoptions.adapt.Burnin = 50;
 mcmcoptions.train.StoreEvery = 50;
 mcmcoptions.train.Burnin = 5000;
 mcmcoptions.train.T = 50000;
-% adaption phase
+% adaption phase (few iterations with puma+white which allows for fast transient
+% phase... acts like tempering)
 [model PropDist samples accRates] = gpmtfAdaptImdata(model, mcmcoptions.adapt);
-% training/sampling phase
-[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
+% END -- CONTINUE WITH A COMPLETE ADAPTION WITHOUT TEMPERING 
 
+
+% TRAINING SAMPLING
+[model PropDist samples accRates] = gpmtfSampleImdata(model, PropDist, mcmcoptions.train);
 if storeRes == 1
     d = date; 
     save(['dem' dataName num2str(expNo) d '.mat'], 'model','samples','accRates');

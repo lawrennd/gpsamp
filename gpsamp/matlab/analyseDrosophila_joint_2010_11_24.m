@@ -13,14 +13,14 @@ ddir = 'figures/';
 printPlot = 1; % 0 means not printing
 
 % plot MAP models
-plotMAP = [1 0 0 0 1]; 
-%plotMAP = [1 1 1 1 1]; 
+plotMAP = [1 0 0 0 1 1]; 
+%plotMAP = [1 1 0 0 0]; 
 % for the rest plots 
 plotRest = [1 0 0 0 1 0 1]; 
-%plotRest = [1 1 1 1 1 1 1]; 
+%plotRest = [1 1 0 0 1 1 0]; 
 
 % USER-specified: whether to include empirical prior line
-incPrior = 1;
+incPrior = 0;
 figSize = [7 5];
 fontSize = 7;
 
@@ -67,6 +67,7 @@ baselinecomb = [0 0 0 0 0;
     
 if flag == 1     
     % load the results
+    %results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
     results_b = sortResults(load('results/multitf8c_2010-12-14_summary.mat'));
     
     % load the 15 baseline models (zerhoth model is excluded)
@@ -89,25 +90,38 @@ else
     combConstr = combUnconstr; 
 end
 
+%baselinecomb = combConstr;
+
+load results/res_linearPositive.mat 
+regression_a.marlls = -predErrors1;
+%regression_a.marlls = -predErrors1norm;
+regression_a.genes = results_b.genes; 
+
+
+% You need to exclude the 92 training genes 
+genesAndChip = importdata('datasets/eileen_nature_training_set.txt'); 
+Trfbgns = genesAndChip.textdata(2:end,1);
+mask = ones(size(results_b.genes,1),1); 
+for i=1:size(results_b.genes,1)
+    for j=1:size(Trfbgns,1)
+         if strcmp(results_b.genes(i), Trfbgns(j)) 
+             mask(i) = 0; 
+         end
+    end
+end
+regression_a.marlls = regression_a.marlls(mask==1,:);
+regression_a.genes = regression_a.genes(mask==1); 
+results_b.marlls = results_b.marlls(mask==1,:);
+results_b.genes = results_b.genes(mask==1); 
+baseline_a.marlls = baseline_a.marlls(mask==1,:);
+baseline_a.genes = baseline_a.genes(mask==1);
+
+
+
 % number of TFs
 numTFs = size(combConstr,2);
 M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
 numGenes = size(M,1); 
-
-%% computation of the prior over 32 models
-%prior32 = zeros(1, size(combConstr, 1));
-%for k=1:size(combConstr, 1),
-%  prior32(k) = mean(all(M(:, combConstr(k, :)==1), 2));
-%end
-%prioracc32 = prior32;
-%prior32 = prior32 / sum(prior32);
-%% end of computing the prior 
-%
-% ?????????????????????????????????????????????????????????
-% the WEIRD prioracc computation (Antti what is happening here?)
-%prioraccs32(1) = mean(prioracc32(2:end));
-%prioraccs32(2) = sum(prioracc32(2:end) .* prior32(2:end)) / sum(prior32(2:end));
-% ??????????????????????????????????????????????????????????
 
 
 % computation of the prior over 32 models
@@ -172,11 +186,12 @@ for k=1:length(ind16)
 end
 
 
-prioraccinds = [1, 2, 1, 2, 1, 2, 1];
+prioraccinds = [1, 2, 1, 2, 1, 1, 1];
 % baseline models likelihood ratios 
 posteriors{end+1} = baseline_a.marlls - repmat(baseline_a.marlls(:, 1), ...
 					   [1, size(baseline_a.marlls, 2)]);
 
+posteriors{end+1} = regression_a.marlls;
 
           
 % compute global ranking perforamcne using random prediction. Compute
@@ -187,7 +202,7 @@ accPrior = 0;
 countPrior = 0;
 for l=1:30000
     % random ranking and prediction 
-    perm = randperm(6177); 
+    perm = randperm(size(results_b.genes,1)); 
     % random network
     Mrand = round(rand(1,5));
     Mprior = combConstr(sample_discrete(prior32),:);
@@ -237,11 +252,11 @@ scores = {}; I={}; sscores={}; J={};
 r1 = zeros(length(posteriors), length(T1));
 pvals1 = r1;
 for k=1:length(posteriors)   
-  if k <=2, % 32 models 
+  if ((k<=2) | (k==6)), % 32 models 
     mycomb = combConstr;
   elseif  (k>2 & k<=4), % 16 models 
     mycomb = comb16;
-  else
+  elseif (k==5)
     mycomb = baselinecomb;
   end
   [scores{k}, I{k}] = max(posteriors{k}, [], 2);
@@ -275,7 +290,7 @@ if incPrior,
   plot(v(1:2), 100*prioraccs31(2)*[1 1], 'g');
 end
 hold off
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Regression', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
 xlabel('# of global top genes')
@@ -299,11 +314,11 @@ scores = {}; I={}; sscores={}; J={};
 r1 = zeros(length(posteriors), length(T1));
 pvals1 = r1;
 for k=1:length(posteriors)   
-  if k <=2, % 32 models 
+  if ((k <=2) | (k==6)), % 32 models 
     mycomb = combConstr;
   elseif  (k>2 & k<=4), % 16 models 
     mycomb = comb16;
-  else
+  elseif (k==5) % 32 models
     mycomb = baselinecomb;
   end
   [scores{k}, I{k}] = max(posteriors{k}, [], 2);
@@ -340,7 +355,7 @@ if incPrior,
 end
 hold off
 %legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Focused prior', 'Global prior', 'Focused Empirical prior', 'Global Empirical prior', 'Location', 'EastOutside'};
-legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
+legends = {'MAP-32', 'MAP-32 + prior', 'MAP-16', 'MAP-16 + prior', 'Baseline', 'Regression', 'Uniform prior', 'Empirical prior', 'Location', 'EastOutside'};
 %legend(legends([plotMAP, 1, 1, incPrior, incPrior]==1));
 legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
@@ -987,8 +1002,8 @@ if flag ~= 1
     property = 'Unconstrained'; 
 end
 if printPlot 
-   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(sum(plotMAP)) '_', property '.eps']);
-   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(sum(plotMAP)) '_', property '.eps']);
+   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(2) '_', property '.eps']);
+   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(2) '_', property '.eps']);
    print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
    print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '.eps']);
    %print(h4, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentNegativeSingleLinks' num2str(sum(plotRest)) '_', property '.eps']);

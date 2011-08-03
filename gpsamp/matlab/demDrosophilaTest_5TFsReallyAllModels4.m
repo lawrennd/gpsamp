@@ -18,7 +18,7 @@ TrainSamplesFile = 'drosTrainTotal_14DEC2010.mat';
 glbSc = 1;
 % run the "code-checking-genes" or all genes
 % (zero for all)
-checkG = 0;
+checkG = 1;
 
 % All possible models
 comb = [0 0 0 0 0;
@@ -144,7 +144,7 @@ else % otherwise run the demo
 
     outdir = '~/mlprojects/gpsamp/matlab/results';
     %outdir = '/usr/local/michalis/mlprojects/gpsamp/matlab/results';
-    outfile = sprintf('%s/multitf8c_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
+    outfile = sprintf('%s/multitf6a_%s_m%d_r%d.mat', outdir, identifier, modulus, remainder);
 
     dataName = 'drosophila_dataTest';
     expNo = 1;
