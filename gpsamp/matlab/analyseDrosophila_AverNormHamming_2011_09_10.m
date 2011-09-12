@@ -4,7 +4,7 @@
 flag = 1; % "1" for  constrained; "anything else" for unconstrained 
 
 % USER-specified: Sizes of the ranking sets for the first plot
-T1 = [10 20 100 200, 400, 800, 1600 3200 6085];
+T1 = [20 50 100 200, 400, 800, 1600 3200];
 T2 = [10 20 100 200, 400, 800, 915];
 
 % USER-specified:: Directory where you store figures
@@ -198,7 +198,7 @@ axis(v);
 plot(v(1:2), 100*prioraccs31*[1 1], 'b');
 hold off
 legends = {'MAP-32', 'Baseline', 'Regression', 'Random', 'Location', 'EastOutside'};
-legend(legends([1 2 3 4]));
+legend(legends([1 2 3 4]), 'Location', 'SouthEast');
 axis(v)
 xlabel('# of global top genes')
 ylabel('Accuracy (%)')
@@ -255,7 +255,7 @@ axis(v);
 plot(v(1:2), 100*focused_prioraccs31*[1 1], 'b');
 hold off
 legends = {'MAP-32',  'Baseline', 'Regression', 'Random', 'Location', 'EastOutside'};
-legend(legends([1 2 3 4]));
+legend(legends([1 2 3 4]), 'Location', 'SouthEast');
 axis(v)
 xlabel('# of global top genes')
 ylabel('Accuracy (%)');
