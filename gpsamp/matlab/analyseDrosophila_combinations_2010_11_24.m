@@ -60,7 +60,8 @@ baselinecomb = [0 0 0 0 0;
     
 if flag == 1     
     % load the results
-    results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
+    results_b = sortResults(load('results/multitf8c_2010-12-14_summary.mat'));
+    %results_b = sortResults(load('results/multitf8b_2010-12-06_summary.mat'));
 
     % load the 15 baseline models (zerhoth model is excluded)
     baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
@@ -99,11 +100,54 @@ results_b.genes = results_b.genes(mask==1);
 baseline_a.marlls = baseline_a.marlls(mask==1,:);
 baseline_a.genes = baseline_a.genes(mask==1);
 
-
-
-
 numTFs = size(combConstr,2);
 M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
+% mask out the nans
+mask = ones(size(results_b.genes,1),1); 
+for i=1:size(results_b.genes,1)
+    if isnan(sum( M(i,:) ))
+       mask(i) = 0;
+    end
+end
+%regression_a.marlls = regression_a.marlls(mask==1,:);
+%regression_a.genes = regression_a.genes(mask==1); 
+results_b.marlls = results_b.marlls(mask==1,:);
+results_b.genes = results_b.genes(mask==1); 
+baseline_a.marlls = baseline_a.marlls(mask==1,:);
+baseline_a.genes = baseline_a.genes(mask==1);
+
+% load inferelator results
+load inferelator_models.mat; 
+
+singles = singles(mask==1,:);
+doubles = doubles(mask==1,:);
+M = M(mask==1,:);
+numGenes = size(M,1); 
+
+
+
+% expand doubles
+dd = zeros(numGenes,10);
+% twi & Mef2 
+dd(:,9) = doubles(:,1);
+% bin & bap 
+dd(:,6) = doubles(:,2);
+% tin & bap 
+dd(:,3) = doubles(:,3);
+% bap & Mef2
+dd(:,10) = doubles(:,4);
+% tin & Mef2
+dd(:,4) = doubles(:,5);
+doubles = dd;
+% compute also Antti's doubles  
+pairs =  [1 2; 1 3; 1 4; 1 5; 2 3; 2 4; 2  5; 3 4; 3 5; 4 5];
+for i=1:numGenes
+   for k=1:10
+       doubles(i,k) = max(abs(dd(i,k)), min( abs(singles(i,pairs(k,1))),  abs(singles(i,pairs(k,2))) ) );
+   end
+end
+
+
 % indices of all 32 models 
 ind32 = 1:size(results_b.marlls, 2); 
 % indices that correspond to 16 models (at most 2 TFs) 
@@ -160,6 +204,10 @@ for k=1:numTFs
   % baseline maximum likelihood model
   indPSinglebase = find(baselinecomb(:,k)==1 & baselinecomb(:,g)==1 & sum(baselinecomb,2)==2 ); 
   [foo, J_Pairbase{cnt}] = sort(baseline_a.marlls(:, indPSinglebase) - baseline_a.marlls(:, 1),'descend');  
+  
+  % Inferelator 
+  [foo, J_PairInfer{cnt}] = sort(dd(:,cnt),'descend');  
+  
   %             
   end
 end
@@ -228,6 +276,7 @@ J_indiv32 = {};
 J_indiv16 = {};
 J_indiv2 = {};
 J_indbase = {};
+J_indInfer = {};
 comb16 = combConstr(ind16,:);
 for k=1:numTFs,
 %
@@ -248,6 +297,9 @@ for k=1:numTFs,
   
   % baseline maximum likelihood evaluation         
   [foo, J_indbase{k}] = sort(baseline_a.marlls(:, k+1) - baseline_a.marlls(:, 1), 'descend');
+  
+   % posterior of the TF-link being active using inferelator   
+  [foo, J_indInfer{k}] = sort(abs(singles(:,k)), 'descend');   
 %  
 end
 
@@ -264,7 +316,7 @@ for k=1:numTFs,
   if only32 == 0
     drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
   else
-    drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}}, M(:, k), T);  
+    drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}, J_indInfer{k}}, M(:, k), T);  
   end   
   title(sprintf('%s', tfnames{k}));
 end
@@ -274,14 +326,14 @@ if only32 == 0
 bar(rand(4));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'Baseline', 'Random');
+legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'ML-Baseline', 'Inferelator', 'Random');
 else
-bar(rand(3));
+bar(rand(4));
 hold on
 plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-2', 'Baseline', 'Random');  
+legend('Posterior-32', 'Posterior-2', 'ML-Baseline', 'Inferelator', 'Random');  
 end
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, 18 9])
@@ -306,7 +358,7 @@ for k=1:numTFs
   if only32 == 0
   drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
   else
-  drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);   
+  drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
   end
   title(sprintf('%s & %s', tfnames{k}, tfnames{g}));
   end
@@ -318,14 +370,14 @@ if only32 == 0
 bar(rand(5));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');
+legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'ML-Baseline', 'Inferelator', 'Random');
 else
-bar(rand(4));
+bar(rand(5));
 hold on
 plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');   
+legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'ML-Baseline', 'Inferelator', 'Random');   
 end
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, 18 12])

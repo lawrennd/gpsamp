@@ -16,7 +16,7 @@ printPlot = 1; % 0 means not printing
 plotMAP = [1 0 0 0 1 1]; 
 %plotMAP = [1 1 0 0 0]; 
 % for the rest plots 
-plotRest = [1 0 0 0 1 0 1]; 
+plotRest = [1 0 0 0 1 0 1 1]; 
 %plotRest = [1 1 0 0 1 1 0]; 
 
 % USER-specified: whether to include empirical prior line
@@ -80,7 +80,7 @@ else
     results_b = sortResults(load('results/multitf7a_2010-07-13_summary.mat'));
     
     % !! For Baseline uses the constrained models (if we train the uncosntrained ones, modify the code below) !!
-    % load the 15 baseline models (zerhoth model is excluded)
+    % load the 15 base inferelatorline models (zerhoth model is excluded)
     baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
     % load the zeroth model and append
     baseline_a2 = sortResults(load('results/multitf5a_baseline2_2010-07-02_summary.mat'));
@@ -96,6 +96,10 @@ load results/res_linearPositive.mat
 regression_a.marlls = -predErrors1;
 %regression_a.marlls = -predErrors1norm;
 regression_a.genes = results_b.genes; 
+
+% load inferelator results
+load inferelator_models.mat; 
+
 
 
 % You need to exclude the 92 training genes 
@@ -121,6 +125,22 @@ baseline_a.genes = baseline_a.genes(mask==1);
 % number of TFs
 numTFs = size(combConstr,2);
 M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
+% mask out the nans
+mask = ones(size(results_b.genes,1),1); 
+for i=1:size(results_b.genes,1)
+    if isnan(sum( M(i,:) ))
+       mask(i) = 0;
+    end
+end
+regression_a.marlls = regression_a.marlls(mask==1,:);
+regression_a.genes = regression_a.genes(mask==1); 
+results_b.marlls = results_b.marlls(mask==1,:);
+results_b.genes = results_b.genes(mask==1); 
+baseline_a.marlls = baseline_a.marlls(mask==1,:);
+baseline_a.genes = baseline_a.genes(mask==1);
+singles = singles(mask==1,:);
+doubles = doubles(mask==1,:);
+M = M(mask==1,:);
 numGenes = size(M,1); 
 
 
@@ -401,6 +421,9 @@ for k=1:numTFs
   
   % posterior of the TF-link being active using maximum likelihood model             
   linkMargPosteriors{7}(:,k) = baseline_a.marlls(:, k+1) - baseline_a.marlls(:, 1);
+  
+  % posterior of the TF-link being active using inferelator           
+  linkMargPosteriors{8}(:,k) = abs(singles(:,k));
 %  
 end
 
@@ -427,7 +450,7 @@ prioraccsSingleTF(2) = sum(priorSingleTF .* priorSingleTF) / sum(priorSingleTF);
 
 %prioraccsSingleTF(1) = mean(priorSingleTF);
 %prioraccsSingleTF(2) = sum(priorSingleTF .* priorSingleTF) / sum(priorSingleTF).^2;
-baselines2 = [1, 2, 1, 2, 1. 2, 1];
+baselines2 = [1, 2, 1, 2, 1. 2, 1, 1];
 numGenes = size(linkMargPosteriors{1},1);
 r2 = zeros(length(T2), length(linkMargPosteriors));
 pvals2 = r2;
@@ -503,7 +526,7 @@ end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
        'Posterior-2', 'Posterior-2 + prior',...
-       'Baseline', 'Uniform prior', 'Empirical prior'};
+       'ML-Baseline', 'Inferelator', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', ...
 %       'Posterior-2', 'Posterior-2 + prior',...
@@ -568,8 +591,30 @@ for k=1:numTFs
   % baseline maximum likelihood model
   indPSinglebase = find(baselinecomb(:,k)==1 & baselinecomb(:,g)==1 & sum(baselinecomb,2)==2 ); 
   linkPairPosteriors{7}(:, cnt) = baseline_a.marlls(:, indPSinglebase) - baseline_a.marlls(:, 1);  
+  
   %             
   end
+end
+
+% Inferelator predictions
+linkPairPosteriors{8} = zeros(size(linkPairPosteriors{7}));
+% twi & Mef2 
+linkPairPosteriors{8}(:,9) = abs(doubles(:,1));
+% bin & bap 
+linkPairPosteriors{8}(:,6) = abs(doubles(:,2));
+% tin & bap 
+linkPairPosteriors{8}(:,3) = abs(doubles(:,3));
+% bap & Mef2
+linkPairPosteriors{8}(:,10) = abs(doubles(:,4));
+% tin & Mef2
+linkPairPosteriors{8}(:,4) = abs(doubles(:,5));
+
+% compute also Antti's doubles 
+doublesA = zeros(size(doubles)); 
+for i=1:numGenes
+   for k=1:10
+       linkPairPosteriors{8}(i,k) = max(linkPairPosteriors{8}(i,k), min(abs(singles(i,pairs(k,1))),  abs(singles(i,pairs(k,2)))));
+   end
 end
 
 
@@ -595,7 +640,7 @@ prioraccsPairTF(1) = mean(priorPairTF);
 prioraccsPairTF(2) = sum(priorPairTF.*priorPairTF) / sum(priorPairTF);
 
 
-baselines2 = [1, 2, 1, 2, 1. 2, 1];
+baselines2 = [1, 2, 1, 2, 1. 2, 1, 1];
 r3 = zeros(length(T2), length(linkPairPosteriors));
 pvals3 = r3;
 for k=1:length(linkPairPosteriors),
@@ -666,7 +711,7 @@ if incPrior,
 end
 hold off
 legends = {'Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
-       'Baseline', 'Uniform prior', 'Empirical prior'};
+       'ML-Baseline', 'Inferelator', 'Uniform prior', 'Empirical prior'};
 legend(legends([plotRest, 1, incPrior]==1));  
 %legend('Posterior-32', 'Posterior-32 + prior', 'Posterior-16', 'Posterior-16 + prior', 'Posterior-4','Posterior-4 + prior',...
 %       'Baseline', 'Uniform random', 'Random from prior', ...
