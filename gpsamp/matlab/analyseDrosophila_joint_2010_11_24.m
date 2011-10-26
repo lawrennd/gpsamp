@@ -100,6 +100,14 @@ regression_a.genes = results_b.genes;
 % load inferelator results
 load inferelator_models.mat; 
 
+[pair_a, pair_b] = strtok(doubles_cols, '.');
+inf_pairs = zeros(length(pair_a), 2);
+for k=1:length(pair_b),
+  pair_b{k} = pair_b{k}(2:end);
+  inf_pairs(k,:) = [find(strcmp(pair_a{k}, singles_cols)),
+		    find(strcmp(pair_b{k}, singles_cols))];
+end
+
 
 
 % You need to exclude the 92 training genes 
@@ -422,8 +430,10 @@ for k=1:numTFs
   % posterior of the TF-link being active using maximum likelihood model             
   linkMargPosteriors{7}(:,k) = baseline_a.marlls(:, k+1) - baseline_a.marlls(:, 1);
   
+  %inf_pairs =  [3 5; 2 4; 2 3; 4 5; 3 4; 1 4; 1 5];
   % posterior of the TF-link being active using inferelator           
-  linkMargPosteriors{8}(:,k) = abs(singles(:,k));
+  %linkMargPosteriors{8}(:,k) = abs(singles(:,k));
+  linkMargPosteriors{8}(:,k) = max(abs([singles(:,k), doubles(:, any(inf_pairs == k, 2))]), [], 2);
 %  
 end
 
@@ -598,16 +608,12 @@ end
 
 % Inferelator predictions
 linkPairPosteriors{8} = zeros(size(linkPairPosteriors{7}));
-% twi & Mef2 
-linkPairPosteriors{8}(:,9) = abs(doubles(:,1));
-% bin & bap 
-linkPairPosteriors{8}(:,6) = abs(doubles(:,2));
-% tin & bap 
-linkPairPosteriors{8}(:,3) = abs(doubles(:,3));
-% bap & Mef2
-linkPairPosteriors{8}(:,10) = abs(doubles(:,4));
-% tin & Mef2
-linkPairPosteriors{8}(:,4) = abs(doubles(:,5));
+
+pairs =  [1 2; 1 3; 1 4; 1 5; 2 3; 2 4; 2  5; 3 4; 3 5; 4 5];
+
+for k=1:size(doubles, 2),
+  linkPairPosteriors{8}(:, all(bsxfun(@eq, inf_pairs(k,:), pairs), 2)) = abs(doubles(:,k));
+end
 
 % compute also Antti's doubles 
 doublesA = zeros(size(doubles)); 

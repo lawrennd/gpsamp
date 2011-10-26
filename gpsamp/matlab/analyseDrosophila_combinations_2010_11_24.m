@@ -124,28 +124,39 @@ doubles = doubles(mask==1,:);
 M = M(mask==1,:);
 numGenes = size(M,1); 
 
+[pair_a, pair_b] = strtok(doubles_cols, '.');
+inf_pairs = zeros(length(pair_a), 2);
+for k=1:length(pair_b),
+  pair_b{k} = pair_b{k}(2:end);
+  inf_pairs(k,:) = [find(strcmp(pair_a{k}, singles_cols)),
+		    find(strcmp(pair_b{k}, singles_cols))];
+end
 
 
+pairs =  [1 2; 1 3; 1 4; 1 5; 2 3; 2 4; 2  5; 3 4; 3 5; 4 5];
 % expand doubles
 dd = zeros(numGenes,10);
-% twi & Mef2 
-dd(:,9) = doubles(:,1);
-% bin & bap 
-dd(:,6) = doubles(:,2);
-% tin & bap 
-dd(:,3) = doubles(:,3);
-% bap & Mef2
-dd(:,10) = doubles(:,4);
-% tin & Mef2
-dd(:,4) = doubles(:,5);
-doubles = dd;
+
+for k=1:size(doubles, 2),
+  dd(:, all(bsxfun(@eq, inf_pairs(k,:), pairs), 2)) = doubles(:,k);
+end
+
 % compute also Antti's doubles  
-pairs =  [1 2; 1 3; 1 4; 1 5; 2 3; 2 4; 2  5; 3 4; 3 5; 4 5];
 for i=1:numGenes
    for k=1:10
-       doubles(i,k) = max(abs(dd(i,k)), min( abs(singles(i,pairs(k,1))),  abs(singles(i,pairs(k,2))) ) );
+       dd(i,k) = max(abs(dd(i,k)), min( abs(singles(i,pairs(k,1))),  abs(singles(i,pairs(k,2))) ) );
    end
 end
+
+
+% compute new singles
+for i=1:numGenes
+   for k=1:5
+     singles(i,k) = max(abs([singles(i,k), doubles(i, any(inf_pairs == k, 2))]));
+   end
+end
+
+doubles = dd;
 
 
 % indices of all 32 models 
