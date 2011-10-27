@@ -3,6 +3,8 @@
 % !! Warning: Baseline models was run only for the constrained case !!
 flag = 1; % "1" for  constrained; "anything else" for unconstrained 
 
+load datasets/testset
+
 % USER-specified: Sizes of the ranking sets for the first plot
 T1 = [200, 400, 800, 1600, 3200, 6000];
 % Sizes of the ranking sets for the second plot
@@ -95,10 +97,24 @@ end
 load results/res_linearPositive.mat 
 regression_a.marlls = -predErrors1;
 %regression_a.marlls = -predErrors1norm;
-regression_a.genes = results_b.genes; 
+regression_a.genes = drosexp.genes(testset.indices); 
 
 % load inferelator results
 load inferelator_models.mat; 
+
+inf_genes = cell(size(all_rows));
+for k=1:length(all_rows),
+  inf_genes{k} = drosexp.genes{find(strcmp(all_rows(k), drosexp.probes))};
+end
+
+% Permute the rows to match other results
+[dummy, I] = sort(inf_genes);
+inf_genes = inf_genes(I);
+singles = singles(I, :);
+doubles = doubles(I, :);
+all_rows = all_rows(I);
+regression_a.marlls = regression_a.marlls(I, :);
+regression_a.genes = regression_a.genes(I);
 
 [pair_a, pair_b] = strtok(doubles_cols, '.');
 inf_pairs = zeros(length(pair_a), 2);
@@ -107,8 +123,6 @@ for k=1:length(pair_b),
   inf_pairs(k,:) = [find(strcmp(pair_a{k}, singles_cols)),
 		    find(strcmp(pair_b{k}, singles_cols))];
 end
-
-
 
 % You need to exclude the 92 training genes 
 genesAndChip = importdata('datasets/eileen_nature_training_set.txt'); 
@@ -127,8 +141,10 @@ results_b.marlls = results_b.marlls(mask==1,:);
 results_b.genes = results_b.genes(mask==1); 
 baseline_a.marlls = baseline_a.marlls(mask==1,:);
 baseline_a.genes = baseline_a.genes(mask==1);
-
-
+singles = singles(mask==1,:);
+doubles = doubles(mask==1,:);
+all_rows = all_rows(mask==1);
+inf_genes = inf_genes(mask==1);
 
 % number of TFs
 numTFs = size(combConstr,2);
@@ -148,6 +164,8 @@ baseline_a.marlls = baseline_a.marlls(mask==1,:);
 baseline_a.genes = baseline_a.genes(mask==1);
 singles = singles(mask==1,:);
 doubles = doubles(mask==1,:);
+all_rows = all_rows(mask==1);
+inf_genes = inf_genes(mask==1);
 M = M(mask==1,:);
 numGenes = size(M,1); 
 
@@ -616,7 +634,6 @@ for k=1:size(doubles, 2),
 end
 
 % compute also Antti's doubles 
-doublesA = zeros(size(doubles)); 
 for i=1:numGenes
    for k=1:10
        linkPairPosteriors{8}(i,k) = max(linkPairPosteriors{8}(i,k), min(abs(singles(i,pairs(k,1))),  abs(singles(i,pairs(k,2)))));
