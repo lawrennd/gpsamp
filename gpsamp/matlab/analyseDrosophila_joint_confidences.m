@@ -30,38 +30,16 @@ if (~exist('drosinsitu')),
   load datasets/drosophila_data;
 end
 
+if (~exist('r1rand')),
+  load results/randomisation;
+end
+
 
 % 1 PLOT ---------------------------------------------------------------
 % GLOBAL RANKING BASED ON THE MAP MODEL 
-% START  ---------------------------------------------------------------             
-scores = {}; I={}; sscores={}; J={};
-r1 = zeros(length(posteriors), length(T1));
-pvals1 = r1;
-for k=1:length(posteriors)   
-  if ((k<=2) | (k==6)), % 32 models 
-    mycomb = combConstr;
-  elseif  (k>2 & k<=4), % 16 models 
-    mycomb = comb16;
-  elseif (k==5)
-    mycomb = baselinecomb;
-  end
-  [scores{k}, I{k}] = max(posteriors{k}, [], 2);
-  [sscores{k}, J{k}] = sort(scores{k}, 'descend');
-  for l=1:length(T1),
-    acc = 0; acc2 = 0;
-    count = 0;
-    for m=1:T1(l),
-      if I{k}(J{k}(m)) ~= 1,
-	      acc = acc + all( M(J{k}(m), mycomb( I{k}(J{k}(m)), :)==1), 2); 
-          %acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
-	      count = count + 1;
-      end
-    end
-    r1(k, l) = acc / count;
-    %r2(k, l) = acc2 / count;
-    pvals1(k, l) = 1 - binocdf(acc - 1, count, priors.accs31(priors.accinds(k)));
-  end
-end
+% START  ---------------------------------------------------------------
+
+pvals1 = p_from_rand(r1, r1rand);
 h1 = figure;
 set(gca, 'FontSize', fontSize);
 % plot bars
@@ -93,41 +71,11 @@ set(gcf, 'PaperPosition', [0, 0, figSize])
 % GLOBAL RANKING BASED ON THE MAP MODEL, IN-SITU FILTERING
 % START  ---------------------------------------------------------------
 
-% Find the genes with positive in situ annotations
-[C, IA, IB] = intersect(drosinsitu.genes(any(drosinsitu.data, 2)), post_genes);
-
-scores = {}; I={}; sscores={}; J={};
-r1 = zeros(length(posteriors), length(T1));
-pvals1 = r1;
-for k=1:length(posteriors)   
-  if ((k <=2) | (k==6)), % 32 models 
-    mycomb = combConstr;
-  elseif  (k>2 & k<=4), % 16 models 
-    mycomb = comb16;
-  elseif (k==5) % 32 models
-    mycomb = baselinecomb;
-  end
-  [scores{k}, I{k}] = max(posteriors{k}, [], 2);
-  [sscores{k}, J{k}] = sort(scores{k}, 'descend');
-  for l=1:length(T1),
-    acc = 0; acc2 = 0;
-    count = 0;
-    for m=1:T1(l),
-      if I{k}(J{k}(m)) ~= 1 && any(IB == J{k}(m)),
-	      acc = acc + all( M(J{k}(m), mycomb( I{k}(J{k}(m)), :)==1), 2); 
-          %acc2 = acc2 + all(M(J{k}(m), :) == mycomb(I{k}(J{k}(m)), :), 2);
-	      count = count + 1;
-      end
-    end
-    r1(k, l) = acc / count;
-    %r2(k, l) = acc2 / count;
-    pvals1(k, l) = 1 - binocdf(acc - 1, count, priors.focused_accs31(priors.accinds(k)));
-  end
-end
+pvals1b = p_from_rand(r1b, r1brand);
 h1b = figure;
 set(gca, 'FontSize', fontSize);
 % plot bars
-h = bar(100*r1(plotMAP==1,:)');
+h = bar(100*r1b(plotMAP==1,:)');
 set(gca, 'XTickLabel', T1);
 hold on
 v = axis;
@@ -147,7 +95,7 @@ legend(legends([plotMAP, 1, incPrior]==1));
 axis(v)
 xlabel('# of global top genes')
 ylabel('Enrichment (%)')
-drosStarBars(h, pvals1(plotMAP==1,:)');
+drosStarBars(h, pvals1b(plotMAP==1,:)');
 set(gca, 'FontSize', fontSize);
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, figSize])
@@ -176,35 +124,7 @@ prioraccsSingleTF(1) = mean(priorSingleTF);
 % the empirical prior
 prioraccsSingleTF(2) = sum(priorSingleTF .* priorSingleTF) / sum(priorSingleTF);
 
-%prioraccsSingleTF(1) = mean(priorSingleTF);
-%prioraccsSingleTF(2) = sum(priorSingleTF .* priorSingleTF) / sum(priorSingleTF).^2;
-baselines2 = [1, 2, 1, 2, 1. 2, 1, 1];
-numGenes = size(linkMargPosteriors{1},1);
-r2 = zeros(length(T2), length(linkMargPosteriors));
-pvals2 = r2;
-for k=1:length(linkMargPosteriors), 
-    % compute the best single-TF-link for each gene
-    [BestPost, BestLink] = max(linkMargPosteriors{k}, [], 2);
-    [foo, I] = sort(BestPost, 'descend');
-    for l=1:length(T2),
-       r2(l,k) = 0;  
-       nanCnt =0;
-       for j=1:T2(l)
-          gene = I(j);   
-          TF = BestLink(I(j));
-          MM = M(gene, TF);
-          if ~isnan(MM)
-             r2(l,k) = r2(l,k) + MM;
-          else
-             nanCnt = nanCnt + 1;
-          end
-       end
-       pvals2(l, k) = 1 - binocdf(r2(l,k) - 1, ...
-			          T2(l)-nanCnt, ...
-	  		          prioraccsSingleTF(baselines2(k)));
-       r2(l,k) = r2(l,k)/(T2(l)-nanCnt); 
-    end
-end
+pvals2 = p_from_rand(r2, r2rand);
 % plots bars 
 h2 = figure;
 set(gca, 'FontSize', fontSize);
@@ -260,56 +180,7 @@ prioraccsPairTF(1) = mean(priorPairTF);
 % the empirical prior
 prioraccsPairTF(2) = sum(priorPairTF.*priorPairTF) / sum(priorPairTF);
 
-
-baselines2 = [1, 2, 1, 2, 1. 2, 1, 1];
-r3 = zeros(length(T2), length(linkPairPosteriors));
-pvals3 = r3;
-for k=1:length(linkPairPosteriors),
-    % compute the best pair-TF-link for each gene
-    [BestPost, BestLink] = max(linkPairPosteriors{k}, [], 2);
-    [foo, I] = sort(BestPost, 'descend');
-    for l=1:length(T2),
-       r3(l,k) = 0;  
-       nanCnt =0;
-       for j=1:T2(l)
-          gene = I(j);   
-          TFpair = BestLink(I(j));
-          MM =  prod(M(gene, pairs(TFpair,:)));
-          if ~isnan(MM)
-             r3(l,k) = r3(l,k) + MM;
-          else
-             nanCnt = nanCnt + 1;
-          end
-       end
-       pvals3(l, k) = 1 - binocdf(r3(l,k) - 1, ...
-			          T2(l)-nanCnt, ...
-			          prioraccsPairTF(baselines2(1)));                  
-       r3(l,k) = r3(l,k)/(T2(l)-nanCnt);
-    end
-    %[foo, I] = sort(linkPairPosteriors{k}(:), 'descend');
-    %for l=1:length(T2),
-    %   r3(l,k) = 0;  
-    %   nanCnt = 0;
-    %   for j=1:T2(l)
-    %      gene = mod(I(j), numGenes);
-    %      gene(gene==0)=numGenes;          
-    %      TFpair = floor(I(j)/numGenes) + 1;
-    %      TFpair(TFpair==11)=10;
-    % 
-    %      MM =  prod(M(gene, pairs(TFpair,:)));
-    %      if ~isnan(MM)
-    %         r3(l,k) = r3(l,k) + MM;
-    %      else
-    %         nanCnt = nanCnt + 1;
-    %      end
-    %   end
-    %   pvals3(l, k) = 1 - binocdf(r3(l,k) - 1, ...
-	%		          T2(l)-nanCnt, ...
-	%		          prioraccsPairTF(baselines2(1)));                  
-    %   r3(l,k) = r3(l,k)/(T2(l)-nanCnt);
-    %end
-%
-end
+pvals3 = p_from_rand(r3, r3rand);
 % plots bars 
 h3 = figure;
 set(gca, 'FontSize', fontSize);
@@ -348,8 +219,8 @@ if flag ~= 1
     property = 'Unconstrained'; 
 end
 if printPlot 
-   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(2) '_', property '.eps']);
-   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(2) '_', property '.eps']);
-   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '.eps']); 
-   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '.eps']);
+   print(h1, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAP' num2str(2) '_', property '_newconf.eps']);
+   print(h1b, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentGlobalMAPIN_SITU' num2str(2) '_', property '_newconf.eps']);
+   print(h2, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentSingleLinks' num2str(sum(plotRest)) '_', property '_newconf.eps']); 
+   print(h3, '-depsc2', [ddir 'drosophilaBars_' 'EnrichmentPairLinks' num2str(sum(plotRest)) '_', property '_newconf.eps']);
 end
