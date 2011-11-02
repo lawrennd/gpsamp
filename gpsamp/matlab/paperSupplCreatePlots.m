@@ -289,7 +289,7 @@ close all;
 % produce drosophila bars 
 addpath ../../disimrank/matlab/;
 load datasets/drosophila_data.mat
-analyseDrosophila_joint_2010_11_24;
+analyseDrosophila_joint_2011_11_01;
 analyseDrosophila_combinations_2010_11_24;
 clear;
 analyseToy_2010_07_29;

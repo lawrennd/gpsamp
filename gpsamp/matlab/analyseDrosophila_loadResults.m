@@ -177,8 +177,12 @@ posteriors{end+1} = regression_a.marlls;
 
 accRand = 0;
 countRand = 0;
+accRand2 = 0;
+countRand2 = 0;
 accPrior = 0;
 countPrior = 0;
+accPrior2 = 0;
+countPrior2 = 0;
 for l=1:30000
     % random ranking and prediction 
     perm = randperm(size(results_b.genes,1)); 
@@ -189,13 +193,19 @@ for l=1:30000
 	   accRand = accRand + all( M(perm(1), Mrand==1), 2);
 	   countRand = countRand + 1;
     end
+    accRand2 = accRand2 + all( M(perm(1),:) == Mrand );
+    countRand2 = countRand2 + 1;
     if sum(Mprior(1,:),2) > 0 
 	   accPrior = accPrior + all( M(perm(1), Mprior==1), 2);
 	   countPrior = countPrior + 1;
     end
+    accPrior2 = accPrior2 + all( M(perm(1),:) == Mprior );
+    countPrior2 = countPrior2 + 1;
 end
 priors.accs31(1) =  accRand/countRand;
 priors.accs31(2) =  accPrior/countPrior;
+priors.accs31_neg(1) =  accRand2/countRand2;
+priors.accs31_neg(2) =  accPrior2/countPrior2;
 
 % compute focussed ranking performance using random prediction. Compute
 [C, IA, IB] = intersect(drosinsitu.genes(any(drosinsitu.data, 2)), results_b.genes);
