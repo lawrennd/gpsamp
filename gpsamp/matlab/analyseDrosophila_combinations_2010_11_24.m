@@ -108,6 +108,8 @@ for k=1:numTFs,
   else
     drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}, J_indInfer{k}}, M(:, k), T);  
   end   
+  v = axis;
+  axis([v(1:2), 0, 80])
   title(sprintf('%s', tfnames{k}));
 end
 subplot(2, 3, 6);
@@ -148,8 +150,10 @@ for k=1:numTFs
   if only32 == 0
     drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
   else
-    drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
+    %drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
+    drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
   end
+  axis([v(1:2), 0, 50])
   title(sprintf('%s & %s', tfnames{k}, tfnames{g}));
   end
 end
@@ -162,12 +166,12 @@ axis([-10 -9 -10 -9]);
 axis off;
 legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'ML-Baseline', 'Inferelator', 'Random');
 else
-bar(rand(5));
+bar(rand(4));
 hold on
 plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'ML-Baseline', 'Inferelator', 'Random');   
+legend('Posterior-32', 'Posterior-4', 'ML-Baseline', 'Inferelator', 'Random');
 end
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, 18 12])

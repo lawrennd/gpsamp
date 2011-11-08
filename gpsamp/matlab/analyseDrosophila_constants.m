@@ -1,3 +1,8 @@
+% USER-specified: Sizes of the ranking sets for the first plot
+T1 = [200, 400, 800, 1600, 3200, 6003];
+% Sizes of the ranking sets for the second plot
+T2 = [50, 100, 200, 400, 800, 1600, 3200];
+
 % models (as stored  in the results variables; see below) 
 % correspidng to 5 TFs being active/inactive 
 combConstr = [0 0 0 0 0;

@@ -1,8 +1,3 @@
-% USER-specified: Sizes of the ranking sets for the first plot
-T1 = [200, 400, 800, 1600, 3200, 6003];
-% Sizes of the ranking sets for the second plot
-T2 = [50, 100, 200, 400, 800, 1600, 3200];
-
 % USER-specified:: Directory where you store figures
 ddir = 'figures/';
 printPlot = 1; % 0 means not printing
