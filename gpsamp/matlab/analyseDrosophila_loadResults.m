@@ -1,4 +1,4 @@
-function [posteriors, linkMargPosteriors, linkPairPosteriors, priors, M, post_genes] = analyseDrosophila_loadResults()
+function [posteriors, linkMargPosteriors, linkPairPosteriors, priors, M, post_genes] = analyseDrosophila_loadResults(validation)
 % USER-specified: Do you want constrained (positive interactions weights)
 % or unconstrained models? 
 % !! Warning: Baseline models was run only for the constrained case !!
@@ -6,6 +6,10 @@ flag = 1; % "1" for  constrained; "anything else" for unconstrained
 
 load datasets/drosophila_data;
 load datasets/testset;
+
+if nargin < 1,
+    validation = 'chipchip';
+end
 
 analyseDrosophila_constants;
 
@@ -88,8 +92,18 @@ doubles = doubles(mask==1,:);
 all_rows = all_rows(mask==1);
 inf_genes = inf_genes(mask==1);
 
-% number of TFs
-M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
+switch validation,
+  case 'chipchip',
+    % number of TFs
+    M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
+  case 'droid',
+    d = importdata('datasets/DroID_v2011_11_M.txt');
+    [I, A, B] = intersect(d.textdata(2:end), results_b.genes);
+    M = NaN*zeros(length(results_b.genes), numTFs);
+    M(B, :) = d.data(A, :);
+  otherwise,
+    error('unknown validation method');
+end
 % mask out the nans
 mask = ones(size(results_b.genes,1),1); 
 for i=1:size(results_b.genes,1)
@@ -109,6 +123,8 @@ all_rows = all_rows(mask==1);
 inf_genes = inf_genes(mask==1);
 M = M(mask==1,:);
 numGenes = size(M,1); 
+
+T1(end) = numGenes;
 
 
 % computation of the prior over 32 models

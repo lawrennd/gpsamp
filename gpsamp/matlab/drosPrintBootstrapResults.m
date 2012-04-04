@@ -54,15 +54,15 @@ for k=1:M,
     for l=1:N,
       if any(k == ignore) || any(l == ignore),
 	fprintf(fid, ' & -  ');
-      elseif m(k,l,j) > .99,
+      elseif m(k,l,j) > .999,
 	fprintf(fid, ' & ***');
-      elseif m(k,l,j) > .95,
+      elseif m(k,l,j) > .99,
 	fprintf(fid, ' & ** ');
-      elseif m(k,l,j) > .9,
+      elseif m(k,l,j) > .95,
 	fprintf(fid, ' & *  ');
-      elseif m(k,l,j) > .8,
+      elseif m(k,l,j) > .9,
 	fprintf(fid, ' & +  ');
-      elseif m(k,l,j) > .7,
+      elseif m(k,l,j) > .8,
 	fprintf(fid, ' & .  ');
       else
 	fprintf(fid, ' &    ');
