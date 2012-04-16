@@ -1,4 +1,5 @@
 N_REPEATS = 100000;
+validation = 'droid';
 
 plotMAP = [1 0 0 0 1 1 1];
 % for the rest plots 
@@ -6,10 +7,12 @@ plotRest = [1 0 0 0 1 0 1 1];
 
 analyseDrosophila_constants;
 if (~exist('posteriors')),
-  [posteriors, linkMargPosteriors, linkPairPosteriors, priors, M, post_genes] = analyseDrosophila_loadResults;
+  [posteriors, linkMargPosteriors, linkPairPosteriors, priors, M, post_genes] = analyseDrosophila_loadResults(validation);
 else
   fprintf('Re-using old posteriors, clear ''posteriors'' to force reload/recompute\n');
 end
+
+T1(end) = size(M, 1);
 
 if (~exist('drosinsitu')),
   load datasets/drosophila_data;
@@ -117,4 +120,11 @@ end
 % GLOBAL RANKING BASED ON THE PRESENCE OF A PAIR OF  LINKS
 % END    ---------------------------------------------------------------
 
-save results/bootstrap res1 res1c res2 res3 accs1 accs1c accs2 accs3
+switch validation,
+  case 'droid',
+    save results/bootstrap_droid res1 res1c res2 res3 accs1 accs1c accs2 accs3
+  case 'chipchip',
+    save results/bootstrap_chipchip res1 res1c res2 res3 accs1 accs1c accs2 accs3
+  otherwise,
+    save results/bootstrap_unknown res1 res1c res2 res3 accs1 accs1c accs2 accs3
+end
