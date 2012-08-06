@@ -276,7 +276,7 @@ h = bar(100*r2(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
-v(3:4) = [0 100];
+v(3:4) = [0 80];
 axis(v)
 plot(v(1:2), 100*prioraccsSingleTF(1)*[1 1], 'b');
 if incPrior,
@@ -385,7 +385,7 @@ h = bar(100*r3(:, plotRest==1));
 set(gca, 'XTickLabel', T2);
 hold on
 v = axis;
-v(3:4) = [0 100];
+v(3:4) = [0 20];
 axis(v)
 plot(v(1:2), 100*prioraccsPairTF(1)*[1 1], 'b');
 if incPrior,
