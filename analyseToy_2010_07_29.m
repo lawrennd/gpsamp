@@ -1,8 +1,5 @@
 results{1} = sortResults(load('results/multitfToyOneCond6a_2010-07-09_summary.mat'));
-%results{1} = sortResults(load('results/multitfToyOneCond7a_2011-06-27_summary.mat'));
 results{2} = sortResults(load('results/multitfToyTwoConds6a_2010-07-09_summary.mat'));
-%results{2} = sortResults(load('results/multitfToyTwoConds7a_2011-06-27_summary.mat'));
-
 load datasets/toy4TFs28_June_10.mat
 
 tcomb = [0 0 0; 1 0 0; 0 1 0; 0 0 1;
@@ -19,7 +16,7 @@ printPlot = 1; % 0 means not printing
 plotAll = 0;
 
 %TFnames = {'first', 'second', 'third'};
-TFnames = {'ANT', 'BEE', 'CAR'};
+TFnames = {'TF1', 'TF2', 'TF3'};
 T = [20, 50, 100, 150, 200 500];
 numTFs = size(tcomb,2);
 % indices of all 32 models 
@@ -68,7 +65,7 @@ set(gca, 'FontSize', FONTSIZE);
 set(gcf, 'PaperUnits', 'centimeters');
 set(gcf, 'PaperSize', [20 20])
 set(gcf, 'PaperPosition', [0 0 10 7]);
-title('Any');
+title('Overall');
 hold off;
 % 1 PLOT ---------------------------------------------------------------
 % ROC CURVES FOR GLOBAL PREDICTION OF SINGLE  LINKS
@@ -172,7 +169,7 @@ for g=(k+1):numTFs
       legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
          sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),'Location', 'SouthEast');
     end
-    title(sprintf('%s & %s', TFnames{k}, TFnames{g}));
+    title(sprintf('%s + %s', TFnames{k}, TFnames{g}));
     hold off;
 end
 end
@@ -251,7 +248,7 @@ legend(sprintf('One cond\nAUC=%.2f', sepPairAuc8{1}(1)),...
        sprintf('Two conds \nAUC=%.2f', sepPairAuc8{1}(2)),'Location', 'SouthEast');
 end
 box on;
-title('Any pair');
+title('Overall');
 hold off;
 % 2c PLOT ---------------------------------------------------------------
 % GLOBAL ROC CURVE FOR PREDICTION OF PAIR LINKS
@@ -422,9 +419,9 @@ for g=(k+1):numTFs
   %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
   drosPlotAccuracyBars({J_Pair8{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}}, prod(M(:, [k g]), 2), T);
   if cond == 1
-  title(sprintf('%s & %s: %d cond', TFnames{k}, TFnames{g}, cond));
+  title(sprintf('%s+%s: %d cond', TFnames{k}, TFnames{g}, cond));
   else
-  title(sprintf('%s & %s: %d conds', TFnames{k}, TFnames{g}, cond));   
+  title(sprintf('%s+%s: %d conds', TFnames{k}, TFnames{g}, cond));   
   end   
   end
 end

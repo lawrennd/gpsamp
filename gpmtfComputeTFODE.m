@@ -30,12 +30,8 @@ for m=1:Ntfs
     % 
     D = LikParams.kineticsTF(j,1);
     S = LikParams.kineticsTF(j,2); 
-    if size(LikParams.kineticsTF(j,:),2)==3
-       A = LikParams.kineticsTF(j,3);       
-    else
-       A = 0; 
-    end
- 
+    A = LikParams.kineticsTF(j,3);       
+    
     % Trapezoid rule of numerical integration
     ffx = exp(D*uu).*fx(m,:);
     IntVals = zeros(size(ffx));

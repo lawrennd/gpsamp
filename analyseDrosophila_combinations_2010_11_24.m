@@ -4,8 +4,7 @@
 % !! Warning: Baseline models was run only for the constrained case !!
 flag = 1; % "1" for  constrained; "anything else" for unconstrained 
 
-%tfnames = {'tin', 'bin', 'twi', 'bap', 'Mef2'};
-tfnames = {'TIN', 'BIN', 'TWI', 'BAP', 'MEF2'};
+tfnames = {'tin', 'bin', 'twi', 'bap', 'Mef2'};
 
 % USER-specified: Sizes of the ranking sets 
 T = [20, 50, 100, 150, 200];
@@ -18,16 +17,79 @@ only32 = 1;
 
 fontSize = 7;
 
+% models (as stored  in the results variables; see below) 
+% correspidng to 5 TFs being active/inactive 
+combConstr = [0 0 0 0 0;
+	1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 1 0; 0 0 0 0 1;
+	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+	0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+	0 0 1 1 0; 0 0 1 0 1;
+	0 0 0 1 1;
+	1 1 1 0 0; 1 1 0 1 0; 1 1 0 0 1;
+	1 0 1 1 0; 1 0 1 0 1;
+	1 0 0 1 1;
+	0 1 1 1 0; 0 1 1 0 1;
+	0 1 0 1 1;
+	0 0 1 1 1;
+	1 1 1 1 0; 1 1 1 0 1; 1 1 0 1 1; 1 0 1 1 1; 0 1 1 1 1;
+	1 1 1 1 1];
 
-analyseDrosophila_constants;
-if (~exist('posteriors')),
-  [posteriors, linkMargPosteriors, linkPairPosteriors, priors, M, post_genes] = analyseDrosophila_loadResults;
-else
-  fprintf('Re-using old posteriors, clear ''posteriors'' to force reload/recompute\n');
+combUnconstr = [0 0 0 0 0;
+	1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 1 0; 0 0 0 0 1;
+	1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+	0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+	0 0 1 1 0; 0 0 1 0 1;
+	0 0 0 1 1;
+	1 1 1 0 0; 1 1 0 1 0; 1 1 0 0 1;
+	1 0 1 1 0; 1 0 1 0 1;
+	1 0 0 1 1;
+	0 1 1 1 0; 0 1 1 0 1;
+	0 1 0 1 1;
+	0 0 1 1 1;
+	1 1 1 1 0; 1 1 1 0 1; 1 1 0 1 1; 1 0 1 1 1; 0 1 1 1 1;
+	1 1 1 1 1];
+
+baselinecomb = [0 0 0 0 0;
+		1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0 ; 0 0 0 1 0; 0 0 0 0 1;
+		1 1 0 0 0; 1 0 1 0 0; 1 0 0 1 0; 1 0 0 0 1;
+		0 1 1 0 0; 0 1 0 1 0; 0 1 0 0 1;
+		0 0 1 1 0; 0 0 1 0 1;
+		0 0 0 1 1];
+
+    
+if flag == 1     
+    % load the results
+    results_b = sortResults(load('results/multitf8c_2010-12-14_summary.mat'));
+
+    % load the 15 baseline models (zerhoth model is excluded)
+    baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
+    % load the zeroth model and append
+    baseline_a2 = sortResults(load('results/multitf5a_baseline2_2010-07-02_summary.mat'));
+    baseline_a.marlls = [baseline_a2.marlls, baseline_a.marlls];
+else 
+    % load the unconstrained summaries 
+    results_b = sortResults(load('results/multitf7a_2010-07-13_summary.mat'));
+    
+    % !! For Baseline uses the constrained models (if we train the uncosntrained ones, modify the code below) !!
+    % load the 15 baseline models (zerhoth model is excluded)
+    baseline_a = sortResults(load('results/multitf5a_baseline_2010-07-02_summary.mat'));
+    % load the zeroth model and append
+    baseline_a2 = sortResults(load('results/multitf5a_baseline2_2010-07-02_summary.mat'));
+    baseline_a.marlls = [baseline_a2.marlls, baseline_a.marlls];
+    
+    % the code below refers to the combConstr variable, so re-define it
+    combConstr = combUnconstr; 
 end
 
 
-
+numTFs = size(combConstr,2);
+M = drosMakeValidationMatrix(chipdistances, results_b.genes, 2000);
+% indices of all 32 models 
+ind32 = 1:size(results_b.marlls, 2); 
+% indices that correspond to 16 models (at most 2 TFs) 
+ind16 = find(sum(combConstr,2)<=2);
+% index of the zeroth model 
+ind0 = find(sum(combConstr,2)==0);
 % computation of pair-probabilities using set of 32 hypotheses (models)
 J_Pair32 = {};
 % computation of pair-probabilities using set of 16 hypotheses (models)
@@ -44,26 +106,99 @@ for k=1:numTFs
   %   
   cnt = cnt + 1;
   
+  % find all the indices inside comb where the TFs "k" and "g" are active 
+  indPair = find(combConstr(:,k)==1 & combConstr(:,g)==1);
+   
   % posterior probability of the TF-pair under the 32 hypotheses case
-  [foo, J_Pair32{cnt}] = sort(linkPairPosteriors{1}(:, cnt), 'descend');
+  [foo, J_Pair32{cnt}] = sort(logsumexp(results_b.marlls(:,  indPair), 2) - ...
+			              logsumexp(results_b.marlls(:, setdiff(ind32, indPair)), 2), 'descend');
     
+  % find the *single* index inside comb (restricted to 16 hypotheses) where 
+  % the TFs "k" and "g" are active 
+  indPairSingle = find(combConstr(:,k)==1 & combConstr(:,g)==1 & sum(combConstr,2)==2 );
+ 
   % posterior probability of the TF-pair under the 16 hypotheses case
-  [foo, J_Pair16{cnt}] = sort(linkPairPosteriors{3}(:, cnt), 'descend');
+  [foo, J_Pair16{cnt}] = sort(results_b.marlls(:,  indPairSingle) - ...
+			              logsumexp(results_b.marlls(:, setdiff(ind16, indPairSingle)), 2), 'descend');
+  
+  % find the indices inside comb restricted to 4 models 
+  %(0 0; k 0; 0 g; k g )
+  ind4 = find(  sum(combConstr(:, setdiff(1:numTFs, [k g]) ), 2)==0  );
   
   % posterior probability of the TF-pair under the 4 hypotheses case
-  [foo, J_Pair4{cnt}] = sort(linkPairPosteriors{5}(:, cnt), 'descend');
+  [foo, J_Pair4{cnt}] = sort(results_b.marlls(:, indPairSingle) - ...
+  			             logsumexp(results_b.marlls(:, setdiff(ind4, indPairSingle)), 2), 'descend');
           
   % posterior probability of the TF-pair by combining *Heuristically*
   % the single TFs models 
-  [foo, J_PairFromSingleTF{cnt}] = sort(linkPairPosteriors{9}(:, cnt), 'descend');
+  indk = find(combConstr(:,k)==1  &  sum(combConstr,2)==1);
+  indg = find(combConstr(:,g)==1  &  sum(combConstr,2)==1);
+  
+  [foo, J_PairFromSingleTF{cnt}] = sort(results_b.marlls(:, indk) + results_b.marlls(:, indg)  - ...
+  			             results_b.marlls(:, ind0) - logsumexp(results_b.marlls(:, [ind0  indk indg]),2), 'descend');        
 
   % baseline maximum likelihood model
-  [foo, J_Pairbase{cnt}] = sort(linkPairPosteriors{7}(:, cnt),'descend');  
-  
-  % Inferelator 
-  [foo, J_PairInfer{cnt}] = sort(linkPairPosteriors{8}(:, cnt),'descend');  
-  
+  indPSinglebase = find(baselinecomb(:,k)==1 & baselinecomb(:,g)==1 & sum(baselinecomb,2)==2 ); 
+  [foo, J_Pairbase{cnt}] = sort(baseline_a.marlls(:, indPSinglebase) - baseline_a.marlls(:, 1),'descend');  
   %             
+  end
+end
+
+
+% computation of three-link probabilities using set of 32 hypotheses (models)
+J_Triple32 = {};
+% computation of three link probabilities using set of 8 hypotheses (models)
+J_Triple8 = {};
+J_TripleFromSingleTF = {};
+J_Triplebase = {};
+cnt = 0;
+%
+for k=1:numTFs
+  for g=(k+1):numTFs
+  for f=(g+1):numTFs    
+  %   
+  cnt = cnt + 1;
+  
+  % find all the indices inside comb where the TFs "k", "g" and "f" are active 
+  indTriple = find(combConstr(:,k)==1 & combConstr(:,g)==1 & combConstr(:,f)==1);
+   
+  % posterior probability of the TF-pair under the 32 hypotheses case
+  [foo, J_Triple32{cnt}] = sort(logsumexp(results_b.marlls(:,  indTriple), 2) - ...
+			              logsumexp(results_b.marlls(:, setdiff(ind32, indTriple)), 2), 'descend');
+      
+  % find the indices inside comb restricted to 8 models 
+  %(combination of k,g,f )
+  ind8 = find(  sum(combConstr(:, setdiff(1:numTFs, [k g f]) ), 2)==0  );
+  
+  % find the *single* index inside comb (restricted to 8 hypotheses) where 
+  % the TFs "k", "g" and "f"  are active 
+  indTripleSingle = find(combConstr(:,k)==1 & combConstr(:,g)==1 & combConstr(:,f)==1 & sum(combConstr,2)==3 );
+  
+  % posterior probability of the TF-pair under the 4 hypotheses case
+  [foo, J_Triple8{cnt}] = sort(results_b.marlls(:, indTripleSingle) - ...
+  			             logsumexp(results_b.marlls(:, setdiff(ind8, indTripleSingle)), 2), 'descend');
+        
+  % posterior probability of the TF-pair by combining *Heuristically*
+  % the single TFs models 
+  indk = find(combConstr(:,k)==1  &  sum(combConstr,2)==1);
+  indg = find(combConstr(:,g)==1  &  sum(combConstr,2)==1);
+  indf = find(combConstr(:,g)==1  &  sum(combConstr,2)==1);
+  tkg = results_b.marlls(:, indk) + results_b.marlls(:, indg); 
+  tkf = results_b.marlls(:, indk) + results_b.marlls(:, indf); 
+  tgf = results_b.marlls(:, indg) + results_b.marlls(:, indf); 
+  tk0 = results_b.marlls(:, indk) + results_b.marlls(:, ind0); 
+  tg0 = results_b.marlls(:, indg) + results_b.marlls(:, ind0); 
+  tf0 = results_b.marlls(:, indf) + results_b.marlls(:, ind0); 
+  t00 = results_b.marlls(:, ind0) + results_b.marlls(:, ind0); 
+  [foo, J_TripleFromSingleTF{cnt}] = sort(results_b.marlls(:, indk) + results_b.marlls(:, indg) + results_b.marlls(:, indf) - ...
+  			             results_b.marlls(:, ind0) - ...
+                         logsumexp([tkg tkf tgf tk0 tg0 tf0 t00],2), 'descend');        
+                         
+  % baseline maximum likelihood model
+  %indPSinglebase = find(baselinecomb(:,k)==1 & baselinecomb(:,g)==1 & baselinecomb(:,f)==1 & sum(baselinecomb,2)==3 ); 
+  %[foo, J_Triplebase{cnt}] = sort(baseline_a.marlls(:, indPSinglebase) - baseline_a.marlls(:, 1),'descend');  
+  %             
+  end
   end
 end
 
@@ -73,23 +208,26 @@ J_indiv32 = {};
 J_indiv16 = {};
 J_indiv2 = {};
 J_indbase = {};
-J_indInfer = {};
+comb16 = combConstr(ind16,:);
 for k=1:numTFs,
 %
+  indSingle = find(combConstr(:,k)==1);
   % single TF probability computed from 32 models 
-  [foo, J_indiv32{k}] = sort(linkMargPosteriors{1}(:, k),'descend');
+  [foo, J_indiv32{k}] = sort(logsumexp(results_b.marlls(:,indSingle),2) - ...
+			            logsumexp(results_b.marlls(:,setdiff(ind32, indSingle)),2),'descend');
     
   % single TF probability computed from 16 models                
-  [foo, J_indiv16{k}] = sort(linkMargPosteriors{3}(:, k),'descend');
+  [foo, J_indiv16{k}] = sort(logsumexp(results_b.marlls(:,comb16(:, k)==1),2) - ...
+			            logsumexp(results_b.marlls(:,comb16(:, k)==0),2),'descend');
       
+  % find the *single* index inside comb where only "k" is active 
+  indIndiv = find(combConstr(:,k)==1 & sum(combConstr,2)==1 );     
+  
   % single TF probability computed from 2 models             
-  [foo, J_indiv2{k}] = sort(linkMargPosteriors{5}(:, k),'descend');
+  [foo, J_indiv2{k}] = sort(results_b.marlls(:, indIndiv) - results_b.marlls(:, ind0),'descend');
   
   % baseline maximum likelihood evaluation         
-  [foo, J_indbase{k}] = sort(linkMargPosteriors{7}(:, k), 'descend');
-  
-   % posterior of the TF-link being active using inferelator   
-  [foo, J_indInfer{k}] = sort(linkMargPosteriors{8}(:, k), 'descend');
+  [foo, J_indbase{k}] = sort(baseline_a.marlls(:, k+1) - baseline_a.marlls(:, 1), 'descend');
 %  
 end
 
@@ -106,10 +244,8 @@ for k=1:numTFs,
   if only32 == 0
     drosPlotAccuracyBars({J_indiv32{k}, J_indiv16{k}, J_indiv2{k}, J_indbase{k}}, M(:, k), T);
   else
-    drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}, J_indInfer{k}}, M(:, k), T);  
+    drosPlotAccuracyBars({J_indiv32{k},  J_indiv2{k}, J_indbase{k}}, M(:, k), T);  
   end   
-  v = axis;
-  axis([v(1:2), 0, 80])
   title(sprintf('%s', tfnames{k}));
 end
 subplot(2, 3, 6);
@@ -118,14 +254,14 @@ if only32 == 0
 bar(rand(4));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'ML-Baseline', 'Inferelator', 'Random');
+legend('Posterior-32', 'Posterior-16',  'Posterior-2', 'Baseline', 'Random');
 else
-bar(rand(4));
+bar(rand(3));
 hold on
 plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-2', 'ML-Baseline', 'Inferelator', 'Random');  
+legend('Posterior-32', 'Posterior-2', 'Baseline', 'Random');  
 end
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, 18 9])
@@ -148,13 +284,11 @@ for k=1:numTFs
   set(gca, 'FontSize', fontSize);
   %drosPlotAccuracyBars({J_joint32{cnt}, J_joint16{cnt}, J_joint4{cnt},  J_joint2{cnt}, J_jointbase{cnt}}, prod(M(:, [k g]), 2), T);
   if only32 == 0
-    drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
+  drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair16{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);
   else
-    %drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
-    drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_Pairbase{cnt}, J_PairInfer{cnt}}, prod(M(:, [k g]), 2), T);   
+  drosPlotAccuracyBars({J_Pair32{cnt}, J_Pair4{cnt},  J_PairFromSingleTF{cnt}, J_Pairbase{cnt}}, prod(M(:, [k g]), 2), T);   
   end
-  axis([v(1:2), 0, 50])
-  title(sprintf('%s & %s', tfnames{k}, tfnames{g}));
+  title(sprintf('%s + %s', tfnames{k}, tfnames{g}));
   end
 end
 figure(h2);
@@ -164,20 +298,52 @@ if only32 == 0
 bar(rand(5));
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'ML-Baseline', 'Inferelator', 'Random');
+legend('Posterior-32', 'Posterior-16', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');
 else
 bar(rand(4));
 hold on
 plot([0 1], [0 1], 'k--')
 axis([-10 -9 -10 -9]);
 axis off;
-legend('Posterior-32', 'Posterior-4', 'ML-Baseline', 'Inferelator', 'Random');
+legend('Posterior-32', 'Posterior-4', 'Posterior from single-TF models', 'Baseline', 'Random');   
 end
 set(gcf, 'PaperUnits', 'centimeters')
 set(gcf, 'PaperPosition', [0, 0, 18 12])
 % 2 PLOT ---------------------------------------------------------------
 % K TOP LISTS OF POSITIVE PREDICTION OF PAIR-TF-LINKS
 % END    ---------------------------------------------------------------
+
+
+% % 3 PLOT ---------------------------------------------------------------
+% % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
+% % START  ---------------------------------------------------------------
+% h3 = figure; 
+% set(gca, 'FontSize', fontSize);
+% cnt = 0;
+% for k=1:numTFs
+%   for g=(k+1):numTFs
+%   for f=(g+1):numTFs  
+%   cnt = cnt + 1;    
+%   figure(h3);
+%   subplot(3, 5, cnt);
+%   set(gca, 'FontSize', fontSize);
+%   drosPlotAccuracyBars({J_Triple32{cnt}, J_Triple8{cnt}, J_TripleFromSingleTF{cnt}}, prod(M(:, [k g f]), 2), T);
+%   title(sprintf('%s + %s + %s', tfnames{k}, tfnames{g}, tfnames{f}));
+%   end
+%   end
+% end
+% figure(h3);
+% subplot(3, 5, cnt+4);
+% set(gca, 'FontSize', fontSize);
+% bar(rand(3));
+% axis([-10 -9 -10 -9]);
+% axis off;
+% legend('Posterior-32', 'Posterior-8', 'Posterior from single-TF models');
+% set(gcf, 'PaperUnits', 'centimeters')
+% set(gcf, 'PaperPosition', [0, 0, 15, 15])
+% % 3 PLOT ---------------------------------------------------------------
+% % K TOP LISTS OF POSITIVE PREDICTION OF TRIPLE-TF-LINKS
+% % START  ---------------------------------------------------------------
 
 
 % print Plots

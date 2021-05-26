@@ -6,9 +6,6 @@ if nargin < 4,
   flag=1;
 end
 
-%FBgn0039039
-%FBgn0052813
-
 % All possible models
 comb = [0 0 0 0 0;
 	1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 1 0; 0 0 0 0 1;

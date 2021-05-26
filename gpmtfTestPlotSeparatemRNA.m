@@ -1,4 +1,4 @@
-function gpmtfTestPlotSeparatemRNA(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, dirr, Grtruth)
+function gpmtfTestPlotSeparatemRNA(testGenes, Genes, GeneVars, TFs, model, fbgn, demdata, printResults, dirr)
 
 
 % USER DEFINED PARAMETERS 
@@ -10,9 +10,9 @@ NumRowsParams = 2;
 NumColsParams = 4;
 % END OF USER DEFINED PARAMETERS
 
-%dirr = '~/mlprojects/gpsamp/tex/diagrams/';
-%dirrhtml = '~/mlprojects/gpsamp/html/';
-dirrhtml =  dirr; 
+dirr = '~/mlprojects/gpsamp/tex/diagrams/';
+dirrhtml = '~/mlprojects/gpsamp/html/';
+% dirrhtml =  dirr; 
 
 warning off;
 numModels = size(testGenes,2);
@@ -21,7 +21,7 @@ TimesF = model{numModels}.Likelihood.TimesF;
 
         
 TimesFF = TimesF(model{numModels}.Likelihood.startTime:end);
-ok = '2010-11-10'; %datestr(now, 29);
+ok = datestr(now, 29); % '2010-11-10';
 fileName = [demdata 'Test' 'MCMC' ok]; 
 
 NumOfTFs = size(TFs{1},1);
